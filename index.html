@@ -1395,8 +1395,8 @@ function render(){
 
 /* ============ N8N CUSTOMER ASSISTANT INTEGRATION ============ */
 // Replace this placeholder with the Production URL from your n8n Webhook node.
-https://baghdedi.app.n8n.cloud/webhook/lebanon-store-customer
 
+https://baghdedi.app.n8n.cloud/webhook/lebanon-store-customer
 async function callN8nCustomerBot(payload){
   if(!N8N_CUSTOMER_WEBHOOK || N8N_CUSTOMER_WEBHOOK.includes('YOUR-N8N-DOMAIN')){
     return {reply: state.lang==='ar' ? 'المساعد غير متصل بعد. يرجى التواصل معنا مباشرة.' : 'The assistant is not connected yet. Please contact us directly.'};
