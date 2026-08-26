@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متجر لبنان | Lebanon Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cedar:#0F3D2E;
+  --cedar-light:#175943;
+  --brass:#C4972A;
+  --brass-light:#E0B54A;
+  --brick:#C2542D;
+  --sand:#F1EAD9;
+  --sand-dark:#E7DCC3;
+  --paper:#FFFDF8;
+  --ink:#1C231F;
+  --ink-soft:#5B6259;
+  --line:#DDD3B8;
+  --radius:14px;
+  --shadow:0 4px 18px rgba(15,61,46,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--sand);
+  color:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+[dir="rtl"] body, [dir="rtl"] .font-body{font-family:'Tajawal',system-ui,sans-serif}
+.font-display{font-family:'Fraunces',serif;font-optical-sizing:auto}
+[dir="rtl"] .font-display{font-family:'Tajawal',system-ui,sans-serif;font-weight:800}
+.font-mono{font-family:'IBM Plex Mono',monospace}
+img,svg{display:block;max-width:100%}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+.container{max-width:1180px;margin:0 auto;padding:0 20px}
+.zellige-divider{
+  height:14px;
+  background-image: linear-gradient(45deg, var(--brass) 25%, transparent 25%), linear-gradient(-45deg, var(--brass) 25%, transparent 25%);
+  background-size:16px 16px;
+  opacity:.55;
+}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;
+  letter-spacing:.02em;
+}
+.badge-new{background:#DCEFE5;color:var(--cedar)}
+.badge-best{background:#FBE9D2;color:#8A5A15}
+.badge-offer{background:#FBDACB;color:var(--brick)}
+.btn{
+  border:none;border-radius:10px;padding:12px 20px;font-weight:700;font-size:14.5px;
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;transition:transform .15s ease, box-shadow .15s ease;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--brass);color:#221604}
+.btn-primary:hover{background:var(--brass-light);box-shadow:0 6px 16px rgba(196,151,42,.35)}
+.btn-outline{background:transparent;border:1.6px solid var(--paper);color:var(--paper)}
+.btn-cedar{background:var(--cedar);color:var(--paper)}
+.btn-cedar:hover{background:var(--cedar-light)}
+.btn-ghost{background:var(--sand-dark);color:var(--ink)}
+.btn-block{width:100%}
+.btn-sm{padding:8px 12px;font-size:13px;border-radius:8px}
+.icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+/* ---------- HEADER ---------- */
+header.site{
+  position:sticky;top:0;z-index:40;background:var(--cedar);color:var(--paper);
+}
+.topbar{display:flex;align-items:center;gap:14px;padding:12px 0}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-mark{width:38px;height:38px;border-radius:9px;background:var(--brass);display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:20px;height:20px;stroke:var(--cedar);fill:none;stroke-width:2}
+.logo-text{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1}
+.logo-sub{font-size:10.5px;color:var(--brass-light);letter-spacing:.08em;text-transform:uppercase}
+.searchbar{
+  flex:1;display:flex;align-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;padding:9px 14px;gap:8px;min-width:0;
+}
+.searchbar input{background:transparent;border:none;outline:none;color:var(--paper);width:100%;font-size:14px}
+.searchbar input::placeholder{color:rgba(255,255,255,.55)}
+.topbar-icons{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.icon-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:rgba(255,255,255,.85)}
+.icon-btn .cart-count{
+  position:absolute;top:-6px;inset-inline-end:-8px;background:var(--brick);color:#fff;font-size:10px;font-weight:700;
+  width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+}
+.lang-switch{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:var(--paper);
+  padding:6px 10px;font-size:12.5px;font-weight:700;
+}
+.hamburger{display:none;background:none;border:none;color:var(--paper)}
+.catbar{background:var(--cedar-light);border-top:1px solid rgba(255,255,255,.08)}
+.catbar .container{display:flex;gap:22px;overflow-x:auto;padding:9px 20px;scrollbar-width:none}
+.catbar .container::-webkit-scrollbar{display:none}
+.catbar a{white-space:nowrap;font-size:13px;color:rgba(255,255,255,.82);font-weight:500}
+.catbar a:hover{color:var(--brass-light)}
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative;background:var(--cedar);color:var(--paper);padding:64px 0 76px;overflow:hidden;
+}
+.hero::after{
+  content:'';position:absolute;inset-inline-end:-8%;top:-20%;width:520px;height:520px;border-radius:50%;
+  background:radial-gradient(circle, rgba(196,151,42,.28), transparent 70%);
+}
+.hero-inner{position:relative;max-width:640px}
+.eyebrow{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass-light);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';width:22px;height:2px;background:var(--brass-light)}
+.hero h1{font-size:44px;line-height:1.08;margin-bottom:16px}
+.hero p{font-size:16.5px;color:rgba(255,255,255,.78);margin-bottom:28px;max-width:460px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+
+/* ---------- SECTIONS ---------- */
+section{padding:52px 0}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px;gap:12px}
+.section-head h2{font-size:26px}
+.section-head .eyebrow{margin-bottom:6px}
+.section-head a.view-all{font-size:13px;font-weight:700;color:var(--cedar);border-bottom:2px solid var(--brass)}
+
+.cat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.cat-card{
+  background:var(--paper);border-radius:var(--radius);padding:18px 10px;text-align:center;box-shadow:var(--shadow);
+  border:1px solid var(--line);transition:transform .18s ease;
+}
+.cat-card:hover{transform:translateY(-3px)}
+.cat-icon{width:44px;height:44px;margin:0 auto 10px;border-radius:12px;background:var(--sand);display:flex;align-items:center;justify-content:center}
+.cat-icon svg{width:22px;height:22px;stroke:var(--cedar);fill:none;stroke-width:1.7}
+.cat-card span{font-size:12.5px;font-weight:700}
+
+.prod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.prod-card{
+  background:var(--paper);border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);
+  box-shadow:var(--shadow);display:flex;flex-direction:column;transition:transform .18s ease;
+}
+.prod-card:hover{transform:translateY(-4px)}
+.prod-img{
+  aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.prod-img svg{width:46%;height:46%;stroke:rgba(255,255,255,.92);fill:none;stroke-width:1.3}
+.prod-badges{position:absolute;top:10px;inset-inline-start:10px;display:flex;flex-direction:column;gap:5px}
+.wish-btn{
+  position:absolute;top:10px;inset-inline-end:10px;width:30px;height:30px;border-radius:50%;background:rgba(255,253,248,.9);
+  border:none;display:flex;align-items:center;justify-content:center;
+}
+.wish-btn svg{width:15px;height:15px;stroke:var(--brick);fill:none;stroke-width:2}
+.wish-btn.active svg{fill:var(--brick)}
+.prod-body{padding:13px 14px 15px;display:flex;flex-direction:column;gap:7px;flex:1}
+.prod-cat{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em}
+.prod-name{font-size:14px;font-weight:700;line-height:1.3;min-height:36px}
+.prod-rating{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:4px}
+.prod-rating svg{width:12px;height:12px;fill:var(--brass);stroke:none}
+.prod-price-row{display:flex;align-items:baseline;gap:8px;margin-top:auto}
+.price-now{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px;color:var(--cedar)}
+.price-was{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);text-decoration:line-through}
+.stock-tag{font-size:11px;font-weight:700}
+.stock-ok{color:var(--cedar)}
+.stock-low{color:var(--brick)}
+.stock-out{color:#999}
+.add-cart-btn{
+  margin-top:6px;width:100%;background:var(--cedar);color:var(--paper);border:none;border-radius:9px;padding:9px;
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.add-cart-btn:hover{background:var(--cedar-light)}
+.add-cart-btn:disabled{background:#C7C2B4;cursor:not-allowed}
+
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.why-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px}
+.why-card .cat-icon{margin:0 0 12px}
+.why-card h3{font-size:15px;margin-bottom:5px}
+.why-card p{font-size:13px;color:var(--ink-soft);line-height:1.5}
+
+.review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.review-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.review-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.review-name{font-weight:700;font-size:13.5px}
+.review-stars{display:flex;gap:2px}
+.review-stars svg{width:12px;height:12px;fill:var(--brass);stroke:none}
+.review-text{font-size:13px;color:var(--ink-soft);line-height:1.55;margin-bottom:8px}
+.review-meta{font-size:11.5px;color:#9B9484}
+
+footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 20px;margin-top:20px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.3fr;gap:24px;margin-bottom:32px}
+.footer-grid h4{color:var(--paper);font-size:13.5px;margin-bottom:14px}
+.footer-grid ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.footer-grid a{font-size:13px;color:rgba(255,255,255,.7)}
+.footer-grid a:hover{color:var(--brass-light)}
+.footer-grid p{font-size:13px;color:rgba(255,255,255,.7);line-height:1.6}
+.newsletter{display:flex;gap:8px;margin-top:10px}
+.newsletter input{flex:1;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:12.5px}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.14);padding-top:18px;display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.55);flex-wrap:wrap;gap:10px}
+
+/* ---------- DRAWER / MODALS ---------- */
+.overlay{position:fixed;inset:0;background:rgba(15,20,17,.5);z-index:90;display:none}
+.overlay.open{display:block}
+.drawer{
+  position:fixed;top:0;inset-inline-end:0;height:100%;width:420px;max-width:92vw;background:var(--paper);z-index:95;
+  transform:translateX(100%);transition:transform .28s ease;display:flex;flex-direction:column;
+}
+[dir="rtl"] .drawer{transform:translateX(-100%)}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+.drawer-head h3{font-size:17px}
+.close-btn{background:var(--sand);border:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 20px}
+.cart-line{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--sand-dark)}
+.cart-thumb{width:60px;height:60px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.cart-thumb svg{width:50%;height:50%;stroke:#fff;fill:none;stroke-width:1.4}
+.cart-info{flex:1;min-width:0}
+.cart-info .name{font-size:13.5px;font-weight:700;margin-bottom:3px}
+.cart-info .variant{font-size:11.5px;color:var(--ink-soft);margin-bottom:6px}
+.qty-row{display:flex;align-items:center;gap:8px}
+.qty-btn{width:24px;height:24px;border-radius:6px;background:var(--sand-dark);border:none;font-weight:700;font-size:13px}
+.qty-val{font-size:13px;font-weight:600;min-width:16px;text-align:center}
+.remove-btn{font-size:11.5px;color:var(--brick);font-weight:700;margin-inline-start:auto;background:none;border:none}
+.line-total{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13.5px;white-space:nowrap}
+.drawer-foot{border-top:1px solid var(--line);padding:16px 20px 20px;background:var(--sand)}
+.sum-row{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:8px;color:var(--ink-soft)}
+.sum-row.total{color:var(--ink);font-weight:800;font-size:16px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.empty-state{text-align:center;padding:60px 10px;color:var(--ink-soft)}
+.empty-state svg{width:52px;height:52px;stroke:var(--line);fill:none;margin:0 auto 14px}
+
+/* ---------- PRODUCT MODAL ---------- */
+.modal{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--paper);z-index:95;border-radius:18px;
+  width:920px;max-width:94vw;max-height:90vh;overflow-y:auto;display:none;box-shadow:0 30px 60px rgba(0,0,0,.35);
+}
+.modal.open{display:block}
+.modal-close{position:sticky;top:14px;float:inline-end;margin-inline-end:14px;z-index:5;background:var(--paper);width:34px;height:34px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.modal-gallery{background:var(--cedar);display:flex;flex-direction:column}
+.gallery-main{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+.gallery-main svg{width:38%;height:38%;stroke:rgba(255,255,255,.9);fill:none;stroke-width:1.2}
+.gallery-swatches{display:flex;gap:8px;padding:14px;justify-content:center}
+.swatch{width:44px;height:44px;border-radius:8px;border:2px solid rgba(255,255,255,.25);cursor:pointer}
+.swatch.active{border-color:var(--brass)}
+.modal-info{padding:26px 26px 30px;display:flex;flex-direction:column;gap:12px}
+.modal-info h2{font-size:21px;line-height:1.3}
+.modal-stars-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+.modal-price-row{display:flex;align-items:baseline;gap:10px}
+.modal-price-row .price-now{font-size:24px}
+.discount-tag{background:#FBDACB;color:var(--brick);font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:6px}
+.modal-desc{font-size:13.5px;color:var(--ink-soft);line-height:1.7}
+.variant-block label{font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px}
+.variant-opts{display:flex;gap:8px;flex-wrap:wrap}
+.variant-opt{padding:6px 14px;border-radius:8px;border:1.4px solid var(--line);font-size:12.5px;font-weight:600;background:var(--paper)}
+.variant-opt.active{border-color:var(--cedar);background:var(--cedar);color:#fff}
+.modal-actions{display:flex;gap:10px;align-items:center}
+.spec-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+.spec-table td{padding:7px 0;border-bottom:1px solid var(--sand-dark)}
+.spec-table td:first-child{color:var(--ink-soft);width:38%}
+.ai-box{background:var(--sand);border:1px dashed var(--brass);border-radius:12px;padding:14px}
+.ai-box-head{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--cedar);margin-bottom:8px}
+.ai-box-head svg{width:16px;height:16px}
+.ai-log{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:150px;overflow-y:auto}
+.ai-msg{font-size:12.5px;padding:8px 11px;border-radius:9px;max-width:88%;line-height:1.5}
+.ai-msg.user{background:var(--cedar);color:#fff;align-self:flex-end;margin-inline-start:auto}
+.ai-msg.bot{background:var(--paper);border:1px solid var(--line);align-self:flex-start}
+.ai-input-row{display:flex;gap:6px}
+.ai-input-row input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;outline:none}
+
+/* ---------- CHATBOT ---------- */
+.chat-fab{
+  position:fixed;bottom:22px;inset-inline-end:22px;background:var(--brass);color:#221604;border:none;border-radius:30px;
+  padding:13px 20px;font-weight:800;font-size:13.5px;box-shadow:0 8px 22px rgba(196,151,42,.4);z-index:80;display:flex;align-items:center;gap:8px;
+}
+.chat-panel{
+  position:fixed;bottom:88px;inset-inline-end:22px;width:340px;max-width:90vw;height:440px;background:var(--paper);
+  border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.28);z-index:80;display:none;flex-direction:column;overflow:hidden;
+}
+.chat-panel.open{display:flex}
+.chat-head{background:var(--cedar);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.chat-head div span{display:block}
+.chat-head .t1{font-weight:800;font-size:13.5px}
+.chat-head .t2{font-size:11px;color:rgba(255,255,255,.65)}
+.chat-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--sand)}
+.chat-suggest{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:var(--sand)}
+.chat-chip{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:5px 10px;font-size:11px}
+.chat-foot{border-top:1px solid var(--line);padding:10px;display:flex;gap:6px}
+.chat-foot input{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;outline:none}
+.chat-send{background:var(--cedar);color:#fff;border:none;border-radius:9px;width:38px;display:flex;align-items:center;justify-content:center}
+.chat-send:disabled,.chat-foot input:disabled{opacity:.5;cursor:not-allowed}
+.typing-dots{display:inline-flex;gap:4px;align-items:center;padding:2px 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--ink-soft);animation:typing-bounce 1.1s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+
+/* ---------- CHECKOUT / ACCOUNT PAGES ---------- */
+.page{padding:36px 0 60px}
+.breadcrumb{font-size:12.5px;color:var(--ink-soft);margin-bottom:18px}
+.checkout-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:26px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+.panel h3{font-size:16px;margin-bottom:16px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field.full{grid-column:1/-1}
+.form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
+.form-field input,.form-field select,.form-field textarea{
+  padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13.5px;outline:none;font-family:inherit;background:var(--paper);color:var(--ink);
+}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--cedar)}
+.pay-option{display:flex;align-items:center;gap:10px;border:1.4px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.pay-option.active{border-color:var(--cedar);background:var(--sand)}
+
+/* ---------- LOGIN ---------- */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:20px;position:relative;overflow:hidden}
+.login-wrap::after{content:'';position:absolute;inset-inline-end:-10%;top:-15%;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.25), transparent 70%)}
+.login-card{position:relative;background:var(--paper);border-radius:18px;padding:36px 32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
+.login-title{font-size:22px;text-align:center;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:26px}
+.login-method{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 16px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--paper);font-weight:700;font-size:14px;margin-bottom:11px;transition:border-color .15s ease,background .15s ease;
+}
+.login-method:hover{border-color:var(--cedar);background:var(--sand)}
+.login-method svg{width:19px;height:19px;flex-shrink:0}
+.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-soft);font-size:12px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.login-form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.login-form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
+.login-form-field input{padding:11px 13px;border:1.4px solid var(--line);border-radius:9px;font-size:14px;outline:none}
+.login-form-field input:focus{border-color:var(--cedar)}
+.login-back{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:14px;display:inline-flex;align-items:center;gap:4px}
+.login-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.6}
+
+/* ---------- IMPERSONATION BANNER ---------- */
+.impersonate-bar{
+  position:sticky;top:0;z-index:50;background:var(--brick);color:#fff;display:flex;align-items:center;justify-content:center;
+  gap:14px;padding:9px 16px;font-size:13px;font-weight:700;flex-wrap:wrap;text-align:center;
+}
+.impersonate-bar button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:700}
+
+/* ---------- ADMIN: CUSTOMERS ---------- */
+.cust-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 4px;border-bottom:1px solid var(--sand-dark)}
+.cust-avatar{width:38px;height:38px;border-radius:50%;background:var(--cedar);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.cust-meta{font-size:12px;color:var(--ink-soft)}
+.method-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--sand);color:var(--cedar)}
+.order-conf{text-align:center;padding:60px 20px}
+.order-conf .check-circle{width:70px;height:70px;border-radius:50%;background:#DCEFE5;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.order-conf .check-circle svg{width:34px;height:34px;stroke:var(--cedar);stroke-width:2.4}
+.order-num{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--cedar);margin:12px 0}
+
+/* ---------- ADMIN ---------- */
+.admin-shell{display:flex;min-height:100vh}
+.admin-side{width:220px;background:var(--cedar);color:#fff;padding:20px 14px;flex-shrink:0}
+.admin-side .logo{margin-bottom:26px;padding:0 6px}
+.admin-nav a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:3px}
+.admin-nav a.active,.admin-nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.admin-main{flex:1;background:var(--sand);padding:26px 30px;overflow-x:hidden}
+.admin-topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+.stat-card .lbl{font-size:11.5px;color:var(--ink-soft);font-weight:700;margin-bottom:6px}
+.stat-card .val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600}
+.admin-panels{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:20px}
+.bars{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:10px}
+.bar{flex:1;background:var(--brass);border-radius:6px 6px 0 0;position:relative}
+.bar span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--ink-soft)}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-table th{text-align:start;font-size:11px;text-transform:uppercase;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line)}
+.admin-table td{padding:9px 10px;border-bottom:1px solid var(--sand-dark);vertical-align:middle}
+.admin-table input[type="number"], .admin-table input[type="text"]{width:80px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:12.5px}
+.status-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.toggle-row{display:flex;gap:6px}
+.mini-toggle{font-size:10.5px;padding:3px 7px;border-radius:6px;border:1px solid var(--line);background:var(--paper);font-weight:700}
+.mini-toggle.on{background:var(--cedar);color:#fff;border-color:var(--cedar)}
+
+/* ---------- MISC ---------- */
+.nav-link{background:none;border:none;color:inherit;font:inherit}
+.toast{
+  position:fixed;bottom:22px;inset-inline-start:50%;transform:translateX(-50%);background:var(--cedar);color:#fff;
+  padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+  display:flex;align-items:center;gap:8px;box-shadow:0 10px 24px rgba(0,0,0,.25);
+}
+[dir="rtl"] .toast{transform:translateX(50%)}
+.toast.show{opacity:1}
+
+@media (max-width:980px){
+  .cat-grid{grid-template-columns:repeat(3,1fr)}
+  .prod-grid{grid-template-columns:repeat(2,1fr)}
+  .why-grid{grid-template-columns:repeat(2,1fr)}
+  .review-grid{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .modal-grid{grid-template-columns:1fr}
+  .checkout-grid{grid-template-columns:1fr}
+  .admin-panels{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .admin-side{position:fixed;height:100%;transform:translateX(-100%);transition:transform .2s ease;z-index:60}
+  [dir="rtl"] .admin-side{transform:translateX(100%)}
+  .admin-side.open{transform:translateX(0)}
+}
+@media (max-width:640px){
+  .searchbar{display:none}
+  .hamburger{display:block}
+  .hero h1{font-size:30px}
+  .hero p{font-size:14.5px}
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .drawer{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay"></div>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ DATA ============ */
+const T = {
+  ar:{
+    search:"ابحث عن منتج...", categories:"الفئات", shopNow:"تسوّق الآن", explore:"استعرض المنتجات",
+    heroTitle:"كل ما تحتاجه بضغطة واحدة", heroSub:"منتجات عالية الجودة، أسعار رائعة، وتوصيل لجميع المناطق اللبنانية.",
+    featured:"منتجات مختارة", bestSellers:"الأكثر مبيعًا", newArrivals:"وصل حديثًا", offers:"عروض خاصة",
+    viewAll:"عرض الكل", why:"لماذا تختارنا", delivery:"توصيل لكل لبنان", deliveryDesc:"نوصل طلبك إلى بابك في جميع المحافظات.",
+    secure:"دفع آمن", secureDesc:"ادفع نقدًا عند الاستلام بثقة تامة.", quality:"منتجات مضمونة", qualityDesc:"كل منتج يمر بفحص جودة قبل الشحن.",
+    support:"دعم على مدار الساعة", supportDesc:"فريقنا جاهز للإجابة عبر واتساب أو الهاتف.",
+    reviews:"آراء عملائنا", addCart:"أضف للسلة", outOfStock:"غير متوفر", lowStock:"كمية محدودة", inStock:"متوفر",
+    cart:"السلة", wishlist:"المفضلة", account:"حسابي", menu:"القائمة",
+    subtotal:"المجموع الفرعي", deliveryFee:"رسوم التوصيل", discount:"الخصم", total:"الإجمالي",
+    checkout:"إتمام الشراء", emptyCart:"سلتك فارغة", emptyCartSub:"أضف منتجات لتبدأ التسوق",
+    continueShopping:"متابعة التسوق", quantity:"الكمية", remove:"إزالة",
+    fullName:"الاسم الكامل", phone:"رقم الهاتف", email:"البريد الإلكتروني", governorate:"المحافظة", city:"المدينة",
+    area:"المنطقة", address:"العنوان الكامل", building:"البناء", floor:"الطابق", apartment:"الشقة", notes:"ملاحظات التوصيل",
+    payMethod:"طريقة الدفع", cod:"الدفع عند الاستلام", codDesc:"ادفع نقدًا عند وصول طلبك",
+    placeOrder:"تأكيد الطلب", orderSummary:"ملخص الطلب", orderConfirmed:"تم استلام طلبك بنجاح!",
+    orderConfirmedSub:"سنتواصل معك قريبًا لتأكيد التوصيل.", orderNumber:"رقم الطلب",
+    backHome:"العودة للرئيسية", couponCode:"رمز الخصم", apply:"تطبيق", aiAssistant:"مساعد المنتج الذكي",
+    askAbout:"اسأل عن هذا المنتج...", askPlaceholder:"مثال: هل يناسب مطبخ صغير؟",
+    chatTitle:"اسأل متجر لبنان", chatSub:"مساعد ذكي حقيقي", chatPlaceholder:"اكتب سؤالك...",
+    addedToCart:"تمت الإضافة إلى السلة", removedFromWish:"أُزيل من المفضلة", addedToWish:"أُضيف إلى المفضلة",
+    freeDeliveryNote:"توصيل مجاني للطلبات فوق $75", specifications:"المواصفات", relatedProducts:"منتجات ذات صلة",
+    admin:"لوحة التحكم", aboutStore:"عن المتجر", aboutText:"متجر لبنان هو وجهتك للتسوق الإلكتروني الموثوق في لبنان.",
+    contact:"تواصل معنا", shipping:"الشحن", returns:"الإرجاع", privacy:"سياسة الخصوصية", terms:"الشروط", faq:"الأسئلة الشائعة",
+    newsletter:"النشرة البريدية", newsletterSub:"اشترك لتصلك أحدث العروض", subscribe:"اشترك",
+    rights:"جميع الحقوق محفوظة", demoNote:"هذا عرض تجريبي تفاعلي — البيانات وهمية والذكاء الاصطناعي محاكى محليًا.",
+    goAdmin:"لوحة الإدارة", storeName:"متجر لبنان",
+    estDelivery:"التوصيل المتوقع", days:"أيام", adminSettings:"الإعدادات",
+    deliveryMinLabel:"أقل عدد أيام", deliveryMaxLabel:"أكثر عدد أيام",
+    deliveryHelp:"مدة التوصيل من المورد إلى لبنان (عادة 10-15 يومًا). يظهر هذا للعملاء في صفحة المنتج والدفع.",
+    costLabel:"التكلفة", profitLabel:"الربح", supplierLink:"رابط المورد",
+    openSupplier:"فتح", supplierLinkPrivacy:"رابط المورد يظهر فقط في لوحة الإدارة، ولا يظهر للعملاء أبدًا.",
+    suggestPrice:"اقترح السعر", suggestPriceHint:"يقترح سعرًا مناسبًا تلقائيًا حسب التكلفة (هامش أعلى للمنتجات الرخيصة)"
+  },
+  en:{
+    search:"Search products...", categories:"Categories", shopNow:"Shop Now", explore:"Explore Products",
+    heroTitle:"Shop Everything You Need", heroSub:"Quality products, great prices, and delivery across Lebanon.",
+    featured:"Featured Products", bestSellers:"Best Sellers", newArrivals:"New Arrivals", offers:"Special Offers",
+    viewAll:"View all", why:"Why Choose Us", delivery:"Delivery Across Lebanon", deliveryDesc:"We deliver to your door in every governorate.",
+    secure:"Secure Payment", secureDesc:"Pay cash on delivery with full confidence.", quality:"Quality Products", qualityDesc:"Every product is checked before it ships.",
+    support:"Customer Support", supportDesc:"Our team is ready on WhatsApp or phone.",
+    reviews:"Customer Reviews", addCart:"Add to Cart", outOfStock:"Out of stock", lowStock:"Low stock", inStock:"In stock",
+    cart:"Cart", wishlist:"Wishlist", account:"Account", menu:"Menu",
+    subtotal:"Subtotal", deliveryFee:"Delivery fee", discount:"Discount", total:"Total",
+    checkout:"Checkout", emptyCart:"Your cart is empty", emptyCartSub:"Add products to get started",
+    continueShopping:"Continue Shopping", quantity:"Qty", remove:"Remove",
+    fullName:"Full name", phone:"Phone number", email:"Email", governorate:"Governorate", city:"City",
+    area:"Area", address:"Full address", building:"Building", floor:"Floor", apartment:"Apartment", notes:"Delivery notes",
+    payMethod:"Payment method", cod:"Cash on Delivery", codDesc:"Pay in cash when your order arrives",
+    placeOrder:"Place Order", orderSummary:"Order Summary", orderConfirmed:"Your order was placed!",
+    orderConfirmedSub:"We'll contact you shortly to confirm delivery.", orderNumber:"Order number",
+    backHome:"Back to home", couponCode:"Coupon code", apply:"Apply", aiAssistant:"AI Product Assistant",
+    askAbout:"Ask about this product...", askPlaceholder:"e.g. Is this good for a small kitchen?",
+    chatTitle:"Ask Lebanon Store", chatSub:"AI assistant (simulated)", chatPlaceholder:"Type your question...",
+    addedToCart:"Added to cart", removedFromWish:"Removed from wishlist", addedToWish:"Added to wishlist",
+    freeDeliveryNote:"Free delivery on orders over $75", specifications:"Specifications", relatedProducts:"Related Products",
+    admin:"Admin Dashboard", aboutStore:"About Lebanon Store", aboutText:"Lebanon Store is your trusted online shopping destination in Lebanon.",
+    contact:"Contact", shipping:"Shipping", returns:"Returns", privacy:"Privacy Policy", terms:"Terms", faq:"FAQ",
+    newsletter:"Newsletter", newsletterSub:"Subscribe for the latest offers", subscribe:"Subscribe",
+    rights:"All rights reserved", demoNote:"This is an interactive demo — data is mock and AI responses are simulated locally.",
+    goAdmin:"Admin Panel", storeName:"Lebanon Store",
+    estDelivery:"Estimated delivery", days:"days", adminSettings:"Settings",
+    deliveryMinLabel:"Min days", deliveryMaxLabel:"Max days",
+    deliveryHelp:"Shipping time from the supplier to Lebanon (typically 10-15 days). Shown to customers on the product and checkout pages.",
+    costLabel:"Cost", profitLabel:"Profit", supplierLink:"Supplier Link",
+    openSupplier:"Open", supplierLinkPrivacy:"Supplier links are visible only in this admin panel — customers never see them.",
+    suggestPrice:"Suggest Price", suggestPriceHint:"Auto-suggests a fair price from cost (higher margin on cheaper items)"
+  }
+};
+
+const ICONS = {
+  electronics:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="12" rx="1.5"/><path d="M9 21h6M12 15v6"/></svg>',
+  kitchen:'<svg viewBox="0 0 24 24"><path d="M6 2v7a3 3 0 0 0 6 0V2M9 9v13M17 2v20M17 2a4 4 0 0 1 4 4v3h-4"/></svg>',
+  beauty:'<svg viewBox="0 0 24 24"><path d="M12 2c2 3 5 5 5 9a5 5 0 0 1-10 0c0-4 3-6 5-9z"/></svg>',
+  fashion:'<svg viewBox="0 0 24 24"><path d="M16 4l4 3-2 3-2-1v11H8V9L6 10 4 7l4-3 2 2h4l2-2z"/></svg>',
+  accessories:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M9 13l-2 8h10l-2-8"/></svg>',
+  phones:'<svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>',
+  tools:'<svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 1 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.83 2.83-2.12-2.12L14.7 6.3z"/></svg>',
+  car:'<svg viewBox="0 0 24 24"><path d="M3 13l2-6h14l2 6M3 13v5h2m14-5v5h2M5 18h1a2 2 0 0 0 2-2v-1H16v1a2 2 0 0 0 2 2h1M3 13h18"/></svg>',
+  kids:'<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M6 21c0-4 2.5-6 6-6s6 2 6 6"/></svg>',
+  offers:'<svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l9 9a1 1 0 0 1 1 1z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+};
+const CATS = [
+  {id:'electronics', ar:'إلكترونيات', en:'Electronics', icon:'electronics'},
+  {id:'kitchen', ar:'المطبخ والمنزل', en:'Home & Kitchen', icon:'kitchen'},
+  {id:'beauty', ar:'الجمال', en:'Beauty', icon:'beauty'},
+  {id:'fashion', ar:'أزياء', en:'Fashion', icon:'fashion'},
+  {id:'accessories', ar:'إكسسوارات', en:'Accessories', icon:'accessories'},
+  {id:'phones', ar:'هواتف وأجهزة', en:'Phones & Gadgets', icon:'phones'},
+  {id:'tools', ar:'أدوات', en:'Tools', icon:'tools'},
+  {id:'car', ar:'إكسسوارات السيارات', en:'Car Accessories', icon:'car'},
+  {id:'kids', ar:'أطفال', en:'Kids', icon:'kids'},
+  {id:'offers', ar:'عروض', en:'Offers', icon:'offers'},
+];
+const PALETTE = ['#0F3D2E','#175943','#8A5A15','#C2542D','#3D5A80','#6B4226','#2E4B3A','#A6473A'];
+
+const PRODUCTS = [
+  {id:1,cat:'kitchen',icon:'kitchen',color:0,name_ar:'آلة قهوة إسبريسو كومباكت',name_en:'Compact Espresso Machine',
+   desc_ar:'آلة إسبريسو صغيرة الحجم مثالية للمطابخ الضيقة، بضغط 15 بار وخزان مياه 1 لتر.',
+   desc_en:'A compact espresso machine perfect for small kitchens, 15-bar pressure, 1L water tank.',
+   sku:'LB-KT-1001', price:89, was:119, stock:14, rating:4.6, reviews:58, best:true, featured:true, new:false,
+   cost:68, marginPct:31, supplierUrl:'https://chinahubpro.example/item/8834721-espresso-mini',
+   specs:{ar:{'الضغط':'15 بار','السعة':'1 لتر','الوزن':'2.8 كغ','الضمان':'سنتان'}, en:{'Pressure':'15 bar','Capacity':'1L','Weight':'2.8kg','Warranty':'2 years'}},
+   variants:['أسود','فضي']},
+  {id:2,cat:'electronics',icon:'electronics',color:1,name_ar:'سماعات لاسلكية بإلغاء الضجيج',name_en:'Wireless Noise-Cancelling Headphones',
+   desc_ar:'صوت نقي وإلغاء ضجيج فعّال مع بطارية تدوم حتى 30 ساعة.',
+   desc_en:'Crisp sound with active noise cancellation and up to 30 hours of battery life.',
+   sku:'LB-EL-2002', price:64, was:64, stock:31, rating:4.8, reviews:142, best:true, featured:true, new:false,
+   cost:41, marginPct:56, supplierUrl:'https://chinahubpro.example/item/2291045-anc-headset',
+   specs:{ar:{'البطارية':'30 ساعة','الاتصال':'بلوتوث 5.3','الوزن':'250غ'}, en:{'Battery':'30 hours','Connectivity':'Bluetooth 5.3','Weight':'250g'}},
+   variants:['أسود','أبيض','أزرق']},
+  {id:3,cat:'phones',icon:'phones',color:2,name_ar:'ساعة ذكية رياضية',name_en:'Sport Smartwatch',
+   desc_ar:'تتبع اللياقة، معدل ضربات القلب، ومقاومة للماء حتى 50 مترًا.',
+   desc_en:'Fitness tracking, heart-rate monitor, water resistant up to 50m.',
+   sku:'LB-PH-3003', price:45, was:60, stock:6, rating:4.3, reviews:37, best:false, featured:true, new:true,
+   cost:27, marginPct:67, supplierUrl:'https://chinahubpro.example/item/5567382-sport-watch-x3',
+   specs:{ar:{'الشاشة':'1.4 إنش AMOLED','مقاومة الماء':'50 متر','البطارية':'7 أيام'}, en:{'Display':'1.4" AMOLED','Water resistance':'50m','Battery':'7 days'}},
+   variants:['أسود','وردي']},
+  {id:4,cat:'beauty',icon:'beauty',color:3,name_ar:'مجموعة العناية بالبشرة',name_en:'Skincare Essentials Set',
+   desc_ar:'غسول، سيروم فيتامين سي، ومرطب — مناسب لجميع أنواع البشرة.',
+   desc_en:'Cleanser, vitamin C serum, and moisturizer — suitable for all skin types.',
+   sku:'LB-BT-4004', price:32, was:40, stock:0, rating:4.5, reviews:64, best:false, featured:false, new:true,
+   cost:19, marginPct:68, supplierUrl:'https://chinahubpro.example/item/9012734-skincare-set3',
+   specs:{ar:{'نوع البشرة':'جميع الأنواع','خالي من':'البارابين'}, en:{'Skin type':'All types','Free from':'Parabens'}},
+   variants:['عادي']},
+  {id:5,cat:'fashion',icon:'fashion',color:4,name_ar:'جاكيت شتوي عصري',name_en:'Modern Winter Jacket',
+   desc_ar:'قماش مقاوم للماء وبطانة دافئة، مناسب لطقس لبنان الباردة.',
+   desc_en:'Water-resistant fabric with warm lining, suited to Lebanon\'s cold season.',
+   sku:'LB-FS-5005', price:75, was:95, stock:9, rating:4.4, reviews:29, best:false, featured:true, new:false,
+   cost:52, marginPct:44, supplierUrl:'https://chinahubpro.example/item/3345190-winter-jacket-m',
+   specs:{ar:{'القماش':'مقاوم للماء','المقاسات':'S–XXL'}, en:{'Fabric':'Water resistant','Sizes':'S–XXL'}},
+   variants:['S','M','L','XL']},
+  {id:6,cat:'accessories',icon:'accessories',color:5,name_ar:'حقيبة ظهر للحاسوب المحمول',name_en:'Laptop Backpack',
+   desc_ar:'مقصورة مبطنة للحاسوب حتى 15.6 إنش، مقاومة للماء، منفذ USB خارجي.',
+   desc_en:'Padded compartment for laptops up to 15.6", water resistant, external USB port.',
+   sku:'LB-AC-6006', price:28, was:28, stock:22, rating:4.7, reviews:91, best:true, featured:false, new:false,
+   cost:16, marginPct:75, supplierUrl:'https://chinahubpro.example/item/7789012-laptop-bp-15',
+   specs:{ar:{'السعة':'حتى 15.6 إنش','المواد':'نايلون مقاوم للماء'}, en:{'Capacity':'Up to 15.6"','Material':'Water-resistant nylon'}},
+   variants:['أسود','رمادي']},
+  {id:7,cat:'tools',icon:'tools',color:6,name_ar:'طقم مفكات كهربائية',name_en:'Cordless Screwdriver Set',
+   desc_ar:'20 رأس متعدد الاستخدامات، بطارية ليثيوم قابلة لإعادة الشحن.',
+   desc_en:'20 multi-purpose bits, rechargeable lithium battery.',
+   sku:'LB-TL-7007', price:22, was:29, stock:3, rating:4.2, reviews:18, best:false, featured:false, new:false,
+   cost:12, marginPct:83, supplierUrl:'https://chinahubpro.example/item/4456781-driver-set-20',
+   specs:{ar:{'الرؤوس':'20 قطعة','البطارية':'ليثيوم 3.6 فولت'}, en:{'Bits':'20 pieces','Battery':'3.6V lithium'}},
+   variants:['عادي']},
+  {id:8,cat:'car',icon:'car',color:7,name_ar:'حامل هاتف للسيارة',name_en:'Car Phone Mount',
+   desc_ar:'تثبيت مغناطيسي قوي، يدور 360 درجة، تركيب سهل على فتحة التهوية.',
+   desc_en:'Strong magnetic mount, 360° rotation, easy vent installation.',
+   sku:'LB-CR-8008', price:9, was:14, stock:48, rating:4.1, reviews:53, best:false, featured:false, new:true,
+   cost:3.2, marginPct:181, supplierUrl:'https://chinahubpro.example/item/1123456-magnet-mount',
+   specs:{ar:{'التركيب':'فتحة التهوية','الدوران':'360 درجة'}, en:{'Mount':'Air vent','Rotation':'360°'}},
+   variants:['عادي']},
+  {id:9,cat:'kids',icon:'kids',color:2,name_ar:'دراجة أطفال توازن',name_en:'Kids Balance Bike',
+   desc_ar:'دراجة بدون بدالات لتعليم التوازن، مناسبة لعمر 2-5 سنوات.',
+   desc_en:'Pedal-free balance bike for learning, suited for ages 2-5.',
+   sku:'LB-KD-9009', price:38, was:38, stock:11, rating:4.6, reviews:22, best:false, featured:false, new:true,
+   cost:24, marginPct:58, supplierUrl:'https://chinahubpro.example/item/6634521-balance-bike',
+   specs:{ar:{'الفئة العمرية':'2-5 سنوات','الوزن':'3 كغ'}, en:{'Age range':'2-5 years','Weight':'3kg'}},
+   variants:['أحمر','أزرق','أخضر']},
+  {id:10,cat:'electronics',icon:'electronics',color:0,name_ar:'مكبر صوت بلوتوث محمول',name_en:'Portable Bluetooth Speaker',
+   desc_ar:'صوت 360 درجة، مقاوم للماء IPX7، بطارية تدوم 12 ساعة.',
+   desc_en:'360° sound, IPX7 waterproof, 12-hour battery life.',
+   sku:'LB-EL-1010', price:26, was:35, stock:17, rating:4.5, reviews:76, best:true, featured:false, new:false,
+   cost:14, marginPct:86, supplierUrl:'https://chinahubpro.example/item/8845632-bt-speaker-ipx7',
+   specs:{ar:{'المقاومة':'IPX7','البطارية':'12 ساعة'}, en:{'Rating':'IPX7','Battery':'12 hours'}},
+   variants:['أسود','أحمر']},
+];
+
+const REVIEWS = [
+  {name_ar:'رنا خليل', name_en:'Rana Khalil', rating:5, prod:2, ar:'جودة الصوت ممتازة وسريعة التوصيل، تجربة تسوق رائعة!', en:'Amazing sound quality and fast delivery, great shopping experience!', date:'2026-08-02'},
+  {name_ar:'كريم عيسى', name_en:'Karim Issa', rating:4, prod:1, ar:'آلة القهوة رائعة لكن الدليل كان بالإنكليزية فقط.', en:'The coffee machine is great but the manual was English-only.', date:'2026-07-28'},
+  {name_ar:'مايا فرح', name_en:'Maya Farah', rating:5, prod:6, ar:'حقيبة عملية جدًا وخفيفة، أنصح بها لكل طالب جامعي.', en:'Very practical and lightweight bag, I recommend it to every student.', date:'2026-08-11'},
+];
+
+const GOV_FEES = {
+  ar:{'بيروت':3,'جبل لبنان':4,'الشمال':6,'الجنوب':6,'البقاع':6,'النبطية':7},
+  en:{'Beirut':3,'Mount Lebanon':4,'North':6,'South':6,'Bekaa':6,'Nabatieh':7}
+};
+const FREE_DELIVERY_MIN = 75;
+const COUPONS = {'LEB10':{type:'pct',value:10}};
+
+const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','out_for_delivery','delivered','cancelled','returned'];
+const ORDER_STATUS_LABELS = {
+  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
+  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
+};
+
+/* Suggested-price margin curve: cheaper items need a higher % markup to be worth handling */
+function suggestedMarginPct(cost){
+  if(cost < 5) return 45;
+  if(cost < 20) return 25;
+  return 12;
+}
+function computeSuggestedPrice(cost, marginPctOverride){
+  const pct = (marginPctOverride!==undefined && marginPctOverride!==null && marginPctOverride!=='') ? Number(marginPctOverride) : suggestedMarginPct(cost);
+  return +(cost * (1 + pct/100)).toFixed(2);
+}
+
+/* ============ STATE ============ */
+/* Whoever logs in with this email OR this phone number becomes the admin account
+   and is the only one who ever sees the ★ Admin link. Change these to your own. */
+const ADMIN_EMAIL = '[hadibaghdadi11@gmail.com]';
+const ADMIN_PHONE = '81687016';
+
+let state = {
+  lang: 'ar',
+  view: 'login', // login | home | product | checkout | confirm | admin
+  productId: null,
+  cart: [], // {id, qty, variant}
+  wishlist: new Set(),
+  drawerOpen: false,
+  mobileMenuOpen: false,
+  modalOpen: false,
+  modalVariant: null,
+  chatOpen: false,
+  chatLog: [],
+  aiLogByProduct: {},
+  coupon: null,
+  couponInput: '',
+  selectedGov: null,
+  orders: [], // {num, date, items:[...], total, gov, customer, phone, status, customerId, customerName}
+  settings: { deliveryMin: 10, deliveryMax: 15 },
+  adminView: 'overview',
+  adminSideOpen: false,
+  adminSelectedCustomer: null,
+  formData: {},
+
+  /* ---- accounts / login ---- */
+  customers: [], // {id, name, email, phone, method, cart, wishlist, createdAt}
+  currentUserId: null,
+  loginMethod: null, // null | 'google' | 'apple' | 'phone'
+  loginForm: {},
+  impersonateFromAdmin: null, // holds the admin's own id while they're "shopping as" a customer
+};
+
+function t(key){ return T[state.lang][key]; }
+function fmt(n){ return '$' + n.toFixed(2); }
+function pname(p){ return state.lang==='ar' ? p.name_ar : p.name_en; }
+function pdesc(p){ return state.lang==='ar' ? p.desc_ar : p.desc_en; }
+function catName(c){ return state.lang==='ar' ? c.ar : c.en; }
+function findProduct(id){ return PRODUCTS.find(p=>p.id===id); }
+
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* ============ ACCOUNTS / LOGIN ============ */
+function currentCustomer(){ return state.customers.find(c=>c.id===state.currentUserId) || null; }
+function isAdminUser(c){ return !!c && ((c.email && c.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()) || (c.phone && c.phone.replace(/\s+/g,'')===ADMIN_PHONE)); }
+function syncCustomerCart(){
+  const c = currentCustomer();
+  if(c){ c.cart = state.cart; c.wishlist = state.wishlist; }
+}
+function loadCustomerCart(c){
+  state.cart = c.cart || [];
+  state.wishlist = c.wishlist || new Set();
+}
+function setLoginMethod(m){ state.loginMethod = m; state.loginForm = {}; render(); }
+function updateLoginForm(field, val){ state.loginForm[field] = val; }
+
+function findOrCreateCustomer({name, email, phone, method}){
+  email = (email||'').trim().toLowerCase();
+  phone = (phone||'').trim();
+  let c = state.customers.find(c => (email && c.email && c.email.toLowerCase()===email) || (phone && c.phone===phone));
+  if(!c){
+    c = {
+      id: 'cust_' + Date.now() + '_' + Math.floor(Math.random()*9999),
+      name: name || (state.lang==='ar' ? 'زبون' : 'Customer'),
+      email, phone, method,
+      cart: [], wishlist: new Set(),
+      createdAt: new Date().toISOString().slice(0,10)
+    };
+    state.customers.push(c);
+  } else {
+    // keep the profile fresh if they log back in with new info
+    if(name) c.name = name;
+    if(email) c.email = email;
+    if(phone) c.phone = phone;
+  }
+  return c;
+}
+function completeLogin(c){
+  state.currentUserId = c.id;
+  loadCustomerCart(c);
+  state.loginMethod = null;
+  state.loginForm = {};
+  state.formData.fullName = c.name || '';
+  state.formData.phone = c.phone || '';
+  state.formData.email = c.email || '';
+  state.view = 'home';
+  window.scrollTo(0,0);
+  render();
+}
+function submitSocialLogin(method){
+  const f = state.loginForm;
+  if(!f.name || !f.email){
+    showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم والبريد الإلكتروني' : 'Please fill in your name and email');
+    return;
+  }
+  const c = findOrCreateCustomer({name:f.name, email:f.email, method});
+  completeLogin(c);
+}
+function submitPhoneLogin(){
+  const f = state.loginForm;
+  if(!f.name || !f.phone){
+    showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم ورقم الهاتف' : 'Please fill in your name and phone number');
+    return;
+  }
+  const c = findOrCreateCustomer({name:f.name, phone:f.phone, method:'phone'});
+  completeLogin(c);
+}
+function logout(){
+  const msg = state.lang==='ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out of your account?';
+  if(!confirm(msg)) return;
+  syncCustomerCart();
+  state.currentUserId = null;
+  state.impersonateFromAdmin = null;
+  state.cart = [];
+  state.wishlist = new Set();
+  state.view = 'login';
+  state.loginMethod = null;
+  window.scrollTo(0,0);
+  render();
+}
+
+/* ============ CART LOGIC ============ */
+function addToCart(id, variant, qty){
+  qty = qty || 1;
+  variant = variant || (findProduct(id).variants[0]);
+  const existing = state.cart.find(l=>l.id===id && l.variant===variant);
+  if(existing){ existing.qty += qty; }
+  else { state.cart.push({id, variant, qty}); }
+  syncCustomerCart();
+  showToast(t('addedToCart'));
+  render();
+}
+function removeFromCart(id, variant){
+  state.cart = state.cart.filter(l=>!(l.id===id && l.variant===variant));
+  syncCustomerCart();
+  render();
+}
+function changeQty(id, variant, delta){
+  const line = state.cart.find(l=>l.id===id && l.variant===variant);
+  if(!line) return;
+  line.qty += delta;
+  if(line.qty<=0) removeFromCart(id, variant);
+  else { syncCustomerCart(); render(); }
+}
+function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
+function cartSubtotal(){
+  return state.cart.reduce((s,l)=>{
+    const p = findProduct(l.id);
+    return s + p.price*l.qty;
+  },0);
+}
+function deliveryFee(){
+  if(!state.selectedGov) return 0;
+  const sub = cartSubtotal();
+  if(sub >= FREE_DELIVERY_MIN) return 0;
+  return GOV_FEES[state.lang][state.selectedGov] ?? 0;
+}
+function discountAmount(){
+  if(!state.coupon) return 0;
+  const sub = cartSubtotal();
+  if(state.coupon.type==='pct') return +(sub*state.coupon.value/100).toFixed(2);
+  return state.coupon.value;
+}
+function cartTotal(){
+  return Math.max(0, cartSubtotal() - discountAmount() + deliveryFee());
+}
+function toggleWishlist(id){
+  if(state.wishlist.has(id)){ state.wishlist.delete(id); showToast(t('removedFromWish')); }
+  else { state.wishlist.add(id); showToast(t('addedToWish')); }
+  syncCustomerCart();
+  render();
+}
+
+/* ============ AI AGENT (REAL — calls the Claude API) ============ */
+function specsFor(p){ return state.lang==='ar' ? p.specs.ar : p.specs.en; }
+const AI_MAX_INPUT = 400;
+const AI_LANG_NOTE = { ar:'أجب دائمًا باللغة العربية، بإيجاز ووضوح (جملة إلى ثلاث جمل).', en:'Always answer in English, briefly and clearly (one to three sentences).' };
+
+function buildCatalogContext(){
+  return PRODUCTS.map(p=>{
+    const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
+    return `- "${pname(p)}" | SKU ${p.sku} | category: ${catName(CATS.find(c=>c.id===p.cat))} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.rating}/5 (${p.reviews} reviews) | specs: ${specStr}`;
+  }).join('\n');
+}
+function buildStoreSystemPrompt(){
+  const govLines = Object.entries(GOV_FEES[state.lang]).map(([g,f])=>`${g}: $${f}`).join(', ');
+  const lastOrder = state.orders[state.orders.length-1];
+  const orderLine = lastOrder
+    ? `The current customer has one order on file: #${lastOrder.num}, status "${ORDER_STATUS_LABELS.en[lastOrder.status]}", total $${lastOrder.total.toFixed(2)}, placed ${lastOrder.date}, estimated delivery ${state.settings.deliveryMin}-${state.settings.deliveryMax} days from order date.`
+    : `The current customer has no orders on file yet.`;
+  return `You are the customer support agent for "Lebanon Store", an online store serving Lebanon. ${AI_LANG_NOTE[state.lang]}
+Ground every answer strictly in the store data listed below. Never invent or guess prices, stock levels, delivery fees, specifications, or order details that aren't listed here — if something isn't covered, say plainly that the information isn't available and suggest contacting support.
+You only have access to the current customer's own order — never claim to know about any other customer's orders or data.
+Be warm and concise.
+
+PRODUCT CATALOG:
+${buildCatalogContext()}
+
+DELIVERY FEES BY GOVERNORATE: ${govLines}. Free delivery on orders over $${FREE_DELIVERY_MIN}.
+ESTIMATED DELIVERY TIME: ${state.settings.deliveryMin}-${state.settings.deliveryMax} business days from order confirmation.
+RETURN POLICY: Items can be returned within 7 days of delivery if still in original condition.
+COUPONS: code "LEB10" gives 10% off.
+${orderLine}`;
+}
+function buildProductSystemPrompt(p){
+  const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
+  return `You are a product assistant answering questions about ONE specific product on "Lebanon Store". ${AI_LANG_NOTE[state.lang]}
+Only use the facts about this product listed below. Never invent specifications, materials, dimensions, or capabilities that aren't listed. If asked about something not covered, say plainly that this information isn't available for this product.
+
+PRODUCT: ${pname(p)}
+SKU: ${p.sku}
+Description: ${pdesc(p)}
+Price: $${p.price}${p.was>p.price?` (was $${p.was})`:''}
+Stock: ${p.stock} units
+Rating: ${p.rating}/5 (${p.reviews} reviews)
+Specifications: ${specStr}`;
+}
+async function callStoreAI(systemPrompt, historyMessages){
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: historyMessages
+    })
+  });
+  if(!res.ok) throw new Error('AI request failed: ' + res.status);
+  const data = await res.json();
+  const text = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+  return text || (state.lang==='ar' ? 'عذرًا، لم أتمكن من إيجاد إجابة مناسبة.' : "Sorry, I couldn't find a good answer.");
+}
+
+/* ============ NAVIGATION ============ */
+function goHome(){ state.view='home'; state.productId=null; window.scrollTo(0,0); render(); }
+function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; window.scrollTo(0,0); render(); }
+function goCheckout(){
+  if(state.cart.length===0) return;
+  state.view='checkout'; window.scrollTo(0,0); render();
+}
+function goAdmin(){
+  if(!isAdminUser(currentCustomer())){ showToast(state.lang==='ar'?'غير مصرح لك بالدخول':'Not authorized'); return; }
+  state.view='admin'; state.adminView='overview'; state.adminSelectedCustomer=null; window.scrollTo(0,0); render();
+}
+function returnFromImpersonation(){
+  syncCustomerCart();
+  state.currentUserId = state.impersonateFromAdmin;
+  state.impersonateFromAdmin = null;
+  const admin = currentCustomer();
+  if(admin) loadCustomerCart(admin);
+  state.view = 'admin';
+  state.adminView = 'customers';
+  window.scrollTo(0,0);
+  render();
+}
+function shopAsCustomer(id){
+  const c = state.customers.find(c=>c.id===id);
+  if(!c) return;
+  syncCustomerCart(); // save admin's own cart first
+  state.impersonateFromAdmin = state.currentUserId;
+  state.currentUserId = c.id;
+  loadCustomerCart(c);
+  state.view = 'home';
+  window.scrollTo(0,0);
+  render();
+}
+function viewCustomer(id){ state.adminSelectedCustomer = id; render(); }
+function backToCustomerList(){ state.adminSelectedCustomer = null; render(); }
+function setLang(l){ state.lang=l; document.documentElement.lang = l; document.documentElement.dir = l==='ar' ? 'rtl':'ltr'; render(); }
+function toggleDrawer(v){ state.drawerOpen = v!==undefined ? v : !state.drawerOpen; render(); }
+function toggleMobileMenu(v){ state.mobileMenuOpen = v!==undefined ? v : !state.mobileMenuOpen; render(); }
+function toggleChat(v){ state.chatOpen = v!==undefined ? v : !state.chatOpen; render(); }
+
+/* ============ RENDER: HEADER ============ */
+function renderHeader(){
+  return `
+  <header class="site">
+    <div class="container topbar">
+      <button class="hamburger" onclick="toggleMobileMenu()">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <a class="logo" href="#" onclick="goHome();return false;">
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+        <div>
+          <div class="logo-text">${t('storeName')}</div>
+          <div class="logo-sub">${state.lang==='ar'?'متجرك اللبناني':'Your Lebanese Store'}</div>
+        </div>
+      </a>
+      <div class="searchbar">
+        <svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="${t('search')}" />
+      </div>
+      <div class="topbar-icons">
+        <button class="lang-switch" onclick="setLang('${state.lang==='ar'?'en':'ar'}')">${state.lang==='ar'?'EN':'AR'}</button>
+        <button class="icon-btn" onclick="logout()">
+          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+          <span>${currentCustomer() ? currentCustomer().name.split(' ')[0] : t('account')}</span>
+        </button>
+        <button class="icon-btn" onclick="toggleWishlist(-1)" style="pointer-events:none">
+          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
+          <span>${state.wishlist.size}</span>
+        </button>
+        <button class="icon-btn" onclick="toggleDrawer(true)">
+          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+          <span>${t('cart')}</span>
+          ${cartCount()>0?`<span class="cart-count">${cartCount()}</span>`:''}
+        </button>
+      </div>
+    </div>
+    <div class="catbar">
+      <div class="container">
+        ${CATS.map(c=>`<a href="#" onclick="filterByCat('${c.id}');return false;">${catName(c)}</a>`).join('')}
+        ${isAdminUser(currentCustomer())?`<a href="#" onclick="goAdmin();return false;" style="color:var(--brass-light);font-weight:700">★ ${t('goAdmin')}</a>`:''}
+      </div>
+    </div>
+    ${state.mobileMenuOpen?`
+    <div style="background:var(--cedar-light);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+      <div class="searchbar"><svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="${t('search')}"/></div>
+      ${CATS.map(c=>`<a href="#" style="font-size:13.5px;color:rgba(255,255,255,.85)" onclick="toggleMobileMenu(false)">${catName(c)}</a>`).join('')}
+    </div>`:''}
+  </header>`;
+}
+function filterByCat(id){ showToast(state.lang==='ar'?'تصفية حسب الفئة (تجريبي)':'Filtering by category (demo)'); }
+
+/* ============ RENDER: LOGIN ============ */
+function renderLogin(){
+  const f = state.loginForm;
+  const isAr = state.lang==='ar';
+  let body = '';
+
+  if(state.loginMethod === 'google' || state.loginMethod === 'apple'){
+    const isGoogle = state.loginMethod === 'google';
+    body = `
+      <a href="#" class="login-back" onclick="setLoginMethod(null);return false;">${isAr?'→ رجوع':'← Back'}</a>
+      <div class="login-form-field">
+        <label>${t('fullName')}</label>
+        <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+      </div>
+      <div class="login-form-field">
+        <label>${t('email')}</label>
+        <input type="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="${isGoogle?'name@gmail.com':'name@icloud.com'}"/>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitSocialLogin('${state.loginMethod}')">${isAr?'متابعة':'Continue'}</button>
+    `;
+  } else if(state.loginMethod === 'phone'){
+    body = `
+      <a href="#" class="login-back" onclick="setLoginMethod(null);return false;">${isAr?'→ رجوع':'← Back'}</a>
+      <div class="login-form-field">
+        <label>${t('fullName')}</label>
+        <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+      </div>
+      <div class="login-form-field">
+        <label>${t('phone')}</label>
+        <input type="tel" value="${f.phone||''}" oninput="updateLoginForm('phone',this.value)" placeholder="+961 7X XXX XXX"/>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitPhoneLogin()">${isAr?'متابعة':'Continue'}</button>
+    `;
+  } else {
+    body = `
+      <button class="login-method" onclick="setLoginMethod('google')">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.85A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.09A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.43.34-2.09V7.06H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.94l3.66-2.85z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.06l3.66 2.85C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+        ${isAr?'المتابعة عبر Google':'Continue with Google'}
+      </button>
+      <button class="login-method" onclick="setLoginMethod('apple')">
+        <svg viewBox="0 0 24 24" fill="#000"><path d="M16.36 1.43c0 1.14-.46 2.2-1.2 2.98-.83.87-2.06 1.53-3.15 1.44-.14-1.1.43-2.26 1.18-3 .84-.87 2.27-1.5 3.17-1.42zM20.9 17.35c-.5 1.15-.74 1.66-1.38 2.68-.9 1.42-2.16 3.2-3.72 3.21-1.39.02-1.75-.9-3.63-.89-1.88.01-2.28.9-3.68.88-1.56-.02-2.75-1.62-3.65-3.03-2.5-3.92-2.76-8.51-1.22-10.96 1.1-1.74 2.83-2.76 4.46-2.76 1.66 0 2.7.91 4.07.91 1.32 0 2.13-.91 4.05-.91 1.45 0 2.98.79 4.08 2.16-3.58 1.96-3 7.06.62 8.71z"/></svg>
+        ${isAr?'المتابعة عبر Apple':'Continue with Apple'}
+      </button>
+      <div class="login-divider">${isAr?'أو':'or'}</div>
+      <button class="login-method" onclick="setLoginMethod('phone')">
+        <svg class="icon" style="width:19px;height:19px;stroke:var(--cedar)" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+        ${isAr?'المتابعة برقم الهاتف':'Continue with Phone Number'}
+      </button>
+    `;
+  }
+
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+      </div>
+      <div class="login-title font-display">${t('storeName')}</div>
+      <div class="login-sub">${isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store'}</div>
+      ${body}
+      <div class="login-note">${isAr
+        ? 'هذا عرض تجريبي: تسجيل الدخول عبر Google/Apple هنا محاكى (بدون OAuth حقيقي)، والبيانات تُحفظ فقط لهذه الجلسة في المتصفح.'
+        : 'This is a demo: Google/Apple sign-in here is simulated (no real OAuth), and data is only kept for this browser session.'}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============ RENDER: HOME ============ */
+function productCard(p){
+  const color = PALETTE[p.color % PALETTE.length];
+  const wished = state.wishlist.has(p.id);
+  const stockLabel = p.stock===0? t('outOfStock') : (p.stock<=5? t('lowStock') : t('inStock'));
+  const stockClass = p.stock===0?'stock-out':(p.stock<=5?'stock-low':'stock-ok');
+  const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
+  return `
+  <div class="prod-card">
+    <div class="prod-img" style="background:${color}" onclick="openProduct(${p.id})">
+      ${ICONS[p.icon]}
+      <div class="prod-badges">
+        ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
+        ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
+        ${discount>0?`<span class="badge badge-offer">-${discount}%</span>`:''}
+      </div>
+      <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWishlist(${p.id})">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
+      </button>
+    </div>
+    <div class="prod-body">
+      <div class="prod-cat">${catName(CATS.find(c=>c.id===p.cat))}</div>
+      <div class="prod-name" onclick="openProduct(${p.id})" style="cursor:pointer">${pname(p)}</div>
+      <div class="prod-rating">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>
+        ${p.rating} (${p.reviews}) &nbsp;·&nbsp; <span class="${stockClass}">${stockLabel}</span>
+      </div>
+      <div class="prod-price-row">
+        <span class="price-now">${fmt(p.price)}</span>
+        ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span>`:''}
+      </div>
+      <button class="add-cart-btn" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();addToCart(${p.id}, '${p.variants[0]}', 1)">
+        <svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+        ${p.stock===0?t('outOfStock'):t('addCart')}
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderHome(){
+  const featured = PRODUCTS.filter(p=>p.featured);
+  const best = PRODUCTS.filter(p=>p.best);
+  const news = PRODUCTS.filter(p=>p.new);
+  const offers = PRODUCTS.filter(p=>p.was>p.price);
+  return `
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="eyebrow">${state.lang==='ar'?'سوق لبنان الإلكتروني':'Lebanon\'s Online Souk'}</div>
+      <h1 class="font-display">${t('heroTitle')}</h1>
+      <p>${t('heroSub')}</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" onclick="document.getElementById('featured-sec').scrollIntoView({behavior:'smooth'})">${t('shopNow')}</button>
+        <button class="btn btn-outline" onclick="document.getElementById('cats-sec').scrollIntoView({behavior:'smooth'})">${t('explore')}</button>
+      </div>
+    </div>
+  </section>
+  <div class="zellige-divider"></div>
+
+  <section id="cats-sec" class="container">
+    <div class="section-head"><div><div class="eyebrow">${t('categories')}</div><h2 class="font-display">${t('categories')}</h2></div></div>
+    <div class="cat-grid">
+      ${CATS.map(c=>`
+        <button class="cat-card" onclick="filterByCat('${c.id}')" style="border:1px solid var(--line)">
+          <div class="cat-icon">${ICONS[c.icon]}</div>
+          <span>${catName(c)}</span>
+        </button>`).join('')}
+    </div>
+  </section>
+
+  <section id="featured-sec" class="container">
+    <div class="section-head">
+      <div><div class="eyebrow">${t('featured')}</div><h2 class="font-display">${t('featured')}</h2></div>
+      <a class="view-all" href="#">${t('viewAll')}</a>
+    </div>
+    <div class="prod-grid">${featured.map(productCard).join('')}</div>
+  </section>
+
+  <section class="container">
+    <div class="section-head">
+      <div><div class="eyebrow">🔥</div><h2 class="font-display">${t('bestSellers')}</h2></div>
+      <a class="view-all" href="#">${t('viewAll')}</a>
+    </div>
+    <div class="prod-grid">${best.map(productCard).join('')}</div>
+  </section>
+
+  <section class="container">
+    <div class="section-head">
+      <div><div class="eyebrow">✦</div><h2 class="font-display">${t('newArrivals')}</h2></div>
+      <a class="view-all" href="#">${t('viewAll')}</a>
+    </div>
+    <div class="prod-grid">${news.map(productCard).join('')}</div>
+  </section>
+
+  <section class="container">
+    <div class="section-head">
+      <div><div class="eyebrow">%</div><h2 class="font-display">${t('offers')}</h2></div>
+      <a class="view-all" href="#">${t('viewAll')}</a>
+    </div>
+    <div class="prod-grid">${offers.map(productCard).join('')}</div>
+  </section>
+
+  <div class="zellige-divider"></div>
+
+  <section class="container">
+    <div class="section-head"><div><h2 class="font-display">${t('why')}</h2></div></div>
+    <div class="why-grid">
+      <div class="why-card"><div class="cat-icon">${ICONS.car}</div><h3>${t('delivery')}</h3><p>${t('deliveryDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${ICONS.tools}</div><h3>${t('secure')}</h3><p>${t('secureDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${ICONS.offers}</div><h3>${t('quality')}</h3><p>${t('qualityDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${ICONS.phones}</div><h3>${t('support')}</h3><p>${t('supportDesc')}</p></div>
+    </div>
+  </section>
+
+  <section class="container">
+    <div class="section-head"><div><h2 class="font-display">${t('reviews')}</h2></div></div>
+    <div class="review-grid">
+      ${REVIEWS.map(r=>`
+        <div class="review-card">
+          <div class="review-top">
+            <span class="review-name">${state.lang==='ar'?r.name_ar:r.name_en}</span>
+            <div class="review-stars">${Array(r.rating).fill('<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>').join('')}</div>
+          </div>
+          <p class="review-text">${state.lang==='ar'?r.ar:r.en}</p>
+          <div class="review-meta">${pname(findProduct(r.prod))} · ${r.date}</div>
+        </div>`).join('')}
+    </div>
+  </section>
+  `;
+}
+
+/* ============ RENDER: PRODUCT MODAL/PAGE ============ */
+function currentAiLog(pid){ return state.aiLogByProduct[pid] || []; }
+const aiBusy = {};
+function scrollAiLog(pid){
+  setTimeout(()=>{
+    const log = document.getElementById('ai-log-'+pid);
+    if(log) log.scrollTop = log.scrollHeight;
+    const inp = document.getElementById('ai-q-input');
+    if(inp) inp.focus();
+  },0);
+}
+async function submitProductQuestion(pid){
+  const input = document.getElementById('ai-q-input');
+  if(!input || !input.value.trim() || aiBusy[pid]) return;
+  const q = input.value.trim();
+  if(q.length > AI_MAX_INPUT){ showToast(state.lang==='ar' ? 'السؤال طويل جدًا' : 'Question is too long'); return; }
+  const p = findProduct(pid);
+  if(!state.aiLogByProduct[pid]) state.aiLogByProduct[pid] = [];
+  state.aiLogByProduct[pid].push({role:'user', text:q});
+  state.aiLogByProduct[pid].push({role:'bot', text:'', loading:true});
+  input.value = '';
+  aiBusy[pid] = true;
+  render();
+  scrollAiLog(pid);
+  try{
+    const history = state.aiLogByProduct[pid].filter(m=>!m.loading).map(m=>({role: m.role==='user'?'user':'assistant', content:m.text}));
+    const answer = await callStoreAI(buildProductSystemPrompt(p), history);
+    const log = state.aiLogByProduct[pid];
+    log[log.length-1] = {role:'bot', text:answer};
+  } catch(e){
+    const log = state.aiLogByProduct[pid];
+    log[log.length-1] = {role:'bot', text: state.lang==='ar' ? 'حدث خطأ أثناء الاتصال بالمساعد الذكي. حاول مرة أخرى.' : 'There was an error reaching the AI assistant. Please try again.'};
+  } finally {
+    aiBusy[pid] = false;
+    render();
+    scrollAiLog(pid);
+  }
+}
+
+function renderProductPage(){
+  const p = findProduct(state.productId);
+  if(!p) return renderHome();
+  const color = PALETTE[p.color % PALETTE.length];
+  const variant = state.modalVariant || p.variants[0];
+  const specs = specsFor(p);
+  const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
+  const related = PRODUCTS.filter(x=>x.cat===p.cat && x.id!==p.id).slice(0,4);
+  const log = currentAiLog(p.id);
+  return `
+  <div class="page container">
+    <div class="breadcrumb">
+      <a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${catName(CATS.find(c=>c.id===p.cat))} / ${pname(p)}
+    </div>
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="modal-grid">
+        <div class="modal-gallery">
+          <div class="gallery-main" style="background:${color}">${ICONS[p.icon]}</div>
+          <div class="gallery-swatches">
+            ${p.variants.map((v,i)=>`<div class="swatch ${v===variant?'active':''}" style="background:${PALETTE[(p.color+i)%PALETTE.length]}" onclick="state.modalVariant='${v}';render()" title="${v}"></div>`).join('')}
+          </div>
+        </div>
+        <div class="modal-info">
+          <div class="prod-badges">
+            ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
+            ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
+          </div>
+          <h2 class="font-display">${pname(p)}</h2>
+          <div class="modal-stars-row">
+            <svg style="width:14px;height:14px;fill:var(--brass)" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>
+            ${p.rating} · ${p.reviews} ${state.lang==='ar'?'تقييم':'reviews'} · SKU ${p.sku}
+          </div>
+          <div class="modal-price-row">
+            <span class="price-now">${fmt(p.price)}</span>
+            ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span><span class="discount-tag">-${discount}%</span>`:''}
+          </div>
+          <div class="${p.stock===0?'stock-out':(p.stock<=5?'stock-low':'stock-ok')}" style="font-size:13px;font-weight:700">
+            ${p.stock===0?t('outOfStock'):(p.stock<=5?`${t('lowStock')} · ${p.stock} ${state.lang==='ar'?'متبقي':'left'}`:t('inStock'))}
+          </div>
+          <div style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px">
+            <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
+            ${t('estDelivery')}: ${state.settings.deliveryMin}-${state.settings.deliveryMax} ${t('days')}
+          </div>
+          <p class="modal-desc">${pdesc(p)}</p>
+          <div class="variant-block">
+            <label>${state.lang==='ar'?'الخيار':'Variant'}</label>
+            <div class="variant-opts">
+              ${p.variants.map(v=>`<button class="variant-opt ${v===variant?'active':''}" onclick="state.modalVariant='${v}';render()">${v}</button>`).join('')}
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cedar" ${p.stock===0?'disabled':''} onclick="addToCart(${p.id}, '${variant}', 1)">${t('addCart')}</button>
+            <button class="btn btn-primary" ${p.stock===0?'disabled':''} onclick="addToCart(${p.id}, '${variant}', 1);goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
+            <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
+              <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
+            </button>
+          </div>
+
+          <div style="margin-top:6px">
+            <h3 style="font-size:14px;margin-bottom:6px">${t('specifications')}</h3>
+            <table class="spec-table">
+              ${Object.entries(specs).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+            </table>
+          </div>
+
+          <div class="ai-box">
+            <div class="ai-box-head">
+              <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/><circle cx="19" cy="18" r="2"/></svg>
+              ${t('aiAssistant')}
+            </div>
+            <div class="ai-log" id="ai-log-${p.id}">
+              ${log.length===0?`<div style="font-size:12px;color:var(--ink-soft)">${t('askAbout')}</div>`:
+                log.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+            </div>
+            <div class="ai-input-row">
+              <input id="ai-q-input" type="text" placeholder="${t('askPlaceholder')}" onkeydown="if(event.key==='Enter')submitProductQuestion(${p.id})"/>
+              <button class="btn btn-cedar btn-sm" onclick="submitProductQuestion(${p.id})">${state.lang==='ar'?'إرسال':'Ask'}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${related.length>0?`
+    <div class="section-head" style="margin-top:36px"><div><h2 class="font-display">${t('relatedProducts')}</h2></div></div>
+    <div class="prod-grid">${related.map(productCard).join('')}</div>`:''}
+  </div>`;
+}
+
+/* ============ RENDER: CART DRAWER ============ */
+function renderDrawer(){
+  const lines = state.cart;
+  return `
+  <div class="drawer ${state.drawerOpen?'open':''}">
+    <div class="drawer-head">
+      <h3>${t('cart')} (${cartCount()})</h3>
+      <button class="close-btn" onclick="toggleDrawer(false)">
+        <svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      ${lines.length===0?`
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+          <div style="font-weight:700;margin-bottom:4px">${t('emptyCart')}</div>
+          <div style="font-size:13px">${t('emptyCartSub')}</div>
+        </div>`:
+        lines.map(l=>{
+          const p = findProduct(l.id);
+          const color = PALETTE[p.color % PALETTE.length];
+          return `
+          <div class="cart-line">
+            <div class="cart-thumb" style="background:${color}">${ICONS[p.icon]}</div>
+            <div class="cart-info">
+              <div class="name">${pname(p)}</div>
+              <div class="variant">${l.variant}</div>
+              <div class="qty-row">
+                <button class="qty-btn" onclick="changeQty(${p.id},'${l.variant}',-1)">−</button>
+                <span class="qty-val">${l.qty}</span>
+                <button class="qty-btn" onclick="changeQty(${p.id},'${l.variant}',1)">+</button>
+                <button class="remove-btn" onclick="removeFromCart(${p.id},'${l.variant}')">${t('remove')}</button>
+              </div>
+            </div>
+            <div class="line-total">${fmt(p.price*l.qty)}</div>
+          </div>`;
+        }).join('')}
+    </div>
+    ${lines.length>0?`
+    <div class="drawer-foot">
+      <div class="sum-row"><span>${t('subtotal')}</span><span class="font-mono">${fmt(cartSubtotal())}</span></div>
+      ${state.coupon?`<div class="sum-row"><span>${t('discount')}</span><span class="font-mono">-${fmt(discountAmount())}</span></div>`:''}
+      <div class="sum-row total"><span>${t('total')}</span><span class="font-mono">${fmt(cartSubtotal()-discountAmount())}</span></div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-bottom:10px">${t('freeDeliveryNote')}</div>
+      <button class="btn btn-primary btn-block" onclick="toggleDrawer(false);goCheckout()">${t('checkout')}</button>
+    </div>`:''}
+  </div>`;
+}
+
+/* ============ RENDER: PRODUCT QUICK MODAL (not used directly, product page handles detail) ============ */
+
+/* ============ RENDER: CHECKOUT ============ */
+function updateForm(field, val){ state.formData[field] = val; }
+function applyCoupon(){
+  const code = (state.couponInput||'').trim().toUpperCase();
+  if(COUPONS[code]){ state.coupon = COUPONS[code]; showToast(state.lang==='ar'?'تم تطبيق الرمز!':'Coupon applied!'); }
+  else { state.coupon = null; showToast(state.lang==='ar'?'رمز غير صالح':'Invalid coupon'); }
+  render();
+}
+function selectGov(g){ state.selectedGov = g; render(); }
+
+function placeOrder(){
+  const f = state.formData;
+  if(!f.fullName || !f.phone || !state.selectedGov || !f.city || !f.address){
+    showToast(state.lang==='ar'?'يرجى تعبئة الحقول المطلوبة':'Please fill in the required fields');
+    return;
+  }
+  const num = 'LB-2026-' + String(Math.floor(100000+Math.random()*899999)).slice(0,6);
+  const items = state.cart.map(l=>{
+    const p = findProduct(l.id);
+    return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, cost:p.cost, supplierUrl:p.supplierUrl, sku:p.sku };
+  });
+  const c = currentCustomer();
+  const order = {
+    num, date: new Date().toISOString().slice(0,10), items,
+    total: cartTotal(), gov: state.selectedGov, customer: f.fullName, phone: f.phone,
+    status: 'confirmed',
+    deliveryMin: state.settings.deliveryMin, deliveryMax: state.settings.deliveryMax,
+    customerId: c ? c.id : null, customerName: c ? c.name : f.fullName
+  };
+  state.orders.push(order);
+  state.cart = [];
+  state.coupon = null;
+  syncCustomerCart();
+  state.view = 'confirm';
+  window.scrollTo(0,0);
+  render();
+}
+function setOrderStatus(num, status){
+  const o = state.orders.find(o=>o.num===num);
+  if(o){ o.status = status; render(); }
+}
+
+function renderCheckout(){
+  const govs = Object.keys(GOV_FEES[state.lang]);
+  if(!state.selectedGov) state.selectedGov = null;
+  const fee = deliveryFee();
+  const sub = cartSubtotal();
+  const disc = discountAmount();
+  const total = Math.max(0, sub - disc + fee);
+  return `
+  <div class="page container">
+    <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${t('checkout')}</div>
+    <div class="checkout-grid">
+      <div class="panel">
+        <h3>${t('fullName')} & ${t('address')}</h3>
+        <div class="form-row">
+          <div class="form-field"><label>${t('fullName')} *</label><input type="text" value="${state.formData.fullName||''}" oninput="updateForm('fullName',this.value)"/></div>
+          <div class="form-field"><label>${t('phone')} *</label><input type="tel" placeholder="+961" value="${state.formData.phone||''}" oninput="updateForm('phone',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>${t('email')}</label><input type="email" value="${state.formData.email||''}" oninput="updateForm('email',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>${t('governorate')} *</label>
+            <select onchange="selectGov(this.value)">
+              <option value="">${state.lang==='ar'?'اختر':'Select'}</option>
+              ${govs.map(g=>`<option value="${g}" ${state.selectedGov===g?'selected':''}>${g} (+${fmt(GOV_FEES[state.lang][g])})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-field"><label>${t('city')} *</label><input type="text" oninput="updateForm('city',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>${t('area')}</label><input type="text" oninput="updateForm('area',this.value)"/></div>
+          <div class="form-field"><label>${t('building')}</label><input type="text" oninput="updateForm('building',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>${t('floor')}</label><input type="text" oninput="updateForm('floor',this.value)"/></div>
+          <div class="form-field"><label>${t('apartment')}</label><input type="text" oninput="updateForm('apartment',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>${t('address')} *</label><input type="text" oninput="updateForm('address',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>${t('notes')}</label><textarea rows="2" oninput="updateForm('notes',this.value)"></textarea></div>
+        </div>
+
+        <h3 style="margin-top:22px">${t('payMethod')}</h3>
+        <div class="pay-option active">
+          <svg class="icon" style="width:22px;height:22px;stroke:var(--cedar)" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/></svg>
+          <div><div style="font-weight:700;font-size:13.5px">${t('cod')}</div><div style="font-size:12px;color:var(--ink-soft)">${t('codDesc')}</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="align-self:start">
+        <h3>${t('orderSummary')}</h3>
+        <div style="font-size:12.5px;color:var(--cedar);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
+          ${t('estDelivery')}: ${state.settings.deliveryMin}-${state.settings.deliveryMax} ${t('days')}
+        </div>
+        ${state.cart.map(l=>{
+          const p = findProduct(l.id);
+          return `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
+            <span>${pname(p)} (${l.variant}) × ${l.qty}</span><span class="font-mono">${fmt(p.price*l.qty)}</span></div>`;
+        }).join('')}
+        <div style="display:flex;gap:8px;margin:14px 0">
+          <input type="text" placeholder="${t('couponCode')}" style="flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px" oninput="state.couponInput=this.value"/>
+          <button class="btn btn-ghost btn-sm" onclick="applyCoupon()">${t('apply')}</button>
+        </div>
+        <div class="sum-row"><span>${t('subtotal')}</span><span class="font-mono">${fmt(sub)}</span></div>
+        ${disc>0?`<div class="sum-row"><span>${t('discount')}</span><span class="font-mono">-${fmt(disc)}</span></div>`:''}
+        <div class="sum-row"><span>${t('deliveryFee')}</span><span class="font-mono">${fee===0?(state.selectedGov?(state.lang==='ar'?'مجاني':'Free'):'—'):fmt(fee)}</span></div>
+        <div class="sum-row total"><span>${t('total')}</span><span class="font-mono">${fmt(total)}</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="placeOrder()">${t('placeOrder')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderConfirm(){
+  const o = state.orders[state.orders.length-1];
+  if(!o) { goHome(); return ''; }
+  return `
+  <div class="page container">
+    <div class="panel order-conf">
+      <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h2 class="font-display">${t('orderConfirmed')}</h2>
+      <p style="color:var(--ink-soft);margin-top:6px">${t('orderConfirmedSub')}</p>
+      <div class="order-num">${o.num}</div>
+      <div style="font-size:13px;color:var(--ink-soft)">${fmt(o.total)} · ${o.gov} · ${o.date}</div>
+      <div style="font-size:13px;color:var(--cedar);font-weight:700;margin-bottom:22px">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
+      <button class="btn btn-primary" onclick="goHome()">${t('backHome')}</button>
+    </div>
+  </div>`;
+}
+
+/* ============ RENDER: FOOTER ============ */
+function renderFooter(){
+  return `
+  <footer class="site">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <h4 class="font-display" style="color:var(--paper);font-size:18px">${t('storeName')}</h4>
+          <p style="margin-top:8px">${t('aboutText')}</p>
+        </div>
+        <div><h4>${t('contact')}</h4><ul><li><a href="#">+961 1 234 567</a></li><li><a href="#">hello@lebanonstore.com</a></li><li><a href="#">Beirut, Lebanon</a></li></ul></div>
+        <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
+        <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
+        <div>
+          <h4>${t('newsletter')}</h4>
+          <p>${t('newsletterSub')}</p>
+          <div class="newsletter"><input placeholder="you@email.com"/><button class="btn btn-primary btn-sm" onclick="showToast(state.lang==='ar'?'تم الاشتراك!':'Subscribed!')">${t('subscribe')}</button></div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 ${t('storeName')} — ${t('rights')}</span>
+        <span>${t('demoNote')}</span>
+      </div>
+    </div>
+  </footer>`;
+}
+
+/* ============ ADMIN ============ */
+const MOCK_SALES = [
+  {d:'Sat', v:420},{d:'Sun', v:610},{d:'Mon', v:380},{d:'Tue', v:740},{d:'Wed', v:520},{d:'Thu', v:860},{d:'Fri', v:690}
+];
+function adminStats(){
+  const totalStock = PRODUCTS.reduce((s,p)=>s+p.stock,0);
+  const low = PRODUCTS.filter(p=>p.stock>0 && p.stock<=5).length;
+  const outOf = PRODUCTS.filter(p=>p.stock===0).length;
+  const totalSales = MOCK_SALES.reduce((s,d)=>s+d.v,0);
+  return {totalStock, low, outOf, totalSales};
+}
+function adminToggle(id, field){
+  const p = findProduct(id);
+  p[field] = !p[field];
+  render();
+}
+function adminUpdatePrice(id, val){ findProduct(id).price = Number(val)||0; render(); }
+function adminUpdateStock(id, val){ findProduct(id).stock = Number(val)||0; }
+function adminUpdateCost(id, val){ findProduct(id).cost = Number(val)||0; render(); }
+function adminUpdateSupplierUrl(id, val){ findProduct(id).supplierUrl = val.trim(); render(); }
+function adminSuggestPrice(id){
+  const p = findProduct(id);
+  p.price = computeSuggestedPrice(p.cost);
+  render();
+}
+function profitFor(p){
+  const profit = +(p.price - (p.cost||0)).toFixed(2);
+  const pct = p.cost ? Math.round((profit/p.cost)*100) : 0;
+  return { profit, pct };
+}
+function updateSettings(field, val){ state.settings[field] = Number(val)||0; render(); }
+function setAdminView(v){ state.adminView=v; render(); }
+
+function renderAdminCustomers(){
+  const isAr = state.lang==='ar';
+  const customers = state.customers.filter(c=>!isAdminUser(c));
+
+  if(state.adminSelectedCustomer){
+    const c = customers.find(c=>c.id===state.adminSelectedCustomer) || state.customers.find(c=>c.id===state.adminSelectedCustomer);
+    if(!c){ state.adminSelectedCustomer=null; return renderAdminCustomers(); }
+    const custOrders = state.orders.filter(o=>o.customerId===c.id).reverse();
+    const cart = c.cart || [];
+    const cartTotal = cart.reduce((s,l)=>{ const p=findProduct(l.id); return s + (p?p.price*l.qty:0); },0);
+    return `
+    <a href="#" class="login-back" style="display:inline-flex" onclick="backToCustomerList();return false;">${isAr?'→ رجوع لكل العملاء':'← Back to all customers'}</a>
+    <div class="panel" style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="cust-avatar" style="width:48px;height:48px;font-size:17px">${(c.name||'?').charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-weight:700;font-size:16px">${c.name}</div>
+            <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span> · ${isAr?'انضم':'joined'} ${c.createdAt}</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="shopAsCustomer('${c.id}')">${isAr?'🛒 تسوّق نيابة عن هذا العميل':'🛒 Shop for this customer'}</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <h3>${isAr?'سلة العميل الحالية':"Customer's current cart"} (${cart.length})</h3>
+      ${cart.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'السلة فارغة':'Cart is empty'}</p>` :
+        `<table class="admin-table"><thead><tr><th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th><th>${isAr?'السعر':'Price'}</th></tr></thead>
+        <tbody>${cart.map(l=>{ const p=findProduct(l.id); return p ? `<tr><td>${pname(p)}</td><td>${l.variant}</td><td>${l.qty}</td><td class="font-mono">${fmt(p.price*l.qty)}</td></tr>` : ''; }).join('')}</tbody></table>
+        <div style="text-align:end;margin-top:10px;font-weight:700" class="font-mono">${isAr?'المجموع':'Total'}: ${fmt(cartTotal)}</div>`}
+    </div>
+
+    <div class="panel">
+      <h3>${isAr?'طلبات هذا العميل':"This customer's orders"} (${custOrders.length})</h3>
+      ${custOrders.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا توجد طلبات بعد':'No orders yet'}</p>` :
+        custOrders.map(o=>`
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div class="font-mono" style="font-weight:700">${o.num}</div>
+            <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+            <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+            <select onchange="setOrderStatus('${o.num}', this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700">
+              ${ORDER_STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
+            </select>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="panel">
+    <h3>${isAr?'العملاء':'Customers'} (${customers.length})</h3>
+    ${customers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'}</p>` :
+    customers.map(c=>{
+      const cartCount = (c.cart||[]).reduce((s,l)=>s+l.qty,0);
+      const orderCount = state.orders.filter(o=>o.customerId===c.id).length;
+      return `
+      <div class="cust-row">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0">
+          <div class="cust-avatar">${(c.name||'?').charAt(0).toUpperCase()}</div>
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:13.5px">${c.name}</div>
+            <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-shrink:0">
+          <div style="text-align:center"><div style="font-weight:700;font-size:13px">${cartCount}</div><div style="font-size:10.5px;color:var(--ink-soft)">${isAr?'بالسلة':'in cart'}</div></div>
+          <div style="text-align:center"><div style="font-weight:700;font-size:13px">${orderCount}</div><div style="font-size:10.5px;color:var(--ink-soft)">${isAr?'طلبات':'orders'}</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="viewCustomer('${c.id}')">${isAr?'عرض':'View'}</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderAdmin(){
+  const s = adminStats();
+  const maxBar = Math.max(...MOCK_SALES.map(d=>d.v));
+  return `
+  <div class="admin-shell">
+    <div class="admin-side ${state.adminSideOpen?'open':''}">
+      <a class="logo" href="#" onclick="goHome();return false;" style="margin-bottom:24px">
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+        <div class="logo-text">${t('storeName')}</div>
+      </a>
+      <div class="admin-nav">
+        <a class="${state.adminView==='overview'?'active':''}" href="#" onclick="setAdminView('overview');return false;">${state.lang==='ar'?'نظرة عامة':'Overview'}</a>
+        <a class="${state.adminView==='products'?'active':''}" href="#" onclick="setAdminView('products');return false;">${state.lang==='ar'?'المنتجات':'Products'}</a>
+        <a class="${state.adminView==='customers'?'active':''}" href="#" onclick="setAdminView('customers');state.adminSelectedCustomer=null;return false;">${state.lang==='ar'?'العملاء':'Customers'}</a>
+        <a class="${state.adminView==='orders'?'active':''}" href="#" onclick="setAdminView('orders');return false;">${state.lang==='ar'?'الطلبات':'Orders'}</a>
+        <a class="${state.adminView==='settings'?'active':''}" href="#" onclick="setAdminView('settings');return false;">${t('adminSettings')}</a>
+        <a href="#" onclick="goHome();return false;" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.15);padding-top:16px">← ${t('backHome')}</a>
+      </div>
+    </div>
+    <div class="admin-main">
+      <div class="admin-topline">
+        <h2 class="font-display">${t('admin')}</h2>
+        <button class="lang-switch" style="background:var(--cedar);color:#fff" onclick="setLang('${state.lang==='ar'?'en':'ar'}')">${state.lang==='ar'?'EN':'AR'}</button>
+      </div>
+
+      ${state.adminView==='overview'?`
+      <div class="stat-grid">
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'إجمالي المبيعات':'Total Sales'}</div><div class="val">${fmt(s.totalSales)}</div></div>
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'إجمالي الطلبات':'Total Orders'}</div><div class="val">${state.orders.length}</div></div>
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'العملاء':'Customers'}</div><div class="val">${state.customers.filter(c=>!isAdminUser(c)).length}</div></div>
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'المنتجات':'Products'}</div><div class="val">${PRODUCTS.length}</div></div>
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'مخزون منخفض':'Low Stock'}</div><div class="val" style="color:var(--brick)">${s.low}</div></div>
+        <div class="stat-card"><div class="lbl">${state.lang==='ar'?'نفذ من المخزون':'Out of Stock'}</div><div class="val" style="color:#999">${s.outOf}</div></div>
+      </div>
+      <div class="admin-panels">
+        <div class="panel">
+          <h3>${state.lang==='ar'?'المبيعات (٧ أيام)':'Sales (7 days)'}</h3>
+          <div class="bars">
+            ${MOCK_SALES.map(d=>`<div class="bar" style="height:${(d.v/maxBar*100)}%"><span>${d.d}</span></div>`).join('')}
+          </div>
+        </div>
+        <div class="panel">
+          <h3>${state.lang==='ar'?'الأكثر مبيعًا':'Best Sellers'}</h3>
+          ${PRODUCTS.filter(p=>p.best).map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)"><span>${pname(p)}</span><span class="font-mono">${fmt(p.price)}</span></div>`).join('')}
+        </div>
+      </div>`:''}
+
+      ${state.adminView==='products'?`
+      <div class="panel">
+        <h3>${state.lang==='ar'?'إدارة المنتجات':'Product Management'} (${PRODUCTS.length})</h3>
+        <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px">🔒 ${t('supplierLinkPrivacy')}</p>
+        <div style="overflow-x:auto">
+        <table class="admin-table">
+          <thead><tr>
+            <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>SKU</th>
+            <th>${t('costLabel')}</th><th>${state.lang==='ar'?'السعر':'Price'}</th><th>${t('profitLabel')}</th><th></th>
+            <th>${state.lang==='ar'?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th>
+          </tr></thead>
+          <tbody>
+          ${PRODUCTS.map(p=>{
+            const {profit, pct} = profitFor(p);
+            const profitColor = profit>0 ? 'var(--cedar)' : (profit<0 ? 'var(--brick)' : 'var(--ink-soft)');
+            return `
+            <tr>
+              <td>${pname(p)}</td>
+              <td class="font-mono" style="font-size:11.5px">${p.sku}</td>
+              <td><input type="number" step="0.1" value="${p.cost!==undefined?p.cost:''}" onchange="adminUpdateCost(${p.id}, this.value)" style="width:64px"/></td>
+              <td><input type="number" value="${p.price}" onchange="adminUpdatePrice(${p.id}, this.value)" style="width:64px"/></td>
+              <td class="font-mono" style="font-weight:700;color:${profitColor}">${fmt(profit)} <span style="font-size:10.5px;font-weight:600;color:var(--ink-soft)">(${pct}%)</span></td>
+              <td><button class="btn btn-ghost btn-sm" onclick="adminSuggestPrice(${p.id})" title="${t('suggestPriceHint')}">${t('suggestPrice')}</button></td>
+              <td><input type="number" value="${p.stock}" onchange="adminUpdateStock(${p.id}, this.value)" style="width:56px"/></td>
+              <td>
+                <div style="display:flex;gap:5px;align-items:center">
+                  <input type="text" value="${p.supplierUrl||''}" placeholder="https://chinahubpro.../item/..." onchange="adminUpdateSupplierUrl(${p.id}, this.value)" style="width:150px;font-size:11px"/>
+                  ${p.supplierUrl?`<a href="${p.supplierUrl}" target="_blank" rel="noopener" title="${t('openSupplier')}" style="flex-shrink:0;font-size:15px;color:var(--cedar)">↗</a>`:''}
+                </div>
+              </td>
+              <td>
+                <div class="toggle-row">
+                  <button class="mini-toggle ${p.featured?'on':''}" onclick="adminToggle(${p.id},'featured')">${state.lang==='ar'?'مميز':'Featured'}</button>
+                  <button class="mini-toggle ${p.best?'on':''}" onclick="adminToggle(${p.id},'best')">${state.lang==='ar'?'مبيع':'Best'}</button>
+                  <button class="mini-toggle ${p.new?'on':''}" onclick="adminToggle(${p.id},'new')">${state.lang==='ar'?'جديد':'New'}</button>
+                </div>
+              </td>
+            </tr>`;}).join('')}
+          </tbody>
+        </table>
+        </div>
+      </div>`:''}
+
+      ${state.adminView==='customers'?renderAdminCustomers():''}
+
+      ${state.adminView==='orders'?`
+      <div class="panel">
+        <h3>${state.lang==='ar'?'الطلبات':'Orders'} (${state.orders.length})</h3>
+        ${state.orders.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${state.lang==='ar'?'لا توجد طلبات بعد — أكمل عملية شراء تجريبية من المتجر لرؤيتها هنا.':'No orders yet — complete a demo checkout in the store to see it here.'}</p>`:
+        [...state.orders].reverse().map(o=>`
+          <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+              <div>
+                <div class="font-mono" style="font-weight:700;font-size:14px">${o.num}</div>
+                <div style="font-size:12px;color:var(--ink-soft)">${o.customer} · ${o.phone} · ${o.gov} · ${o.date}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="text-align:end">
+                  <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+                  <div style="font-size:11px;color:var(--ink-soft)">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
+                </div>
+                <select onchange="setOrderStatus('${o.num}', this.value)" style="padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:700">
+                  ${ORDER_STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <table class="admin-table">
+              <thead><tr>
+                <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>${state.lang==='ar'?'الخيار':'Variant'}</th><th>${state.lang==='ar'?'الكمية':'Qty'}</th>
+                <th>${state.lang==='ar'?'سعر البيع':'Sell Price'}</th><th>${t('costLabel')}</th><th>${t('supplierLink')}</th>
+              </tr></thead>
+              <tbody>
+                ${o.items.map(it=>`
+                  <tr>
+                    <td>${state.lang==='ar'?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-size:11px">(${it.sku})</span></td>
+                    <td>${it.variant}</td>
+                    <td>${it.qty}</td>
+                    <td class="font-mono">${fmt(it.price)}</td>
+                    <td class="font-mono">${it.cost!==undefined?fmt(it.cost):'—'}</td>
+                    <td>${it.supplierUrl?`<a href="${it.supplierUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">${t('openSupplier')} ↗</a>`:'—'}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`).join('')}
+      </div>`:''}
+
+      ${state.adminView==='settings'?`
+      <div class="panel" style="max-width:480px">
+        <h3>${t('adminSettings')}</h3>
+        <div class="form-row">
+          <div class="form-field"><label>${t('deliveryMinLabel')}</label><input type="number" min="1" value="${state.settings.deliveryMin}" onchange="updateSettings('deliveryMin', this.value)"/></div>
+          <div class="form-field"><label>${t('deliveryMaxLabel')}</label><input type="number" min="1" value="${state.settings.deliveryMax}" onchange="updateSettings('deliveryMax', this.value)"/></div>
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);margin-top:4px">${t('deliveryHelp')}</p>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ============ CHATBOT ============ */
+let chatBusy = false;
+function scrollChat(){
+  setTimeout(()=>{
+    const body = document.getElementById('chat-body-el');
+    if(body) body.scrollTop = body.scrollHeight;
+    const inp = document.getElementById('chat-input');
+    if(inp) inp.focus();
+  },0);
+}
+async function submitChat(){
+  const input = document.getElementById('chat-input');
+  if(!input || !input.value.trim() || chatBusy) return;
+  const q = input.value.trim();
+  if(q.length > AI_MAX_INPUT){ showToast(state.lang==='ar' ? 'السؤال طويل جدًا' : 'Question is too long'); return; }
+  state.chatLog.push({role:'user', text:q});
+  state.chatLog.push({role:'bot', text:'', loading:true});
+  input.value='';
+  chatBusy = true;
+  render();
+  scrollChat();
+  try{
+    const history = state.chatLog.filter(m=>!m.loading).map(m=>({role: m.role==='user'?'user':'assistant', content:m.text}));
+    const answer = await callStoreAI(buildStoreSystemPrompt(), history);
+    state.chatLog[state.chatLog.length-1] = {role:'bot', text:answer};
+  } catch(e){
+    state.chatLog[state.chatLog.length-1] = {role:'bot', text: state.lang==='ar' ? 'حدث خطأ أثناء الاتصال بالمساعد الذكي. حاول مرة أخرى.' : 'There was an error reaching the AI assistant. Please try again.'};
+  } finally {
+    chatBusy = false;
+    render();
+    scrollChat();
+  }
+}
+function chatSuggest(q){
+  document.getElementById('chat-input').value = q;
+  submitChat();
+}
+function renderChat(){
+  const suggestions = state.lang==='ar'
+    ? ['ما هو أرخص منتج؟','كم رسوم التوصيل؟','رشحلي منتج تحت 30$','وين طلبي؟']
+    : ['What\'s the cheapest item?','How much is delivery?','Recommend something under $30','Where is my order?'];
+  return `
+  <button class="chat-fab" onclick="toggleChat()">
+    <svg class="icon" style="width:17px;height:17px" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/><circle cx="19" cy="18" r="2"/></svg>
+    ${t('chatTitle')}
+  </button>
+  <div class="chat-panel ${state.chatOpen?'open':''}">
+    <div class="chat-head">
+      <div><span class="t1">${t('chatTitle')}</span><span class="t2">${t('chatSub')}</span></div>
+      <button class="close-btn" style="background:rgba(255,255,255,.15)" onclick="toggleChat(false)">
+        <svg class="icon" style="width:13px;height:13px;stroke:#fff" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="chat-body" id="chat-body-el">
+      ${state.chatLog.length===0?`<div class="ai-msg bot">${state.lang==='ar'?'أهلًا! كيف بقدر ساعدك اليوم؟':'Hi! How can I help you today?'}</div>`:
+        state.chatLog.map(m=>`<div class="ai-msg ${m.role}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+    </div>
+    <div class="chat-suggest">${suggestions.map(s=>`<button class="chat-chip" onclick="chatSuggest('${s.replace(/'/g,"\\'")}')">${s}</button>`).join('')}</div>
+    <div class="chat-foot">
+      <input id="chat-input" placeholder="${t('chatPlaceholder')}" onkeydown="if(event.key==='Enter')submitChat()" ${chatBusy?'disabled':''}/>
+      <button class="chat-send" onclick="submitChat()" ${chatBusy?'disabled':''}><svg class="icon" style="width:15px;height:15px;stroke:#fff" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+    </div>
+  </div>`;
+}
+
+/* ============ MASTER RENDER ============ */
+function impersonateBanner(){
+  if(!state.impersonateFromAdmin) return '';
+  const c = currentCustomer();
+  const isAr = state.lang==='ar';
+  return `
+  <div class="impersonate-bar">
+    <span>${isAr?`🛒 تتسوّق الآن نيابة عن: ${c?c.name:''}`:`🛒 Shopping now on behalf of: ${c?c.name:''}`}</span>
+    <button onclick="returnFromImpersonation()">${isAr?'العودة إلى لوحة الإدارة':'Return to Admin'}</button>
+  </div>`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  document.documentElement.lang = state.lang;
+  document.documentElement.dir = state.lang==='ar' ? 'rtl' : 'ltr';
+
+  if(state.view==='login' || !state.currentUserId){
+    app.innerHTML = renderLogin();
+    document.getElementById('overlay').classList.remove('open');
+    return;
+  }
+
+  if(state.view==='admin'){
+    if(!isAdminUser(currentCustomer())){ state.view='home'; render(); return; }
+    app.innerHTML = renderAdmin() + renderChat();
+  } else {
+    let body = '';
+    if(state.view==='home') body = renderHome();
+    else if(state.view==='product') body = renderProductPage();
+    else if(state.view==='checkout') body = renderCheckout();
+    else if(state.view==='confirm') body = renderConfirm();
+    app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat();
+  }
+
+  document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
+  document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
+}
+
+render();
+</script>
+</body>
+</html>
