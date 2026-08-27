@@ -138,7 +138,7 @@ section{padding:52px 0}
 }
 .prod-card:hover{transform:translateY(-4px)}
 .prod-img{
-  aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;
 }
 .prod-img svg{width:46%;height:46%;stroke:rgba(255,255,255,.92);fill:none;stroke-width:1.3}
 .prod-badges{position:absolute;top:10px;inset-inline-start:10px;display:flex;flex-direction:column;gap:5px}
@@ -207,7 +207,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .close-btn{background:var(--sand);border:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .drawer-body{flex:1;overflow-y:auto;padding:16px 20px}
 .cart-line{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--sand-dark)}
-.cart-thumb{width:60px;height:60px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.cart-thumb{width:60px;height:60px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .cart-thumb svg{width:50%;height:50%;stroke:#fff;fill:none;stroke-width:1.4}
 .cart-info{flex:1;min-width:0}
 .cart-info .name{font-size:13.5px;font-weight:700;margin-bottom:3px}
@@ -232,7 +232,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .modal-close{position:sticky;top:14px;float:inline-end;margin-inline-end:14px;z-index:5;background:var(--paper);width:34px;height:34px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .modal-gallery{background:var(--cedar);display:flex;flex-direction:column}
-.gallery-main{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+.gallery-main{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .gallery-main svg{width:38%;height:38%;stroke:rgba(255,255,255,.9);fill:none;stroke-width:1.2}
 .gallery-swatches{display:flex;gap:8px;padding:14px;justify-content:center}
 .swatch{width:44px;height:44px;border-radius:8px;border:2px solid rgba(255,255,255,.25);cursor:pointer}
@@ -675,6 +675,7 @@ let state = {
   adminView: 'overview',
   adminSideOpen: false,
   adminSelectedCustomer: null,
+  adminEditingProduct: null,
   formData: {},
 
   /* ---- accounts / login ---- */
@@ -1146,7 +1147,7 @@ function productCard(p){
   return `
   <div class="prod-card">
     <div class="prod-img" style="background:${color}" onclick="openProduct(${p.id})">
-      ${ICONS[p.icon]}
+      ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}
       <div class="prod-badges">
         ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
         ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
@@ -1322,7 +1323,7 @@ function renderProductPage(){
     <div class="panel" style="padding:0;overflow:hidden">
       <div class="modal-grid">
         <div class="modal-gallery">
-          <div class="gallery-main" style="background:${color}">${ICONS[p.icon]}</div>
+          <div class="gallery-main" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
           <div class="gallery-swatches">
             ${p.variants.map((v,i)=>`<div class="swatch ${v===variant?'active':''}" style="background:${PALETTE[(p.color+i)%PALETTE.length]}" onclick="state.modalVariant='${v}';render()" title="${v}"></div>`).join('')}
           </div>
@@ -1417,7 +1418,7 @@ function renderDrawer(){
           const color = PALETTE[p.color % PALETTE.length];
           return `
           <div class="cart-line">
-            <div class="cart-thumb" style="background:${color}">${ICONS[p.icon]}</div>
+            <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
             <div class="cart-info">
               <div class="name">${pname(p)}</div>
               <div class="variant">${l.variant}</div>
@@ -1691,19 +1692,91 @@ function adminStats(){
   const totalSales = MOCK_SALES.reduce((s,d)=>s+d.v,0);
   return {totalStock, low, outOf, totalSales};
 }
+/* Persists any product-field edit to the database so it survives refreshes and shows for everyone */
+function syncProductField(id, fields){
+  sb.from('products').upsert({ id, ...fields }, { onConflict:'id' })
+    .then(({error})=>{ if(error) console.error('Product sync failed:', error); });
+}
 function adminToggle(id, field){
   const p = findProduct(id);
   p[field] = !p[field];
   render();
+  syncProductField(id, { [field]: p[field] });
 }
-function adminUpdatePrice(id, val){ findProduct(id).price = Number(val)||0; render(); }
-function adminUpdateStock(id, val){ findProduct(id).stock = Number(val)||0; }
-function adminUpdateCost(id, val){ findProduct(id).cost = Number(val)||0; render(); }
-function adminUpdateSupplierUrl(id, val){ findProduct(id).supplierUrl = val.trim(); render(); }
+function adminUpdatePrice(id, val){
+  const price = Number(val)||0;
+  findProduct(id).price = price; render();
+  syncProductField(id, { price });
+}
+function adminUpdateStock(id, val){
+  const stock = Number(val)||0;
+  findProduct(id).stock = stock;
+  syncProductField(id, { stock });
+}
+function adminUpdateCost(id, val){
+  const cost = Number(val)||0;
+  findProduct(id).cost = cost; render();
+  syncProductField(id, { cost });
+}
+function adminUpdateSupplierUrl(id, val){
+  const supplierUrl = val.trim();
+  findProduct(id).supplierUrl = supplierUrl; render();
+  syncProductField(id, { supplier_url: supplierUrl });
+}
 function adminSuggestPrice(id){
   const p = findProduct(id);
   p.price = computeSuggestedPrice(p.cost);
   render();
+  syncProductField(id, { price: p.price });
+}
+
+/* ---- Editing a product's photo & description (admin only) ---- */
+function openProductEditor(id){ state.adminEditingProduct = state.adminEditingProduct===id ? null : id; render(); }
+function closeProductEditor(){ state.adminEditingProduct = null; render(); }
+function saveProductDescription(id){
+  const descAr = document.getElementById('desc-ar-'+id).value;
+  const descEn = document.getElementById('desc-en-'+id).value;
+  const p = findProduct(id);
+  p.desc_ar = descAr; p.desc_en = descEn;
+  syncProductField(id, { desc_ar: descAr, desc_en: descEn });
+  showToast(state.lang==='ar' ? 'تم حفظ الوصف' : 'Description saved');
+  render();
+}
+function adminSetImageUrl(id){
+  const url = document.getElementById('image-url-'+id).value.trim();
+  findProduct(id).imageUrl = url || null;
+  syncProductField(id, { image_url: url || null });
+  showToast(state.lang==='ar' ? 'تم حفظ الصورة' : 'Image saved');
+  render();
+}
+function adminRemoveImage(id){
+  findProduct(id).imageUrl = null;
+  syncProductField(id, { image_url: null });
+  render();
+}
+async function handleImageUpload(event, id){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    showToast(state.lang==='ar' ? 'يرجى اختيار ملف صورة' : 'Please choose an image file');
+    return;
+  }
+  showToast(state.lang==='ar' ? 'جارٍ رفع الصورة...' : 'Uploading image...');
+  try{
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `product-${id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true });
+    if(upErr) throw upErr;
+    const { data } = sb.storage.from('product-images').getPublicUrl(path);
+    const url = data.publicUrl;
+    findProduct(id).imageUrl = url;
+    syncProductField(id, { image_url: url });
+    showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
+    render();
+  } catch(e){
+    console.error('Image upload failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر رفع الصورة، تحقق من إعداد التخزين' : 'Could not upload the image — check storage setup');
+  }
 }
 function profitFor(p){
   const profit = +(p.price - (p.cost||0)).toFixed(2);
@@ -1821,6 +1894,35 @@ function renderAdminCustomers(){
   </div>`;
 }
 
+function renderProductEditorPanel(p){
+  const isAr = state.lang==='ar';
+  return `
+  <div style="padding:20px;display:grid;grid-template-columns:220px 1fr;gap:24px">
+    <div>
+      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px">${isAr?'صورة المنتج':'Product Photo'}</label>
+      <div style="width:100%;aspect-ratio:1/1;border-radius:10px;background:${PALETTE[p.color % PALETTE.length]};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin-bottom:10px">
+        ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:40%;height:40%;color:#fff">${ICONS[p.icon]}</span>`}
+      </div>
+      <label class="btn btn-cedar btn-sm btn-block" style="margin-bottom:8px;cursor:pointer">
+        ${isAr?'📤 رفع صورة من جهازك':'📤 Upload from device'}
+        <input type="file" accept="image/*" style="display:none" onchange="handleImageUpload(event, ${p.id})"/>
+      </label>
+      <div style="display:flex;gap:5px;margin-bottom:6px">
+        <input id="image-url-${p.id}" type="text" value="${p.imageUrl||''}" placeholder="${isAr?'أو الصق رابط صورة':'or paste an image URL'}" style="flex:1;font-size:11px;padding:7px 9px;border:1px solid var(--line);border-radius:7px"/>
+        <button class="btn btn-ghost btn-sm" onclick="adminSetImageUrl(${p.id})">${isAr?'حفظ':'Save'}</button>
+      </div>
+      ${p.imageUrl?`<button class="btn btn-ghost btn-sm btn-block" onclick="adminRemoveImage(${p.id})">${isAr?'إزالة الصورة':'Remove photo'}</button>`:''}
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'الوصف (عربي)':'Description (Arabic)'}</label>
+      <textarea id="desc-ar-${p.id}" rows="3" dir="rtl" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;margin-bottom:12px">${p.desc_ar||''}</textarea>
+      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'الوصف (إنكليزي)':'Description (English)'}</label>
+      <textarea id="desc-en-${p.id}" rows="3" dir="ltr" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;margin-bottom:12px">${p.desc_en||''}</textarea>
+      <button class="btn btn-primary btn-sm" onclick="saveProductDescription(${p.id})">${isAr?'💾 حفظ الوصف':'💾 Save Description'}</button>
+    </div>
+  </div>`;
+}
+
 function renderAdmin(){
   const s = adminStats();
   const maxBar = Math.max(...MOCK_SALES.map(d=>d.v));
@@ -1875,16 +1977,22 @@ function renderAdmin(){
         <div style="overflow-x:auto">
         <table class="admin-table">
           <thead><tr>
-            <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>SKU</th>
+            <th></th><th>${state.lang==='ar'?'المنتج':'Product'}</th><th>SKU</th>
             <th>${t('costLabel')}</th><th>${state.lang==='ar'?'السعر':'Price'}</th><th>${t('profitLabel')}</th><th></th>
-            <th>${state.lang==='ar'?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th>
+            <th>${state.lang==='ar'?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th><th></th>
           </tr></thead>
           <tbody>
           ${PRODUCTS.map(p=>{
             const {profit, pct} = profitFor(p);
             const profitColor = profit>0 ? 'var(--cedar)' : (profit<0 ? 'var(--brick)' : 'var(--ink-soft)');
+            const color = PALETTE[p.color % PALETTE.length];
             return `
             <tr>
+              <td>
+                <div style="width:38px;height:38px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+                  ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
+                </div>
+              </td>
               <td>${pname(p)}</td>
               <td class="font-mono" style="font-size:11.5px">${p.sku}</td>
               <td><input type="number" step="0.1" value="${p.cost!==undefined?p.cost:''}" onchange="adminUpdateCost(${p.id}, this.value)" style="width:64px"/></td>
@@ -1905,7 +2013,14 @@ function renderAdmin(){
                   <button class="mini-toggle ${p.new?'on':''}" onclick="adminToggle(${p.id},'new')">${state.lang==='ar'?'جديد':'New'}</button>
                 </div>
               </td>
-            </tr>`;}).join('')}
+              <td><button class="btn btn-cedar btn-sm" onclick="openProductEditor(${p.id})">${state.adminEditingProduct===p.id ? (state.lang==='ar'?'إغلاق ✕':'Close ✕') : (state.lang==='ar'?'✎ صورة/وصف':'✎ Photo/Desc')}</button></td>
+            </tr>
+            ${state.adminEditingProduct===p.id ? `
+            <tr>
+              <td colspan="11" style="background:var(--sand);padding:0">
+                ${renderProductEditorPanel(p)}
+              </td>
+            </tr>` : ''}`;}).join('')}
           </tbody>
         </table>
         </div>
@@ -2085,6 +2200,27 @@ async function initApp(){
     }
   } catch(e){
     console.error('Could not load settings:', e);
+  }
+  try{
+    const { data, error } = await sb.from('products').select('*');
+    if(!error && data){
+      data.forEach(row=>{
+        const p = findProduct(row.id);
+        if(!p) return;
+        if(row.price!=null) p.price = Number(row.price);
+        if(row.stock!=null) p.stock = Number(row.stock);
+        if(row.cost!=null) p.cost = Number(row.cost);
+        if(row.supplier_url!=null) p.supplierUrl = row.supplier_url;
+        if(row.featured!=null) p.featured = row.featured;
+        if(row.best!=null) p.best = row.best;
+        if(row.new!=null) p.new = row.new;
+        if(row.desc_ar) p.desc_ar = row.desc_ar;
+        if(row.desc_en) p.desc_en = row.desc_en;
+        if(row.image_url) p.imageUrl = row.image_url;
+      });
+    }
+  } catch(e){
+    console.error('Could not load product edits:', e);
   }
   render();
 }
