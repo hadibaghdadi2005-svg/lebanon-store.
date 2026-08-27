@@ -629,13 +629,13 @@ const GOV_FEES = {
 const FREE_DELIVERY_MIN = 75;
 const COUPONS = {'LEB10':{type:'pct',value:10}};
 
-const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','out_for_delivery','delivered','cancelled','returned'];
+const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered','cancelled','returned'];
 const ORDER_STATUS_LABELS = {
-  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', arrived_lebanon:'وصل إلى لبنان', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
-  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', arrived_lebanon:'Arrived in Lebanon', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
+  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', arrived_lebanon:'وصل إلى لبنان', received_lebanon:'تم استلامه في لبنان', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
+  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', arrived_lebanon:'Arrived in Lebanon', received_lebanon:'Received in Lebanon', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
 };
 /* The subset of statuses shown as a step-by-step progress tracker to customers (cancelled/returned are shown as a plain badge instead) */
-const TRACK_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','out_for_delivery','delivered'];
+const TRACK_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered'];
 
 /* Suggested-price margin curve: cheaper items need a higher % markup to be worth handling */
 function suggestedMarginPct(cost){
@@ -1464,7 +1464,7 @@ async function placeOrder(){
   const num = 'LB-2026-' + String(Math.floor(100000+Math.random()*899999)).slice(0,6);
   const items = state.cart.map(l=>{
     const p = findProduct(l.id);
-    return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, cost:p.cost, supplierUrl:p.supplierUrl, sku:p.sku };
+    return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, cost:p.cost, supplierUrl:p.supplierUrl, sku:p.sku, status:'confirmed' };
   });
   const c = currentCustomer();
   const orderRow = {
@@ -1492,17 +1492,21 @@ async function placeOrder(){
   window.scrollTo(0,0);
   render();
 }
-function setOrderStatus(num, status){
-  const o = state.orders.find(o=>o.num===num);
-  if(!o) return;
-  o.status = status;
+/* Each item in an order carries its own logistics status, since items in the same order
+   can ship separately. This updates just that one line item, not the whole order. */
+async function updateItemStatus(dbId, itemIndex, status){
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o || !o.items[itemIndex]) return;
+  o.items[itemIndex].status = status;
   render();
-  if(o._dbId){
-    sb.from('orders').update({status}).eq('id', o._dbId)
-      .then(({error})=>{ if(error) console.error('Status update failed:', error); });
+  try{
+    const { error } = await sb.from('orders').update({ items: o.items }).eq('id', dbId);
+    if(error) throw error;
+  } catch(e){
+    console.error('Item status update failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر حفظ الحالة' : 'Could not save the status');
   }
 }
-
 function renderCheckout(){
   const govs = Object.keys(GOV_FEES[state.lang]);
   if(!state.selectedGov) state.selectedGov = null;
@@ -1580,28 +1584,23 @@ function renderCheckout(){
   </div>`;
 }
 
-function renderOrderTrackCard(o){
+function renderItemTrack(it){
   const isAr = state.lang==='ar';
-  if(o.status==='cancelled' || o.status==='returned'){
+  const status = it.status || 'confirmed';
+  if(status==='cancelled' || status==='returned'){
     return `
-    <div class="order-card-mini">
-      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-        <div class="font-mono" style="font-weight:700">${o.num}</div>
-        <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
-        <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
-      </div>
-      <span class="status-pill" style="background:#FBDACB;color:var(--brick)">${ORDER_STATUS_LABELS[state.lang][o.status]}</span>
+    <div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${it.variant}) × ${it.qty}</span></div>
+      <span class="status-pill" style="background:#FBDACB;color:var(--brick)">${ORDER_STATUS_LABELS[state.lang][status]}</span>
     </div>`;
   }
-  const idx = TRACK_STATUSES.indexOf(o.status);
+  const idx = TRACK_STATUSES.indexOf(status);
   return `
-  <div class="order-card-mini">
-    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
-      <div class="font-mono" style="font-weight:700">${o.num}</div>
-      <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
-      <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+  <div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:2px">
+      <div style="font-size:13px;font-weight:700">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${it.variant}) × ${it.qty}</span></div>
+      <div style="font-size:12px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][status]}</div>
     </div>
-    <div style="font-size:12.5px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][o.status]}</div>
     <div class="order-track">
       ${TRACK_STATUSES.map((s,i)=>`
         <div class="track-step ${i<idx?'done':''} ${i===idx?'current':''}">
@@ -1611,6 +1610,18 @@ function renderOrderTrackCard(o){
     </div>
   </div>`;
 }
+function renderOrderTrackCard(o){
+  const isAr = state.lang==='ar';
+  return `
+  <div class="order-card-mini">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div class="font-mono" style="font-weight:700">${o.num}</div>
+      <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+      <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+    </div>
+    ${o.items.map(renderItemTrack).join('')}
+  </div>`;
+}
 function renderMyOrders(){
   const isAr = state.lang==='ar';
   const myOrders = state.orders.filter(o=>o.customerId===state.currentUserId).slice().reverse();
@@ -1618,6 +1629,7 @@ function renderMyOrders(){
   <div class="page container">
     <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${isAr?'طلباتي':'My Orders'}</div>
     <h2 class="font-display" style="margin-bottom:18px">${isAr?'طلباتي':'My Orders'}</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-12px;margin-bottom:18px">${isAr?'كل قطعة في طلبك قد تتبع مسارًا مختلفًا حسب موعد شحنها.':'Each item in your order may follow its own timeline depending on when it ships.'}</p>
     ${myOrders.length===0?
       `<div class="panel" style="text-align:center;padding:50px 20px;color:var(--ink-soft)">${isAr?'لا توجد طلبات بعد.':'No orders yet.'}</div>` :
       myOrders.map(renderOrderTrackCard).join('')}
@@ -1707,6 +1719,31 @@ function updateSettings(field, val){
 }
 function setAdminView(v){ state.adminView=v; render(); refreshAdminData(); }
 
+/* Renders a table of an order's items, each with its own logistics status dropdown */
+function renderAdminItemStatusTable(o){
+  const isAr = state.lang==='ar';
+  return `
+  <table class="admin-table">
+    <thead><tr>
+      <th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th>
+      <th>${isAr?'الحالة/اللوجستيات':'Status / Logistics'}</th>
+    </tr></thead>
+    <tbody>
+      ${o.items.map((it,i)=>`
+        <tr>
+          <td>${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-size:11px">(${it.sku||''})</span></td>
+          <td>${it.variant}</td>
+          <td>${it.qty}</td>
+          <td>
+            <select onchange="updateItemStatus('${o._dbId}', ${i}, this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700">
+              ${ORDER_STATUSES.map(s=>`<option value="${s}" ${(it.status||'confirmed')===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
 function renderAdminCustomers(){
   const isAr = state.lang==='ar';
   const customers = state.customers.filter(c=>!isAdminUser(c));
@@ -1744,15 +1781,13 @@ function renderAdminCustomers(){
       <h3>${isAr?'طلبات هذا العميل':"This customer's orders"} (${custOrders.length})</h3>
       ${custOrders.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا توجد طلبات بعد':'No orders yet'}</p>` :
         custOrders.map(o=>`
-        <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
             <div class="font-mono" style="font-weight:700">${o.num}</div>
             <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
             <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
-            <select onchange="setOrderStatus('${o.num}', this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700">
-              ${ORDER_STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
-            </select>
           </div>
+          ${renderAdminItemStatusTable(o)}
         </div>`).join('')}
     </div>`;
   }
@@ -1892,23 +1927,19 @@ function renderAdmin(){
                 <div class="font-mono" style="font-weight:700;font-size:14px">${o.num}</div>
                 <div style="font-size:12px;color:var(--ink-soft)">${o.customer} · ${o.phone} · ${o.gov} · ${o.date}</div>
               </div>
-              <div style="display:flex;align-items:center;gap:10px">
-                <div style="text-align:end">
-                  <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
-                  <div style="font-size:11px;color:var(--ink-soft)">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
-                </div>
-                <select onchange="setOrderStatus('${o.num}', this.value)" style="padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:700">
-                  ${ORDER_STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
-                </select>
+              <div style="text-align:end">
+                <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+                <div style="font-size:11px;color:var(--ink-soft)">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
               </div>
             </div>
             <table class="admin-table">
               <thead><tr>
                 <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>${state.lang==='ar'?'الخيار':'Variant'}</th><th>${state.lang==='ar'?'الكمية':'Qty'}</th>
                 <th>${state.lang==='ar'?'سعر البيع':'Sell Price'}</th><th>${t('costLabel')}</th><th>${t('supplierLink')}</th>
+                <th>${state.lang==='ar'?'الحالة/اللوجستيات':'Status / Logistics'}</th>
               </tr></thead>
               <tbody>
-                ${o.items.map(it=>`
+                ${o.items.map((it,i)=>`
                   <tr>
                     <td>${state.lang==='ar'?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-size:11px">(${it.sku})</span></td>
                     <td>${it.variant}</td>
@@ -1916,6 +1947,11 @@ function renderAdmin(){
                     <td class="font-mono">${fmt(it.price)}</td>
                     <td class="font-mono">${it.cost!==undefined?fmt(it.cost):'—'}</td>
                     <td>${it.supplierUrl?`<a href="${it.supplierUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">${t('openSupplier')} ↗</a>`:'—'}</td>
+                    <td>
+                      <select onchange="updateItemStatus('${o._dbId}', ${i}, this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700">
+                        ${ORDER_STATUSES.map(s=>`<option value="${s}" ${(it.status||'confirmed')===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
+                      </select>
+                    </td>
                   </tr>`).join('')}
               </tbody>
             </table>
