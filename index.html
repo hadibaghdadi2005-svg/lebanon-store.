@@ -409,7 +409,29 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 <div id="app"></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============ DATABASE CONNECTION ============ */
+const SUPABASE_URL = 'https://vsmihhipjmrapwcupmcx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_LvTRNk01lLTJu7Rwe7m6CQ_tkzMdsjn';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function dbRowToCustomer(row){
+  return {
+    id: row.id, name: row.name, email: row.email, phone: row.phone, method: row.method,
+    cart: row.cart || [], wishlist: new Set(row.wishlist || []),
+    createdAt: (row.created_at || '').slice(0,10)
+  };
+}
+function dbRowToOrder(row){
+  return {
+    _dbId: row.id, num: row.num, date: row.order_date, items: row.items || [],
+    total: Number(row.total), gov: row.gov, customer: row.customer_name, phone: row.phone,
+    status: row.status, deliveryMin: row.delivery_min, deliveryMax: row.delivery_max,
+    customerId: row.customer_id, customerName: row.customer_name
+  };
+}
+
 /* ============ DATA ============ */
 const T = {
   ar:{
@@ -668,7 +690,11 @@ function currentCustomer(){ return state.customers.find(c=>c.id===state.currentU
 function isAdminUser(c){ return !!c && ((c.email && c.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()) || (c.phone && c.phone.replace(/\s+/g,'')===ADMIN_PHONE)); }
 function syncCustomerCart(){
   const c = currentCustomer();
-  if(c){ c.cart = state.cart; c.wishlist = state.wishlist; }
+  if(!c) return;
+  c.cart = state.cart;
+  c.wishlist = state.wishlist;
+  sb.from('customers').update({ cart: state.cart, wishlist: Array.from(state.wishlist) }).eq('id', c.id)
+    .then(({error})=>{ if(error) console.error('Cart sync failed:', error); });
 }
 function loadCustomerCart(c){
   state.cart = c.cart || [];
@@ -677,26 +703,43 @@ function loadCustomerCart(c){
 function setLoginMethod(m){ state.loginMethod = m; state.loginForm = {}; render(); }
 function updateLoginForm(field, val){ state.loginForm[field] = val; }
 
-function findOrCreateCustomer({name, email, phone, method}){
+async function findOrCreateCustomer({name, email, phone, method}){
   email = (email||'').trim().toLowerCase();
   phone = (phone||'').trim();
-  let c = state.customers.find(c => (email && c.email && c.email.toLowerCase()===email) || (phone && c.phone===phone));
-  if(!c){
-    c = {
-      id: 'cust_' + Date.now() + '_' + Math.floor(Math.random()*9999),
-      name: name || (state.lang==='ar' ? 'زبون' : 'Customer'),
-      email, phone, method,
-      cart: [], wishlist: new Set(),
-      createdAt: new Date().toISOString().slice(0,10)
-    };
-    state.customers.push(c);
-  } else {
-    // keep the profile fresh if they log back in with new info
-    if(name) c.name = name;
-    if(email) c.email = email;
-    if(phone) c.phone = phone;
+  try{
+    let existing = null;
+    const orFilters = [];
+    if(email) orFilters.push(`email.eq.${email}`);
+    if(phone) orFilters.push(`phone.eq.${phone}`);
+    if(orFilters.length){
+      const { data, error } = await sb.from('customers').select('*').or(orFilters.join(',')).limit(1);
+      if(error) throw error;
+      if(data && data.length) existing = data[0];
+    }
+    let row;
+    if(existing){
+      const updates = {};
+      if(name) updates.name = name;
+      if(email) updates.email = email;
+      if(phone) updates.phone = phone;
+      const { data, error } = await sb.from('customers').update(updates).eq('id', existing.id).select().single();
+      if(error) throw error;
+      row = data;
+    } else {
+      const insertRow = { name: name || (state.lang==='ar'?'زبون':'Customer'), email, phone, method, cart: [], wishlist: [] };
+      const { data, error } = await sb.from('customers').insert(insertRow).select().single();
+      if(error) throw error;
+      row = data;
+    }
+    const c = dbRowToCustomer(row);
+    const idx = state.customers.findIndex(x=>x.id===c.id);
+    if(idx>=0) state.customers[idx] = c; else state.customers.push(c);
+    return c;
+  } catch(e){
+    console.error('Login/database error:', e);
+    showToast(state.lang==='ar' ? 'تعذر الاتصال بقاعدة البيانات، تحقق من الاتصال وحاول مجددًا' : 'Could not reach the database — check your connection and try again');
+    return null;
   }
-  return c;
 }
 function completeLogin(c){
   state.currentUserId = c.id;
@@ -710,22 +753,26 @@ function completeLogin(c){
   window.scrollTo(0,0);
   render();
 }
-function submitSocialLogin(method){
+async function submitSocialLogin(method){
   const f = state.loginForm;
   if(!f.name || !f.email){
     showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم والبريد الإلكتروني' : 'Please fill in your name and email');
     return;
   }
-  const c = findOrCreateCustomer({name:f.name, email:f.email, method});
+  showToast(state.lang==='ar' ? 'جارٍ تسجيل الدخول...' : 'Logging in...');
+  const c = await findOrCreateCustomer({name:f.name, email:f.email, method});
+  if(!c) return;
   completeLogin(c);
 }
-function submitPhoneLogin(){
+async function submitPhoneLogin(){
   const f = state.loginForm;
   if(!f.name || !f.phone){
     showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم ورقم الهاتف' : 'Please fill in your name and phone number');
     return;
   }
-  const c = findOrCreateCustomer({name:f.name, phone:f.phone, method:'phone'});
+  showToast(state.lang==='ar' ? 'جارٍ تسجيل الدخول...' : 'Logging in...');
+  const c = await findOrCreateCustomer({name:f.name, phone:f.phone, method:'phone'});
+  if(!c) return;
   completeLogin(c);
 }
 function logout(){
@@ -862,9 +909,24 @@ function goCheckout(){
   if(state.cart.length===0) return;
   state.view='checkout'; window.scrollTo(0,0); render();
 }
+async function refreshAdminData(){
+  try{
+    const [custRes, orderRes] = await Promise.all([
+      sb.from('customers').select('*').order('created_at', {ascending:false}),
+      sb.from('orders').select('*').order('created_at', {ascending:true})
+    ]);
+    if(!custRes.error && custRes.data) state.customers = custRes.data.map(dbRowToCustomer);
+    if(!orderRes.error && orderRes.data) state.orders = orderRes.data.map(dbRowToOrder);
+    render();
+  } catch(e){
+    console.error('Admin data refresh failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر تحديث البيانات' : 'Could not refresh data');
+  }
+}
 function goAdmin(){
   if(!isAdminUser(currentCustomer())){ showToast(state.lang==='ar'?'غير مصرح لك بالدخول':'Not authorized'); return; }
   state.view='admin'; state.adminView='overview'; state.adminSelectedCustomer=null; window.scrollTo(0,0); render();
+  refreshAdminData();
 }
 function returnFromImpersonation(){
   syncCustomerCart();
@@ -1333,7 +1395,7 @@ function applyCoupon(){
 }
 function selectGov(g){ state.selectedGov = g; render(); }
 
-function placeOrder(){
+async function placeOrder(){
   const f = state.formData;
   if(!f.fullName || !f.phone || !state.selectedGov || !f.city || !f.address){
     showToast(state.lang==='ar'?'يرجى تعبئة الحقول المطلوبة':'Please fill in the required fields');
@@ -1345,13 +1407,23 @@ function placeOrder(){
     return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, cost:p.cost, supplierUrl:p.supplierUrl, sku:p.sku };
   });
   const c = currentCustomer();
-  const order = {
-    num, date: new Date().toISOString().slice(0,10), items,
-    total: cartTotal(), gov: state.selectedGov, customer: f.fullName, phone: f.phone,
-    status: 'confirmed',
-    deliveryMin: state.settings.deliveryMin, deliveryMax: state.settings.deliveryMax,
-    customerId: c ? c.id : null, customerName: c ? c.name : f.fullName
+  const orderRow = {
+    customer_id: c ? c.id : null,
+    num, order_date: new Date().toISOString().slice(0,10), items,
+    total: cartTotal(), gov: state.selectedGov, customer_name: f.fullName, phone: f.phone,
+    status: 'confirmed', delivery_min: state.settings.deliveryMin, delivery_max: state.settings.deliveryMax
   };
+  showToast(state.lang==='ar' ? 'جارٍ إرسال الطلب...' : 'Placing your order...');
+  let order;
+  try{
+    const { data, error } = await sb.from('orders').insert(orderRow).select().single();
+    if(error) throw error;
+    order = dbRowToOrder(data);
+  } catch(e){
+    console.error('Order placement failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر إرسال الطلب، حاول مرة أخرى' : 'Could not place the order, please try again');
+    return;
+  }
   state.orders.push(order);
   state.cart = [];
   state.coupon = null;
@@ -1362,7 +1434,13 @@ function placeOrder(){
 }
 function setOrderStatus(num, status){
   const o = state.orders.find(o=>o.num===num);
-  if(o){ o.status = status; render(); }
+  if(!o) return;
+  o.status = status;
+  render();
+  if(o._dbId){
+    sb.from('orders').update({status}).eq('id', o._dbId)
+      .then(({error})=>{ if(error) console.error('Status update failed:', error); });
+  }
 }
 
 function renderCheckout(){
@@ -1516,8 +1594,14 @@ function profitFor(p){
   const pct = p.cost ? Math.round((profit/p.cost)*100) : 0;
   return { profit, pct };
 }
-function updateSettings(field, val){ state.settings[field] = Number(val)||0; render(); }
-function setAdminView(v){ state.adminView=v; render(); }
+function updateSettings(field, val){
+  state.settings[field] = Number(val)||0;
+  render();
+  const dbField = field==='deliveryMin' ? 'delivery_min' : 'delivery_max';
+  sb.from('settings').update({[dbField]: state.settings[field]}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Settings sync failed:', error); });
+}
+function setAdminView(v){ state.adminView=v; render(); refreshAdminData(); }
 
 function renderAdminCustomers(){
   const isAr = state.lang==='ar';
@@ -1571,7 +1655,10 @@ function renderAdminCustomers(){
 
   return `
   <div class="panel">
-    <h3>${isAr?'العملاء':'Customers'} (${customers.length})</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0">${isAr?'العملاء':'Customers'} (${customers.length})</h3>
+      <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+    </div>
     ${customers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'}</p>` :
     customers.map(c=>{
       const cartCount = (c.cart||[]).reduce((s,l)=>s+l.qty,0);
@@ -1689,7 +1776,10 @@ function renderAdmin(){
 
       ${state.adminView==='orders'?`
       <div class="panel">
-        <h3>${state.lang==='ar'?'الطلبات':'Orders'} (${state.orders.length})</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="margin:0">${state.lang==='ar'?'الطلبات':'Orders'} (${state.orders.length})</h3>
+          <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${state.lang==='ar'?'تحديث':'Refresh'}</button>
+        </div>
         ${state.orders.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${state.lang==='ar'?'لا توجد طلبات بعد — أكمل عملية شراء تجريبية من المتجر لرؤيتها هنا.':'No orders yet — complete a demo checkout in the store to see it here.'}</p>`:
         [...state.orders].reverse().map(o=>`
           <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
@@ -1845,7 +1935,19 @@ function render(){
   document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
 }
 
-render();
+async function initApp(){
+  try{
+    const { data, error } = await sb.from('settings').select('*').eq('id', 1).single();
+    if(!error && data){
+      state.settings.deliveryMin = data.delivery_min;
+      state.settings.deliveryMax = data.delivery_max;
+    }
+  } catch(e){
+    console.error('Could not load settings:', e);
+  }
+  render();
+}
+initApp();
 </script>
 </body>
 </html>
