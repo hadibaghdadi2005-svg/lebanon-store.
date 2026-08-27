@@ -345,6 +345,19 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .order-conf .check-circle svg{width:34px;height:34px;stroke:var(--cedar);stroke-width:2.4}
 .order-num{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--cedar);margin:12px 0}
 
+/* ---------- ORDER TRACKING ---------- */
+.order-card-mini{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;background:var(--paper)}
+.order-track{display:flex;align-items:flex-start;gap:2px;margin:20px 0 6px;overflow-x:auto;padding-bottom:4px}
+.track-step{flex:1;min-width:76px;text-align:center;position:relative}
+.track-step::after{content:'';position:absolute;top:11px;left:50%;width:100%;height:2px;background:var(--line);z-index:1}
+.track-step:last-child::after{display:none}
+.track-step.done::after{background:var(--cedar)}
+.track-dot{width:23px;height:23px;border-radius:50%;background:var(--sand-dark);border:2px solid var(--line);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink-soft);position:relative;z-index:2}
+.track-step.done .track-dot{background:var(--cedar);border-color:var(--cedar);color:#fff}
+.track-step.current .track-dot{background:var(--brass);border-color:var(--brass);color:#221604;box-shadow:0 0 0 4px rgba(196,151,42,.22)}
+.track-label{font-size:10.5px;color:var(--ink-soft);line-height:1.3;padding:0 2px}
+.track-step.current .track-label{color:var(--ink);font-weight:700}
+
 /* ---------- ADMIN ---------- */
 .admin-shell{display:flex;min-height:100vh}
 .admin-side{width:220px;background:var(--cedar);color:#fff;padding:20px 14px;flex-shrink:0}
@@ -616,11 +629,13 @@ const GOV_FEES = {
 const FREE_DELIVERY_MIN = 75;
 const COUPONS = {'LEB10':{type:'pct',value:10}};
 
-const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','out_for_delivery','delivered','cancelled','returned'];
+const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','out_for_delivery','delivered','cancelled','returned'];
 const ORDER_STATUS_LABELS = {
-  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
-  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
+  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', arrived_lebanon:'وصل إلى لبنان', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
+  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', arrived_lebanon:'Arrived in Lebanon', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
 };
+/* The subset of statuses shown as a step-by-step progress tracker to customers (cancelled/returned are shown as a plain badge instead) */
+const TRACK_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','out_for_delivery','delivered'];
 
 /* Suggested-price margin curve: cheaper items need a higher % markup to be worth handling */
 function suggestedMarginPct(cost){
@@ -741,6 +756,33 @@ async function findOrCreateCustomer({name, email, phone, method}){
     return null;
   }
 }
+/* ============ REALTIME ORDER TRACKING ============ */
+let customerOrderChannel = null;
+function subscribeCustomerOrders(customerId){
+  if(customerOrderChannel){ sb.removeChannel(customerOrderChannel); customerOrderChannel = null; }
+  if(!customerId) return;
+  customerOrderChannel = sb.channel('orders-customer-' + customerId)
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'orders', filter:`customer_id=eq.${customerId}` }, payload=>{
+      const updated = dbRowToOrder(payload.new);
+      const idx = state.orders.findIndex(o=>o._dbId===updated._dbId);
+      if(idx>=0) state.orders[idx] = updated; else state.orders.push(updated);
+      showToast(state.lang==='ar' ? `تم تحديث حالة الطلب ${updated.num}` : `Order ${updated.num} was updated`);
+      render();
+    })
+    .subscribe();
+}
+function unsubscribeCustomerOrders(){
+  if(customerOrderChannel){ sb.removeChannel(customerOrderChannel); customerOrderChannel = null; }
+}
+let adminOrdersChannel = null;
+function subscribeAdminOrders(){
+  if(adminOrdersChannel) return;
+  adminOrdersChannel = sb.channel('orders-admin-live')
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders' }, ()=>{ refreshAdminData(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'customers' }, ()=>{ refreshAdminData(); })
+    .subscribe();
+}
+
 function completeLogin(c){
   state.currentUserId = c.id;
   loadCustomerCart(c);
@@ -750,6 +792,7 @@ function completeLogin(c){
   state.formData.phone = c.phone || '';
   state.formData.email = c.email || '';
   state.view = 'home';
+  subscribeCustomerOrders(c.id);
   window.scrollTo(0,0);
   render();
 }
@@ -779,6 +822,7 @@ function logout(){
   const msg = state.lang==='ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out of your account?';
   if(!confirm(msg)) return;
   syncCustomerCart();
+  unsubscribeCustomerOrders();
   state.currentUserId = null;
   state.impersonateFromAdmin = null;
   state.cart = [];
@@ -923,10 +967,22 @@ async function refreshAdminData(){
     showToast(state.lang==='ar' ? 'تعذر تحديث البيانات' : 'Could not refresh data');
   }
 }
+async function goMyOrders(){
+  state.view='orders'; window.scrollTo(0,0); render();
+  try{
+    const { data, error } = await sb.from('orders').select('*').eq('customer_id', state.currentUserId).order('created_at', {ascending:false});
+    if(!error && data){
+      const others = state.orders.filter(o=>o.customerId!==state.currentUserId);
+      state.orders = others.concat(data.map(dbRowToOrder));
+      render();
+    }
+  } catch(e){ console.error('Could not load orders:', e); }
+}
 function goAdmin(){
   if(!isAdminUser(currentCustomer())){ showToast(state.lang==='ar'?'غير مصرح لك بالدخول':'Not authorized'); return; }
   state.view='admin'; state.adminView='overview'; state.adminSelectedCustomer=null; window.scrollTo(0,0); render();
   refreshAdminData();
+  subscribeAdminOrders();
 }
 function returnFromImpersonation(){
   syncCustomerCart();
@@ -985,6 +1041,10 @@ function renderHeader(){
         <button class="icon-btn" onclick="toggleWishlist(-1)" style="pointer-events:none">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
           <span>${state.wishlist.size}</span>
+        </button>
+        <button class="icon-btn" onclick="goMyOrders()">
+          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
+          <span>${state.lang==='ar'?'طلباتي':'My Orders'}</span>
         </button>
         <button class="icon-btn" onclick="toggleDrawer(true)">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
@@ -1520,6 +1580,50 @@ function renderCheckout(){
   </div>`;
 }
 
+function renderOrderTrackCard(o){
+  const isAr = state.lang==='ar';
+  if(o.status==='cancelled' || o.status==='returned'){
+    return `
+    <div class="order-card-mini">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div class="font-mono" style="font-weight:700">${o.num}</div>
+        <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+        <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+      </div>
+      <span class="status-pill" style="background:#FBDACB;color:var(--brick)">${ORDER_STATUS_LABELS[state.lang][o.status]}</span>
+    </div>`;
+  }
+  const idx = TRACK_STATUSES.indexOf(o.status);
+  return `
+  <div class="order-card-mini">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <div class="font-mono" style="font-weight:700">${o.num}</div>
+      <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+      <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+    </div>
+    <div style="font-size:12.5px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][o.status]}</div>
+    <div class="order-track">
+      ${TRACK_STATUSES.map((s,i)=>`
+        <div class="track-step ${i<idx?'done':''} ${i===idx?'current':''}">
+          <div class="track-dot">${i<idx?'✓':(i+1)}</div>
+          <div class="track-label">${ORDER_STATUS_LABELS[state.lang][s]}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function renderMyOrders(){
+  const isAr = state.lang==='ar';
+  const myOrders = state.orders.filter(o=>o.customerId===state.currentUserId).slice().reverse();
+  return `
+  <div class="page container">
+    <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${isAr?'طلباتي':'My Orders'}</div>
+    <h2 class="font-display" style="margin-bottom:18px">${isAr?'طلباتي':'My Orders'}</h2>
+    ${myOrders.length===0?
+      `<div class="panel" style="text-align:center;padding:50px 20px;color:var(--ink-soft)">${isAr?'لا توجد طلبات بعد.':'No orders yet.'}</div>` :
+      myOrders.map(renderOrderTrackCard).join('')}
+  </div>`;
+}
+
 function renderConfirm(){
   const o = state.orders[state.orders.length-1];
   if(!o) { goHome(); return ''; }
@@ -1928,6 +2032,7 @@ function render(){
     else if(state.view==='product') body = renderProductPage();
     else if(state.view==='checkout') body = renderCheckout();
     else if(state.view==='confirm') body = renderConfirm();
+    else if(state.view==='orders') body = renderMyOrders();
     app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat();
   }
 
