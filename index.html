@@ -114,6 +114,13 @@ header.site{
 .hero p{font-size:16.5px;color:rgba(255,255,255,.78);margin-bottom:28px;max-width:460px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
 
+/* ---------- BILLBOARD (admin-editable promo banner) ---------- */
+.billboard{position:relative;border-radius:20px;overflow:hidden;background:var(--cedar) center/cover no-repeat;min-height:220px;display:flex;align-items:center}
+.billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg, rgba(28,20,15,.74), rgba(28,20,15,.2))}
+.billboard-inner{position:relative;padding:36px 40px;max-width:520px;color:var(--paper)}
+.billboard-inner h2{font-size:28px;line-height:1.15;margin-bottom:10px}
+.billboard-inner p{font-size:14.5px;color:rgba(255,255,255,.82);margin-bottom:18px}
+
 /* ---------- SECTIONS ---------- */
 section{padding:52px 0}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px;gap:12px}
@@ -480,6 +487,13 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .m-price{font:600 20px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
 .m-was{font:500 13px/1 'IBM Plex Mono',monospace;color:var(--muted);text-decoration:line-through}
 .m-shipfree{margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)}
+.m-billboard{margin:0 20px 20px;position:relative;border-radius:24px;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end}
+.m-billboard-clickable{cursor:pointer}
+.m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72))}
+.m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%}
+.m-billboard-title{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;margin-bottom:4px}
+.m-billboard-sub{font:500 13px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.85);margin-bottom:10px}
+.m-billboard-cta{display:inline-block;font:700 12px/1 'Figtree',sans-serif;background:var(--acc);color:#2e1a0a;padding:9px 16px;border-radius:999px}
 
 .m-rail{display:flex;gap:9px;overflow-x:auto;padding:0 20px 18px;scrollbar-width:none}
 .m-rail::-webkit-scrollbar{display:none}
@@ -861,7 +875,7 @@ let state = {
   couponInput: '',
   selectedGov: null,
   orders: [], // {num, date, items:[...], total, gov, customer, phone, status, customerId, customerName}
-  settings: { deliveryMin: 10, deliveryMax: 15 },
+  settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: false, billboardTitle: '', billboardSubtitle: '', billboardImageUrl: '', billboardLinkType: 'none', billboardLinkValue: '', billboardButtonLabel: '' },
   adminView: 'overview',
   adminSideOpen: false,
   adminSelectedCustomer: null,
@@ -1504,6 +1518,17 @@ function renderHome(){
     </div>
   </section>
   <div class="zellige-divider"></div>
+  ${state.settings.billboardEnabled && (state.settings.billboardTitle || state.settings.billboardImageUrl) ? `
+  <section class="container" style="margin-bottom:32px">
+    <div class="billboard" ${state.settings.billboardImageUrl?`style="background-image:url('${state.settings.billboardImageUrl}')"`:''}>
+      <div class="billboard-inner">
+        ${state.settings.billboardTitle?`<h2 class="font-display">${state.settings.billboardTitle}</h2>`:''}
+        ${state.settings.billboardSubtitle?`<p>${state.settings.billboardSubtitle}</p>`:''}
+        ${state.settings.billboardLinkType!=='none' && state.settings.billboardLinkValue?`
+        <button class="btn btn-primary" onclick="${state.settings.billboardLinkType==='category'?`filterByCat('${state.settings.billboardLinkValue}')`:`window.open('${state.settings.billboardLinkValue}','_blank')`}">${state.settings.billboardButtonLabel || (state.lang==='ar'?'تسوق الآن':'Shop now')}</button>`:''}
+      </div>
+    </div>
+  </section>` : ''}
 
   <section id="cats-sec" class="container">
     <div class="section-head"><div><div class="eyebrow">${t('categories')}</div><h2 class="font-display">${t('categories')}</h2></div></div>
@@ -2276,6 +2301,41 @@ function updateSettings(field, val){
   sb.from('settings').update({[dbField]: state.settings[field]}).eq('id', 1)
     .then(({error})=>{ if(error) console.error('Settings sync failed:', error); });
 }
+const BILLBOARD_FIELD_DB = {
+  billboardEnabled:'billboard_enabled', billboardTitle:'billboard_title', billboardSubtitle:'billboard_subtitle',
+  billboardImageUrl:'billboard_image_url', billboardLinkType:'billboard_link_type', billboardLinkValue:'billboard_link_value',
+  billboardButtonLabel:'billboard_button_label'
+};
+function updateBillboardField(field, val){
+  state.settings[field] = field==='billboardEnabled' ? !!val : val;
+  render();
+  sb.from('settings').update({[BILLBOARD_FIELD_DB[field]]: state.settings[field]}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Billboard settings sync failed:', error); });
+}
+async function handleBillboardImageUpload(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    showToast(state.lang==='ar' ? 'يرجى اختيار ملف صورة' : 'Please choose an image file');
+    return;
+  }
+  showToast(state.lang==='ar' ? 'جارٍ رفع الصورة...' : 'Uploading image...');
+  try{
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `billboard-${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true });
+    if(upErr) throw upErr;
+    const { data } = sb.storage.from('product-images').getPublicUrl(path);
+    updateBillboardField('billboardImageUrl', data.publicUrl);
+    showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
+  } catch(e){
+    console.error('Billboard image upload failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر رفع الصورة، تحقق من إعداد التخزين' : 'Could not upload the image — check storage setup');
+  }
+}
+function removeBillboardImage(){
+  updateBillboardField('billboardImageUrl', '');
+}
 function setAdminView(v){ state.adminView=v; render(); refreshAdminData(); }
 
 /* Renders a table of an order's items, each with its own logistics status dropdown */
@@ -2613,6 +2673,49 @@ function renderAdmin(){
           <div class="form-field"><label>${t('deliveryMaxLabel')}</label><input type="number" min="1" value="${state.settings.deliveryMax}" onchange="updateSettings('deliveryMax', this.value)"/></div>
         </div>
         <p style="font-size:12px;color:var(--ink-soft);margin-top:4px">${t('deliveryHelp')}</p>
+      </div>
+      <div class="panel" style="max-width:560px;margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 style="margin:0">${state.lang==='ar'?'لافتة الصفحة الرئيسية':'Home page billboard'}</h3>
+          <button class="mini-toggle ${state.settings.billboardEnabled?'on':''}" onclick="updateBillboardField('billboardEnabled', ${!state.settings.billboardEnabled})">${state.lang==='ar'?'مفعّلة':'Enabled'}</button>
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'لافتة قابلة للتعديل تظهر أعلى الصفحة الرئيسية (سطح المكتب والجوال) للترويج لعرض أو منتجات جديدة.':'An editable banner near the top of the home page (desktop and mobile) to promote an offer or new items.'}</p>
+        <div class="form-field" style="margin-bottom:12px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${state.settings.billboardTitle||''}" placeholder="${state.lang==='ar'?'مثال: تخفيضات نهاية الموسم':'e.g. End of season sale'}" onchange="updateBillboardField('billboardTitle', this.value)"/></div>
+        <div class="form-field" style="margin-bottom:12px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${state.settings.billboardSubtitle||''}" placeholder="${state.lang==='ar'?'مثال: خصم يصل إلى 30% لفترة محدودة':'e.g. Up to 30% off, for a limited time'}" onchange="updateBillboardField('billboardSubtitle', this.value)"/></div>
+        <div class="form-field" style="margin-bottom:12px">
+          <label>${state.lang==='ar'?'الصورة':'Image'}</label>
+          ${state.settings.billboardImageUrl?`
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <img src="${state.settings.billboardImageUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>
+            <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeBillboardImage()">${state.lang==='ar'?'🗑️ إزالة':'🗑️ Remove'}</button>
+          </div>`:''}
+          <input type="file" accept="image/*" onchange="handleBillboardImageUpload(event)"/>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-field">
+            <label>${state.lang==='ar'?'الرابط':'Link'}</label>
+            <select onchange="updateBillboardField('billboardLinkType', this.value)">
+              <option value="none" ${state.settings.billboardLinkType==='none'?'selected':''}>${state.lang==='ar'?'بدون رابط':'No link'}</option>
+              <option value="category" ${state.settings.billboardLinkType==='category'?'selected':''}>${state.lang==='ar'?'فئة في المتجر':'A category on the site'}</option>
+              <option value="url" ${state.settings.billboardLinkType==='url'?'selected':''}>${state.lang==='ar'?'رابط خارجي':'Custom URL'}</option>
+            </select>
+          </div>
+          ${state.settings.billboardLinkType==='category'?`
+          <div class="form-field">
+            <label>${state.lang==='ar'?'الفئة':'Category'}</label>
+            <select onchange="updateBillboardField('billboardLinkValue', this.value)">
+              <option value="">${state.lang==='ar'?'اختر فئة':'Choose a category'}</option>
+              ${CATS.map(c=>`<option value="${c.id}" ${state.settings.billboardLinkValue===c.id?'selected':''}>${catName(c)}</option>`).join('')}
+            </select>
+          </div>`:''}
+          ${state.settings.billboardLinkType==='url'?`
+          <div class="form-field">
+            <label>URL</label>
+            <input type="text" value="${state.settings.billboardLinkValue||''}" placeholder="https://..." onchange="updateBillboardField('billboardLinkValue', this.value)"/>
+          </div>`:''}
+        </div>
+        ${state.settings.billboardLinkType!=='none'?`
+        <div class="form-field" style="max-width:240px"><label>${state.lang==='ar'?'نص الزر':'Button label'}</label><input type="text" value="${state.settings.billboardButtonLabel||''}" placeholder="${state.lang==='ar'?'تسوق الآن':'Shop now'}" onchange="updateBillboardField('billboardButtonLabel', this.value)"/></div>`:''}
       </div>`:''}
     </div>
   </div>`;
@@ -2827,6 +2930,10 @@ function mHome(){
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
   const deal = featured[0] || PRODUCTS[0];
+  const bb = state.settings;
+  const bbShow = bb.billboardEnabled && (bb.billboardTitle || bb.billboardImageUrl);
+  const bbHasLink = bb.billboardLinkType!=='none' && !!bb.billboardLinkValue;
+  const bbClick = bbHasLink ? (bb.billboardLinkType==='category' ? `mFilterByCat('${bb.billboardLinkValue}')` : `window.open('${bb.billboardLinkValue}','_blank')`) : '';
   return `
   <div style="animation:fadeIn .3s ease">
     <div class="m-header">
@@ -2838,6 +2945,14 @@ function mHome(){
       ${mThemeToggleBtn()}
     </div>
     <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>What are you looking for?</span></button>
+    ${bbShow ? `
+    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" ${bbHasLink?`onclick="${bbClick}"`:''} ${bb.billboardImageUrl?`style="background-image:url('${bb.billboardImageUrl}')"`:''}>
+      <div class="m-billboard-inner">
+        ${bb.billboardTitle?`<div class="m-billboard-title">${bb.billboardTitle}</div>`:''}
+        ${bb.billboardSubtitle?`<div class="m-billboard-sub">${bb.billboardSubtitle}</div>`:''}
+        ${bbHasLink?`<div class="m-billboard-cta">${bb.billboardButtonLabel || 'Shop now'}</div>`:''}
+      </div>
+    </div>` : ''}
     ${deal ? `
     <div class="m-feature" onclick="mOpenProduct(${deal.id})">
       <div class="m-feature-img" style="background:${PALETTE[deal.color % PALETTE.length]}">
@@ -3219,6 +3334,13 @@ async function initApp(){
     if(!error && data){
       state.settings.deliveryMin = data.delivery_min;
       state.settings.deliveryMax = data.delivery_max;
+      state.settings.billboardEnabled = !!data.billboard_enabled;
+      state.settings.billboardTitle = data.billboard_title || '';
+      state.settings.billboardSubtitle = data.billboard_subtitle || '';
+      state.settings.billboardImageUrl = data.billboard_image_url || '';
+      state.settings.billboardLinkType = data.billboard_link_type || 'none';
+      state.settings.billboardLinkValue = data.billboard_link_value || '';
+      state.settings.billboardButtonLabel = data.billboard_button_label || '';
     }
   } catch(e){
     console.error('Could not load settings:', e);
