@@ -2929,7 +2929,7 @@ function mHome(){
   const featured = PRODUCTS.filter(p=>p.featured);
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
-  const deal = featured[0] || PRODUCTS[0];
+  const deal = featured[0];
   const bb = state.settings;
   const bbShow = bb.billboardEnabled && (bb.billboardTitle || bb.billboardImageUrl);
   const bbHasLink = bb.billboardLinkType!=='none' && !!bb.billboardLinkValue;
