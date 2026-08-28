@@ -654,7 +654,7 @@ const T = {
     askAbout:"اسأل عن هذا المنتج...", askPlaceholder:"مثال: هل يناسب مطبخ صغير؟",
     chatTitle:"اسأل متجر لبنان", chatSub:"مساعد ذكي حقيقي", chatPlaceholder:"اكتب سؤالك...",
     addedToCart:"تمت الإضافة إلى السلة", removedFromWish:"أُزيل من المفضلة", addedToWish:"أُضيف إلى المفضلة",
-    freeDeliveryNote:"توصيل مجاني للطلبات فوق $75", specifications:"المواصفات", relatedProducts:"منتجات ذات صلة",
+    specifications:"المواصفات", relatedProducts:"منتجات ذات صلة",
     admin:"لوحة التحكم", aboutStore:"عن المتجر", aboutText:"متجر لبنان هو وجهتك للتسوق الإلكتروني الموثوق في لبنان.",
     contact:"تواصل معنا", shipping:"الشحن", returns:"الإرجاع", privacy:"سياسة الخصوصية", terms:"الشروط", faq:"الأسئلة الشائعة",
     newsletter:"النشرة البريدية", newsletterSub:"اشترك لتصلك أحدث العروض", subscribe:"اشترك",
@@ -690,7 +690,7 @@ const T = {
     askAbout:"Ask about this product...", askPlaceholder:"e.g. Is this good for a small kitchen?",
     chatTitle:"Ask Lebanon Store", chatSub:"AI assistant (simulated)", chatPlaceholder:"Type your question...",
     addedToCart:"Added to cart", removedFromWish:"Removed from wishlist", addedToWish:"Added to wishlist",
-    freeDeliveryNote:"Free delivery on orders over $75", specifications:"Specifications", relatedProducts:"Related Products",
+    specifications:"Specifications", relatedProducts:"Related Products",
     admin:"Admin Dashboard", aboutStore:"About Lebanon Store", aboutText:"Lebanon Store is your trusted online shopping destination in Lebanon.",
     contact:"Contact", shipping:"Shipping", returns:"Returns", privacy:"Privacy Policy", terms:"Terms", faq:"FAQ",
     newsletter:"Newsletter", newsletterSub:"Subscribe for the latest offers", subscribe:"Subscribe",
@@ -1749,7 +1749,6 @@ function renderDrawer(){
       <div class="sum-row"><span>${t('subtotal')}</span><span class="font-mono">${fmt(cartSubtotal())}</span></div>
       ${state.coupon?`<div class="sum-row"><span>${t('discount')}</span><span class="font-mono">-${fmt(discountAmount())}</span></div>`:''}
       <div class="sum-row total"><span>${t('total')}</span><span class="font-mono">${fmt(cartSubtotal()-discountAmount())}</span></div>
-      <div style="font-size:11px;color:var(--ink-soft);margin-bottom:10px">${t('freeDeliveryNote')}</div>
       <button class="btn btn-primary btn-block" onclick="toggleDrawer(false);goCheckout()">${t('checkout')}</button>
     </div>`:''}
   </div>`;
@@ -2869,10 +2868,6 @@ function mHome(){
       <div class="m-section-head"><div><div class="m-section-kicker">Just landed</div><div class="m-section-title">New arrivals</div></div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
       <div class="m-rail" style="padding:6px 20px 4px">${news.slice(0,5).map(mRailCard).join('')}</div>
     </div>` : ''}
-    <div class="m-promo">
-      <div class="m-promo-icon"><svg viewBox="0 0 24 24"><path d="M3 13l2-6h14l2 6M5 18h14M6 18a1.5 1.5 0 1 0 0 .01M18 18a1.5 1.5 0 1 0 0 .01"></path></svg></div>
-      <div style="font:500 13px/1.5 'Figtree',sans-serif">Free delivery over <strong>$${FREE_DELIVERY_MIN}</strong> — every governorate, cash on arrival.</div>
-    </div>
   </div>`;
 }
 function mList(){
