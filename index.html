@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>متجر لبنان | Lebanon Store</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Tajawal:wght@400;500;700;800&family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --cedar:#0F3D2E;
@@ -433,6 +433,171 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
   .cat-grid{grid-template-columns:repeat(2,1fr)}
   .drawer{width:100%}
 }
+
+/* ============================================================
+   MOBILE APP UI — phone-width customer experience.
+   Own design language (Caprasimo/Figtree/IBM Plex Mono, warm
+   terracotta palette), English-only, entirely separate from the
+   desktop CSS above. Only ever mounted below MOBILE_BP by JS.
+   ============================================================ */
+.mstore{
+  --bg:#f5ead8;--card:#fffcf4;--surf:#ebddc5;--text:#201e1d;--muted:#645c50;--line:rgba(32,30,29,.12);
+  --acc:#c67139;--accInk:#8c491a;--acc2:#7a8a5e;--acc2Ink:#56633f;
+  --shadow:0 3px 10px rgba(46,43,37,.14);--shadowLg:0 14px 34px rgba(46,43,37,.2);
+  min-height:100vh;background:var(--bg);color:var(--text);font-family:'Figtree',system-ui,sans-serif;
+  display:flex;flex-direction:column;position:relative;
+}
+.mstore[data-theme="dark"]{
+  --bg:#1c1a18;--card:#272320;--surf:#332d28;--text:#f5ead8;--muted:#c0b6a5;--line:rgba(245,234,216,.14);
+  --acc:#f6a06b;--accInk:#f6a06b;--acc2:#aebf92;--acc2Ink:#ccdbb2;
+  --shadow:0 3px 10px rgba(0,0,0,.4);--shadowLg:0 14px 34px rgba(0,0,0,.5);
+}
+.mstore *{box-sizing:border-box}
+.mstore .m-scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:112px}
+.mstore .m-disp{font-family:'Caprasimo',serif}
+.mstore .m-mono{font-family:'IBM Plex Mono',monospace}
+.mstore button{font-family:inherit}
+.mstore img,.mstore svg{display:block}
+
+.m-header{padding:16px 20px 14px;display:flex;align-items:center;gap:12px}
+.m-logo-mark{width:38px;height:38px;border-radius:14px;background:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
+.m-logo-mark svg{width:20px;height:20px;fill:none;stroke:#2e1a0a;stroke-width:2.75;stroke-linecap:round;stroke-linejoin:round}
+.m-kicker{font:600 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accInk)}
+.m-title{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;color:var(--text)}
+.m-iconbtn{width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
+.m-iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+
+.m-search{width:100%;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:13px 18px;cursor:pointer;color:var(--muted);font:400 14px/1 'Figtree',sans-serif;text-align:left;box-shadow:var(--shadow);margin:0 20px 16px;width:calc(100% - 40px)}
+.m-search svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.75;stroke-linecap:round;flex:none}
+
+.m-feature{margin:0 20px 20px;position:relative;border-radius:28px;overflow:hidden;cursor:pointer;background:var(--acc2Ink);box-shadow:var(--shadowLg)}
+.m-feature-img{position:relative;height:170px;display:flex;align-items:center;justify-content:center}
+.m-feature-img svg{width:90px;height:90px;fill:none;stroke:rgba(255,255,255,.5);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.m-feature-badge{position:absolute;top:16px;left:16px;background:var(--acc);color:#2e1a0a;font:700 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border-radius:999px}
+.m-feature-body{padding:16px 18px 18px;background:var(--card)}
+.m-feature-name{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;color:var(--text);margin-bottom:6px}
+.m-feature-row{display:flex;align-items:baseline;gap:9px}
+.m-price{font:600 20px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
+.m-was{font:500 13px/1 'IBM Plex Mono',monospace;color:var(--muted);text-decoration:line-through}
+.m-shipfree{margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)}
+
+.m-rail{display:flex;gap:9px;overflow-x:auto;padding:0 20px 18px;scrollbar-width:none}
+.m-rail::-webkit-scrollbar{display:none}
+.m-cat-chip{flex:none;display:flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer;color:var(--text);font:600 13px/1 'Figtree',sans-serif}
+.m-cat-chip svg{width:15px;height:15px;fill:none;stroke:var(--accInk);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+
+.m-section-head{padding:0 20px 10px;display:flex;align-items:baseline;justify-content:space-between}
+.m-section-title{font-family:'Caprasimo',serif;font-size:20px;color:var(--text)}
+.m-section-kicker{font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accInk)}
+.m-seeall{background:none;border:0;cursor:pointer;font:600 12px/1 'Figtree',sans-serif;color:var(--accInk);border-bottom:2px solid var(--acc);padding:0 0 2px}
+
+.m-grid{padding:10px 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.m-card{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.m-card-img{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.m-card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-card-img svg{width:46%;height:46%;fill:none;stroke:rgba(255,255,255,.82);stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.m-badge{position:absolute;top:9px;left:9px;background:var(--card);color:var(--accInk);font:700 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:999px}
+.m-card-body{padding:11px 12px 13px;display:flex;flex-direction:column;gap:5px;flex:1}
+.m-card-name{font:600 13px/1.3 'Figtree',sans-serif;color:var(--text)}
+.m-card-meta{font:500 11px/1 'Figtree',sans-serif;color:var(--muted)}
+.m-card-price{margin-top:auto;display:flex;align-items:baseline;gap:7px}
+
+.m-rail-card{flex:none;width:168px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+.m-rail-card-img{position:relative;height:132px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.m-rail-card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-rail-card-img svg{width:56px;height:56px;fill:none;stroke:rgba(255,255,255,.82);stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.m-rail-card-body{padding:11px 12px 13px}
+
+.m-promo{margin:0 20px 26px;display:flex;align-items:center;gap:13px;background:var(--surf);border-radius:22px;padding:16px 18px}
+.m-promo-icon{width:40px;height:40px;border-radius:999px;background:var(--acc2);display:flex;align-items:center;justify-content:center;flex:none}
+.m-promo-icon svg{width:20px;height:20px;fill:none;stroke:#272e1b;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+.m-list-head{padding:8px 20px 14px;display:flex;align-items:center;gap:12px}
+.m-list-title{font-family:'Caprasimo',serif;font-size:21px;color:var(--text)}
+.m-chip{flex:none;border-radius:999px;padding:8px 14px;cursor:pointer;font:600 12.5px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--muted)}
+.m-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a}
+.m-list{padding:0 20px 26px;display:flex;flex-direction:column;gap:12px}
+.m-list-item{display:flex;gap:13px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:11px;box-shadow:var(--shadow)}
+.m-list-item-img{width:86px;height:86px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;position:relative}
+.m-list-item-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-list-item-img svg{width:40px;height:40px;fill:none;stroke:rgba(255,255,255,.82);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.m-list-item-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:3px 2px 3px 0}
+.m-empty{text-align:center;padding:70px 20px}
+.m-empty-icon{width:74px;height:74px;border-radius:999px;background:var(--surf);margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
+.m-empty-icon svg{width:32px;height:32px;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+.m-product-hero{position:relative;height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.m-product-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-product-hero svg{width:140px;height:140px;fill:none;stroke:rgba(255,255,255,.55);stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
+.m-product-hero .m-iconbtn{position:absolute;top:14px;background:rgba(255,253,248,.92);border:0}
+.m-product-body{margin-top:-24px;border-radius:28px 28px 0 0;background:var(--bg);padding:22px 20px 26px;position:relative}
+.m-variant-chip{cursor:pointer;border-radius:999px;padding:10px 18px;font:600 13px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--text)}
+.m-variant-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a}
+.m-specs{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 16px;margin-bottom:18px}
+.m-spec-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font:500 13px/1.4 'Figtree',sans-serif}
+.m-spec-row:last-child{border-bottom:0}
+.m-qty{display:flex;align-items:center;gap:2px;background:var(--surf);border-radius:999px;padding:5px}
+.m-qty button{width:36px;height:36px;border-radius:999px;border:0;background:var(--card);color:var(--text);font:600 17px/1 'Figtree',sans-serif;cursor:pointer}
+.m-btn-primary{border:0;cursor:pointer;border-radius:999px;padding:16px;background:var(--acc);color:#2e1a0a;font-family:'Caprasimo',serif;font-size:15px;text-align:center}
+.m-btn-primary:active{transform:scale(.98)}
+.m-btn-primary:disabled{opacity:.5;cursor:default}
+.m-btn-outline{border:1.5px solid var(--line);cursor:pointer;border-radius:999px;padding:15px;background:transparent;color:var(--text);font:600 14px/1 'Figtree',sans-serif;text-align:center}
+
+.m-cart-line{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:11px;box-shadow:var(--shadow)}
+.m-cart-thumb{width:70px;height:70px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;position:relative}
+.m-cart-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-cart-thumb svg{width:32px;height:32px;fill:none;stroke:rgba(255,255,255,.85);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.m-summary{background:var(--surf);border-radius:22px;padding:16px 18px}
+.m-summary-row{display:flex;justify-content:space-between;font:500 13.5px/1.9 'Figtree',sans-serif;color:var(--muted)}
+.m-summary-total{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font:800 16px/1.4 'Figtree',sans-serif;color:var(--text)}
+
+.m-input{width:100%;border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:14px 18px;font:500 14px/1 'Figtree',sans-serif;outline:none}
+.m-input::placeholder{color:var(--muted)}
+.m-gov-chip{cursor:pointer;border-radius:999px;padding:10px 15px;font:600 12.5px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--text)}
+.m-gov-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a}
+.m-cod{display:flex;align-items:center;gap:12px;border:1.5px solid var(--acc);background:var(--card);border-radius:22px;padding:15px 17px;margin-bottom:18px}
+.m-cod-icon{width:36px;height:36px;border-radius:999px;background:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
+.m-cod-icon svg{width:18px;height:18px;fill:none;stroke:#2e1a0a;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.m-steps{display:flex;gap:6px;margin:10px 0 20px}
+.m-step-bar{flex:1;height:4px;border-radius:999px;background:var(--line)}
+.m-step-bar.on{background:var(--acc)}
+
+.m-confirm-icon{width:88px;height:88px;border-radius:999px;background:var(--acc2);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;animation:pop .6s ease}
+.m-confirm-icon svg{width:42px;height:42px;fill:none;stroke:#272e1b;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.m-confirm-num{display:inline-block;background:var(--surf);border-radius:999px;padding:11px 20px;font:600 17px/1 'IBM Plex Mono',monospace;color:var(--accInk);margin-bottom:26px}
+
+.m-order-card{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 17px;box-shadow:var(--shadow)}
+.m-status-pill{font:700 10.5px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-radius:999px}
+.m-progress-track{height:5px;border-radius:999px;background:var(--surf);overflow:hidden;margin-bottom:9px}
+.m-progress-fill{height:100%;border-radius:999px;background:var(--acc)}
+
+.m-track-hero{background:var(--acc2Ink);border-radius:26px;padding:20px;color:#f0fae1;margin-bottom:18px}
+.m-track-step{display:flex;gap:14px;align-items:flex-start;padding:2px 0}
+.m-track-dotcol{display:flex;flex-direction:column;align-items:center;flex:none;align-self:stretch}
+.m-track-dot{width:16px;height:16px;border-radius:999px;margin-top:14px}
+.m-track-line{flex:1;width:2px;min-height:22px}
+
+.m-account-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.m-avatar{width:52px;height:52px;border-radius:999px;background:var(--acc2);color:#272e1b;display:flex;align-items:center;justify-content:center;font-family:'Caprasimo',serif;font-size:19px;flex:none}
+.m-panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:6px 18px;margin-bottom:16px}
+.m-panel-row{display:flex;align-items:center;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--line)}
+.m-panel-row:last-child{border-bottom:0}
+.m-switch{width:52px;height:30px;border-radius:999px;border:0;cursor:pointer;padding:3px;display:flex}
+.m-switch-knob{width:24px;height:24px;border-radius:999px;background:#fffcf4;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+.m-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--card);border-top:1px solid var(--line);padding:9px 10px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;max-width:inherit}
+.m-tab{position:relative;flex:1;background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0;color:var(--muted)}
+.m-tab.active{color:var(--accInk)}
+.m-tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.m-tab-label{font:600 10px/1 'Figtree',sans-serif}
+.m-tab-badge{position:absolute;top:0;right:20%;min-width:17px;height:17px;border-radius:999px;background:var(--acc2Ink);color:#fff;font:700 10px/17px 'IBM Plex Mono',monospace;text-align:center}
+
+.m-sheet-overlay{position:fixed;inset:0;z-index:70;background:rgba(20,17,14,.45);animation:fadeIn .2s ease}
+.m-sheet{position:fixed;left:0;right:0;bottom:0;z-index:71;background:var(--bg);border-radius:30px 30px 0 0;padding:12px 20px calc(26px + env(safe-area-inset-bottom));animation:sheetUp .28s cubic-bezier(.2,.9,.3,1);box-shadow:var(--shadowLg);max-width:inherit;margin:0 auto}
+.m-sheet-handle{width:44px;height:5px;border-radius:999px;background:var(--line);margin:0 auto 16px}
+.m-sheet-thumb{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex:none;animation:pop .45s ease;overflow:hidden;position:relative}
+.m-sheet-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.m-sheet-thumb svg{width:30px;height:30px;fill:none;stroke:rgba(255,255,255,.85);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -713,6 +878,13 @@ let state = {
   loginForm: {},
   authBusy: false,
   impersonateFromAdmin: null, // holds the admin's own id while they're "shopping as" a customer
+
+  /* ---- mobile app UI (phone-width customer experience) ---- */
+  mScreen: 'home', mPrev: 'home', // home|list|product|cart|checkout|confirm|orders|track|account
+  mTheme: (function(){ try{ return localStorage.getItem('mstore-theme') || 'light'; }catch(e){ return 'light'; } })(),
+  mSheetProduct: null,
+  mTrackDbId: null,
+  mQty: 1,
 };
 
 function t(key){ return T[state.lang][key]; }
@@ -1112,7 +1284,9 @@ async function refreshAdminData(){
   }
 }
 async function goMyOrders(){
-  state.view='orders'; window.scrollTo(0,0); render();
+  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen='orders'; }
+  else { state.view='orders'; }
+  window.scrollTo(0,0); render();
   try{
     const { data, error } = await sb.from('orders').select('*').eq('customer_id', state.currentUserId).order('created_at', {ascending:false});
     if(!error && data){
@@ -1691,7 +1865,8 @@ async function placeOrder(){
     sb.from('customers').update(addrFields).eq('id', c.id)
       .then(({error})=>{ if(error) console.error('Address save failed:', error); });
   }
-  state.view = 'confirm';
+  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen = 'confirm'; }
+  else { state.view = 'confirm'; }
   window.scrollTo(0,0);
   render();
 }
@@ -2523,13 +2698,507 @@ function impersonateBanner(){
   </div>`;
 }
 
+/* ============================================================
+   MOBILE APP UI — real screens wired to the same backend/state
+   as the desktop site (cart, checkout, orders, auth), only the
+   presentation layer is new. English-only, mounted below the
+   MOBILE_BP breakpoint. See the .mstore CSS block above.
+   ============================================================ */
+const MOBILE_BP = 760;
+function isMobileViewport(){ return window.innerWidth <= MOBILE_BP; }
+
+const M_ICON_PATHS = {
+  electronics:"M4 4h16v11H4zM9 21h6M12 15v6",
+  kitchen:"M6 2v7a3 3 0 0 0 6 0V2M9 9v13M17 2v20M17 2a4 4 0 0 1 4 4v3h-4",
+  beauty:"M12 2c2 3 5 5 5 9a5 5 0 0 1-10 0c0-4 3-6 5-9z",
+  fashion:"M16 4l4 3-2 3-2-1v11H8V9L6 10 4 7l4-3 2 2h4l2-2z",
+  accessories:"M12 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10M9 13l-2 8h10l-2-8",
+  phones:"M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M11 18h2",
+  tools:"M14.7 6.3a4 4 0 1 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.83 2.83-2.12-2.12z",
+  car:"M3 13l2-6h14l2 6M3 13v5h2m14-5v5h2M5 18h14M3 13h18",
+  kids:"M12 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6M6 21c0-4 2.5-6 6-6s6 2 6 6",
+  offers:"M20 12l-8 8-9-9V4h7l9 9a1 1 0 0 1 1 1zM7.5 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3"
+};
+const M_BACK_D = "M15 5l-7 7 7 7";
+
+/* ---- navigation ---- */
+function mGo(s){ state.mPrev = state.mScreen; state.mScreen = s; window.scrollTo(0,0); render(); }
+function mBack(){ mGo(state.mPrev==='product' ? 'list' : state.mPrev); }
+function mGoHome(){ state.listFilter = null; mGo('home'); }
+function mGoShopAll(){ state.listFilter = null; mGo('list'); }
+function mToggleTheme(){
+  state.mTheme = state.mTheme==='light' ? 'dark' : 'light';
+  try{ localStorage.setItem('mstore-theme', state.mTheme); }catch(e){}
+  render();
+}
+function mSearchTap(){ showToast('Search is coming soon'); }
+
+/* ---- product screen ---- */
+function mOpenProduct(id){
+  state.productId = id; state.modalVariant = null; state.mQty = 1;
+  state.mPrev = state.mScreen; state.mScreen = 'product';
+  window.scrollTo(0,0); render();
+}
+function mPickVariant(v){ state.modalVariant = v; render(); }
+function mIncQty(){ state.mQty = (state.mQty||1) + 1; render(); }
+function mDecQty(){ state.mQty = Math.max(1, (state.mQty||1) - 1); render(); }
+function mAddToCartFlow(){
+  const p = findProduct(state.productId);
+  if(!p) return;
+  state.mSheetProduct = p.id;
+  addToCart(p.id, state.modalVariant || p.variants[0], state.mQty || 1);
+}
+function mCloseSheet(){ state.mSheetProduct = null; render(); }
+function mGoCartFromSheet(){ state.mSheetProduct = null; mGo('cart'); }
+
+/* ---- list / filter (reuses the same state.listFilter as the desktop filtered view) ---- */
+function mFilterByCat(id){ state.listFilter = {type:'cat', id}; mGo('list'); }
+function mFilterByFlag(key){ state.listFilter = {type:'flag', key}; mGo('list'); }
+function mClearFilter(){ state.listFilter = null; render(); }
+
+/* ---- checkout ---- */
+function mPlaceOrder(){
+  const f = state.formData;
+  if(!f.fullName || !f.phone || !state.selectedGov || !f.address){
+    showToast('Please fill in the required fields');
+    return;
+  }
+  f.city = f.city || state.selectedGov; // mobile checkout has one address field, not a separate city field
+  openShippingModal();
+}
+
+/* ---- orders / tracking ---- */
+function mOpenOrder(dbId){ state.mTrackDbId = dbId; state.mPrev = state.mScreen; state.mScreen = 'track'; window.scrollTo(0,0); render(); }
+
+/* ---- shared render helpers ---- */
+function mBackBtn(onclick){
+  return `<button class="m-iconbtn" onclick="${onclick}"><svg viewBox="0 0 24 24"><path d="${M_BACK_D}"></path></svg></button>`;
+}
+function mThemeToggleBtn(){
+  const d = state.mTheme==='light'
+    ? "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"
+    : "M12 5v-2M12 21v-2M5 12H3M21 12h-2M6.5 6.5L5 5M19 19l-1.5-1.5M6.5 17.5L5 19M19 5l-1.5 1.5M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8";
+  return `<button class="m-iconbtn" onclick="mToggleTheme()"><svg viewBox="0 0 24 24"><path d="${d}"></path></svg></button>`;
+}
+
+function mCard(p){
+  const badge = p.new ? 'New' : (p.best ? 'Best seller' : '');
+  return `
+  <div class="m-card" onclick="mOpenProduct(${p.id})">
+    <div class="m-card-img">
+      ${mProductMediaInner(p)}
+      ${badge?`<div class="m-badge">${badge}</div>`:''}
+    </div>
+    <div class="m-card-body">
+      <div class="m-card-name">${p.name_en}</div>
+      <div class="m-card-meta">★ ${p.rating.toFixed(1)} · ${p.reviews} reviews</div>
+      <div class="m-card-price"><span class="m-price m-mono">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono">${fmt(p.was)}</span>`:''}</div>
+    </div>
+  </div>`;
+}
+function mProductMediaInner(p){
+  const color = PALETTE[p.color % PALETTE.length];
+  const svg = `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`;
+  return p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name_en}" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
+}
+function mRailCard(p){
+  return `
+  <div class="m-rail-card" onclick="mOpenProduct(${p.id})">
+    <div class="m-rail-card-img">${mProductMediaInner(p)}</div>
+    <div class="m-rail-card-body">
+      <div class="m-card-name" style="margin-bottom:6px">${p.name_en}</div>
+      <div class="m-price m-mono">${fmt(p.price)}</div>
+    </div>
+  </div>`;
+}
+function mListItem(p){
+  const stockLabel = p.stock===0 ? 'Out of stock' : (p.stock<8 ? 'Low stock' : 'In stock');
+  return `
+  <div class="m-list-item" onclick="mOpenProduct(${p.id})">
+    <div class="m-list-item-img">${mProductMediaInner(p)}</div>
+    <div class="m-list-item-body">
+      <div class="m-card-name">${p.name_en}</div>
+      <div class="m-card-meta">★ ${p.rating.toFixed(1)} · ${stockLabel}</div>
+      <div class="m-card-price"><span class="m-price m-mono" style="font-size:16px">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono">${fmt(p.was)}</span>`:''}</div>
+    </div>
+  </div>`;
+}
+
+/* ---- screens ---- */
+function mHome(){
+  const featured = PRODUCTS.filter(p=>p.featured);
+  const best = PRODUCTS.filter(p=>p.best);
+  const news = PRODUCTS.filter(p=>p.new);
+  const deal = featured[0] || PRODUCTS[0];
+  return `
+  <div style="animation:fadeIn .3s ease">
+    <div class="m-header">
+      <div class="m-logo-mark"><svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.3 5.6.6-4.2 3.9 1.2 5.7L12 15.6 6.9 18.5l1.2-5.7L4 8.9l5.6-.6z"></path></svg></div>
+      <div style="flex:1;min-width:0">
+        <div class="m-kicker">ya halaa ya halaa</div>
+        <div class="m-title">Lebanon Store</div>
+      </div>
+      ${mThemeToggleBtn()}
+    </div>
+    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>What are you looking for?</span></button>
+    ${deal ? `
+    <div class="m-feature" onclick="mOpenProduct(${deal.id})">
+      <div class="m-feature-img" style="background:${PALETTE[deal.color % PALETTE.length]}">
+        <svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[deal.icon]||''}"></path></svg>
+        <div class="m-feature-badge">Deal of the week</div>
+      </div>
+      <div class="m-feature-body">
+        <div class="m-feature-name">${deal.name_en}</div>
+        <div class="m-feature-row">
+          <span class="m-price m-mono">${fmt(deal.price)}</span>
+          ${deal.was>deal.price?`<span class="m-was m-mono">${fmt(deal.was)}</span>`:''}
+          <span class="m-shipfree">Ships free</span>
+        </div>
+      </div>
+    </div>` : ''}
+    <div class="m-rail">
+      ${CATS.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
+    </div>
+    <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
+    <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>
+    ${best.length ? `
+    <div style="padding:0 0 22px">
+      <div class="m-section-head"><div><div class="m-section-kicker">Bought again and again</div><div class="m-section-title">Best sellers</div></div><button class="m-seeall" onclick="mFilterByFlag('best')">See all</button></div>
+      <div class="m-rail" style="padding:6px 20px 4px">${best.slice(0,5).map(mRailCard).join('')}</div>
+    </div>` : ''}
+    ${news.length ? `
+    <div style="padding:0 0 22px">
+      <div class="m-section-head"><div><div class="m-section-kicker">Just landed</div><div class="m-section-title">New arrivals</div></div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
+      <div class="m-rail" style="padding:6px 20px 4px">${news.slice(0,5).map(mRailCard).join('')}</div>
+    </div>` : ''}
+    <div class="m-promo">
+      <div class="m-promo-icon"><svg viewBox="0 0 24 24"><path d="M3 13l2-6h14l2 6M5 18h14M6 18a1.5 1.5 0 1 0 0 .01M18 18a1.5 1.5 0 1 0 0 .01"></path></svg></div>
+      <div style="font:500 13px/1.5 'Figtree',sans-serif">Free delivery over <strong>$${FREE_DELIVERY_MIN}</strong> — every governorate, cash on arrival.</div>
+    </div>
+  </div>`;
+}
+function mList(){
+  const f = state.listFilter;
+  let list = PRODUCTS, title = 'All products';
+  if(f && f.type==='cat'){ const c = CATS.find(x=>x.id===f.id); list = PRODUCTS.filter(p=>p.cat===f.id); title = c ? c.en : title; }
+  else if(f && f.type==='flag'){
+    const tests = { best:p=>p.best, new:p=>p.new, featured:p=>p.featured, offer:p=>p.was>p.price };
+    const labels = { best:'Best sellers', new:'New arrivals', featured:'Featured', offer:'Special offers' };
+    list = PRODUCTS.filter(tests[f.key] || (()=>false)); title = labels[f.key] || title;
+  }
+  return `
+  <div style="animation:fadeIn .25s ease">
+    <div class="m-list-head">${mBackBtn('mBack()')}<div class="m-list-title">${title}</div></div>
+    <div class="m-rail">
+      <button class="m-chip ${!f?'active':''}" onclick="mClearFilter()">All</button>
+      ${CATS.map(c=>`<button class="m-chip ${f&&f.type==='cat'&&f.id===c.id?'active':''}" onclick="mFilterByCat('${c.id}')">${c.en}</button>`).join('')}
+    </div>
+    <div class="m-list">
+      ${list.length ? list.map(mListItem).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">No products here yet</div></div>`}
+    </div>
+  </div>`;
+}
+function mProduct(){
+  const p = findProduct(state.productId);
+  if(!p) return mList();
+  const color = PALETTE[p.color % PALETTE.length];
+  const variant = state.modalVariant || p.variants[0];
+  const specs = Object.entries((p.specs && p.specs.en) || {});
+  const wished = state.wishlist.has(p.id);
+  return `
+  <div style="animation:fadeIn .25s ease">
+    <div class="m-product-hero" style="background:${color}">
+      ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}">`:`<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`}
+      <div class="m-iconbtn" style="left:18px" onclick="mBack()"><svg viewBox="0 0 24 24"><path d="${M_BACK_D}"></path></svg></div>
+      <button class="m-iconbtn" style="right:18px" onclick="toggleWishlist(${p.id})"><svg viewBox="0 0 24 24" style="stroke:#c2542d;fill:${wished?'#c2542d':'none'}"><path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20z"></path></svg></button>
+    </div>
+    <div class="m-product-body">
+      <div class="m-kicker" style="margin-bottom:6px">${(CATS.find(c=>c.id===p.cat)||{en:''}).en}</div>
+      <div class="m-disp" style="font-size:24px;line-height:1.2;margin-bottom:10px">${p.name_en}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+        <span class="m-mono" style="font-weight:600;font-size:26px;color:var(--accInk)">${fmt(p.price)}</span>
+        ${p.was>p.price?`<span class="m-was m-mono" style="font-size:14px">${fmt(p.was)}</span>`:''}
+        <span style="margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)">★ ${p.rating.toFixed(1)} (${p.reviews})</span>
+      </div>
+      <div style="font:400 14px/1.65 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">${p.desc_en}</div>
+      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose an option</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+        ${p.variants.map(v=>`<button class="m-variant-chip ${v===variant?'active':''}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}')">${v}</button>`).join('')}
+      </div>
+      <div class="m-specs">
+        ${specs.map(([k,v])=>`<div class="m-spec-row"><span style="color:var(--muted)">${k}</span><span style="color:var(--text);font-weight:600">${v}</span></div>`).join('')}
+        <div class="m-spec-row"><span style="color:var(--muted)">Estimated delivery</span><span style="color:var(--text);font-weight:600">${state.settings.deliveryMin}–${state.settings.deliveryMax} days</span></div>
+      </div>
+      <div style="display:flex;gap:11px;align-items:center">
+        <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
+        <button class="m-btn-primary" style="flex:1" ${p.stock===0?'disabled':''} onclick="mAddToCartFlow()">${p.stock===0?'Out of stock':'Add to cart'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+function mCart(){
+  const lines = state.cart.map(l=>{
+    const p = findProduct(l.id);
+    if(!p) return '';
+    const color = PALETTE[p.color % PALETTE.length];
+    return `
+    <div class="m-cart-line">
+      <div class="m-cart-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="m-card-name">${p.name_en}</div>
+        <div class="m-card-meta" style="margin-bottom:8px">${l.variant}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="changeQty(${p.id},'${l.variant.replace(/'/g,"\\'")}',-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
+          <span class="m-mono" style="font-weight:600;font-size:13px;min-width:14px;text-align:center">${l.qty}</span>
+          <button onclick="changeQty(${p.id},'${l.variant.replace(/'/g,"\\'")}',1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">+</button>
+          <span class="m-mono" style="margin-left:auto;font-weight:600;color:var(--accInk)">${fmt(p.price*l.qty)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const sub = cartSubtotal(), fee = deliveryFee();
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">${mBackBtn('mBack()')}<div class="m-list-title">Your basket</div></div>
+    ${state.cart.length===0 ? `
+    <div class="m-empty">
+      <div class="m-empty-icon"><svg viewBox="0 0 24 24"><path d="M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0"></path></svg></div>
+      <div class="m-disp" style="font-size:19px;margin-bottom:6px">Nothing here yet</div>
+      <div style="font:400 13.5px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:20px">Pick something out — we deliver everywhere in Lebanon.</div>
+      <button class="m-btn-primary" style="display:inline-block;padding:13px 24px;font-size:14px" onclick="mGoHome()">Start shopping</button>
+    </div>` : `
+    <div style="display:flex;flex-direction:column;gap:11px">${lines}</div>
+    <div class="m-summary" style="margin-top:18px">
+      <div class="m-summary-row"><span>Subtotal</span><span class="m-mono">${fmt(sub)}</span></div>
+      <div class="m-summary-row"><span>Delivery</span><span class="m-mono">${state.selectedGov ? (fee===0?'Free':fmt(fee)) : '—'}</span></div>
+      <div class="m-summary-total"><span>Total</span><span class="m-mono" style="color:var(--accInk)">${fmt(cartTotal())}</span></div>
+      <button class="m-btn-primary" style="width:100%;margin-top:14px" onclick="mGo('checkout')">Checkout</button>
+    </div>`}
+  </div>`;
+}
+function mCheckout(){
+  const f = state.formData;
+  const sub = cartSubtotal(), fee = deliveryFee();
+  const canPlace = !!(f.fullName && f.phone && state.selectedGov && f.address);
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">${mBackBtn('mBack()')}<div class="m-list-title">Checkout</div></div>
+    <div class="m-steps"><div class="m-step-bar on"></div><div class="m-step-bar on"></div><div class="m-step-bar"></div></div>
+    <div class="m-section-kicker" style="margin-bottom:10px">Where should it land?</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <input class="m-input" value="${f.fullName||''}" oninput="updateForm('fullName',this.value)" placeholder="Full name">
+      <input class="m-input" value="${f.phone||''}" oninput="updateForm('phone',this.value)" placeholder="Phone number">
+      <input class="m-input" value="${f.address||''}" oninput="updateForm('address',this.value)" placeholder="Street, building, floor">
+    </div>
+    <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Governorate</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+      ${Object.entries(GOV_FEES.en).map(([g,fe])=>`<button class="m-gov-chip ${state.selectedGov===g?'active':''}" onclick="selectGov('${g}')">${g} · $${fe}</button>`).join('')}
+    </div>
+    <div class="m-cod">
+      <div class="m-cod-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18v10H3zM3 11h18M7 15h3"></path></svg></div>
+      <div><div style="font:700 13.5px/1.3 'Figtree',sans-serif">Cash on delivery</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">Pay the courier when it arrives</div></div>
+    </div>
+    <div class="m-summary">
+      <div class="m-summary-row"><span>${cartCount()} item${cartCount()===1?'':'s'}</span><span class="m-mono">${fmt(sub)}</span></div>
+      <div class="m-summary-row"><span>Delivery${state.selectedGov?' to '+state.selectedGov:''}</span><span class="m-mono">${state.selectedGov?(fee===0?'Free':fmt(fee)):'—'}</span></div>
+      <div class="m-summary-total"><span>Total</span><span class="m-mono" style="color:var(--accInk)">${fmt(cartTotal())}</span></div>
+    </div>
+    ${canPlace
+      ? `<button class="m-btn-primary" style="width:100%;margin-top:16px" onclick="mPlaceOrder()">Place order · ${fmt(cartTotal())}</button>`
+      : `<div style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Caprasimo',serif;font-size:15px;text-align:center">Add name, phone &amp; governorate</div>`}
+  </div>`;
+}
+function mConfirm(){
+  const last = state.orders[state.orders.length-1];
+  const f = state.formData;
+  return `
+  <div style="animation:riseIn .45s ease;padding:70px 26px;text-align:center">
+    <div class="m-confirm-icon"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"></path></svg></div>
+    <div class="m-disp" style="font-size:25px;line-height:1.2;margin-bottom:10px">Yalla, it's ordered!</div>
+    <div style="font:400 14px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">We'll ring you on ${f.phone||''} to confirm before it leaves the warehouse.</div>
+    ${last?`<div class="m-confirm-num">${last.num}</div>`:''}
+    ${last?`<button class="m-btn-primary" style="width:100%;margin-bottom:11px" onclick="mOpenOrder('${last._dbId}')">Track this order</button>`:''}
+    <button class="m-btn-outline" style="width:100%" onclick="mGoHome()">Keep shopping</button>
+  </div>`;
+}
+function mOrders(){
+  const mine = state.orders.filter(o=>o.customerId===state.currentUserId || !o.customerId).slice().reverse();
+  const pillColors = {
+    delivered:['#dcefe0','#2b6b3f'], cancelled:['#fbdacb','#c2542d'], returned:['#fbdacb','#c2542d']
+  };
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div class="m-disp" style="font-size:23px;margin:6px 0 16px">Your orders</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${mine.length ? mine.map(o=>{
+        const status = (o.items[0] && o.items[0].status) || o.status || 'confirmed';
+        const idx = TRACK_STATUSES.indexOf(status);
+        const pct = idx>=0 ? Math.round(((idx+1)/TRACK_STATUSES.length)*100) : 100;
+        const [bg,fg] = pillColors[status] || ['#ebddc5','#8c491a'];
+        const itemSummary = o.items.length ? `${o.items[0].name_en}${o.items.length>1?` + ${o.items.length-1} more`:''}` : '';
+        return `
+        <div class="m-order-card" onclick="mOpenOrder('${o._dbId}')">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span class="m-mono" style="font-weight:600;font-size:13px">${o.num}</span>
+            <span class="m-status-pill" style="background:${bg};color:${fg}">${(ORDER_STATUS_LABELS.en[status]||status)}</span>
+          </div>
+          <div style="font:500 13px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:12px">${itemSummary}</div>
+          <div class="m-progress-track"><div class="m-progress-fill" style="width:${pct}%"></div></div>
+          <div style="display:flex;justify-content:space-between;font:500 11.5px/1 'Figtree',sans-serif;color:var(--muted)">
+            <span>${state.settings.deliveryMin}–${state.settings.deliveryMax} day delivery</span>
+            <span class="m-mono" style="color:var(--accInk);font-weight:600">${fmt(o.total)}</span>
+          </div>
+        </div>`;
+      }).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">No orders yet</div></div>`}
+    </div>
+  </div>`;
+}
+function mTrack(){
+  const o = state.orders.find(x=>x._dbId===state.mTrackDbId) || state.orders[state.orders.length-1];
+  if(!o) return mOrders();
+  const status = (o.items[0] && o.items[0].status) || o.status || 'confirmed';
+  const idx = Math.max(0, TRACK_STATUSES.indexOf(status));
+  const steps = TRACK_STATUSES.map((s,i)=>{
+    const done = i < idx, current = i === idx, upcoming = i > idx;
+    return {
+      label: ORDER_STATUS_LABELS.en[s] || s,
+      dotBg: done ? 'var(--acc2)' : (current ? 'var(--acc)' : 'var(--card)'),
+      dotBorder: upcoming ? 'var(--line)' : 'transparent',
+      lineColor: done ? 'var(--acc2)' : 'var(--line)',
+      font: current ? "700 14px/1.3 'Figtree',sans-serif" : "600 13.5px/1.3 'Figtree',sans-serif",
+      fg: upcoming ? 'var(--muted)' : 'var(--text)',
+      isLast: i===TRACK_STATUSES.length-1
+    };
+  });
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      ${mBackBtn('mBack()')}
+      <div><div class="m-disp" style="font-size:20px;line-height:1.2">Tracking</div><div class="m-mono" style="font:600 12px/1;color:var(--muted)">${o.num}</div></div>
+    </div>
+    <div class="m-track-hero">
+      <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-bottom:6px">Right now</div>
+      <div class="m-disp" style="font-size:22px;line-height:1.25;margin-bottom:8px">${ORDER_STATUS_LABELS.en[status]||status}</div>
+      <div style="font:400 13px/1.55 'Figtree',sans-serif;opacity:.85">Estimated delivery in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days from order date.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:26px;padding:8px 18px 14px">
+      ${steps.map(s=>`
+      <div class="m-track-step">
+        <div class="m-track-dotcol">
+          <div class="m-track-dot" style="background:${s.dotBg};border:2px solid ${s.dotBorder}"></div>
+          ${!s.isLast?`<div class="m-track-line" style="background:${s.lineColor}"></div>`:''}
+        </div>
+        <div style="padding:11px 0">
+          <div style="font:${s.font};color:${s.fg};line-height:1.3">${s.label}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="m-btn-outline" style="flex:1" onclick="goMyOrders()">All orders</button>
+    </div>
+  </div>`;
+}
+function mAccount(){
+  const c = currentCustomer();
+  const name = (c && c.name) || 'You';
+  const initial = name.trim().charAt(0).toUpperCase() || 'Y';
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div class="m-disp" style="font-size:23px;margin:6px 0 16px">Account</div>
+    <div class="m-account-card">
+      <div class="m-avatar">${initial}</div>
+      <div><div style="font:700 15px/1.3 'Figtree',sans-serif">${name}</div><div style="font:400 12.5px/1.4 'Figtree',sans-serif;color:var(--muted)">${(c&&c.phone)||''}${c&&c.phone&&c&&c.email?' · ':''}${(c&&c.email)||''}</div></div>
+    </div>
+    <div class="m-panel">
+      <div class="m-panel-row">
+        <div><div style="font:600 14px/1.3 'Figtree',sans-serif">Dark mode</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">Easier on the eyes at night</div></div>
+        <button class="m-switch" style="background:${state.mTheme==='dark'?'var(--acc)':'var(--surf)'};justify-content:${state.mTheme==='dark'?'flex-end':'flex-start'}" onclick="mToggleTheme()"><div class="m-switch-knob"></div></button>
+      </div>
+      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Email</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${(c&&c.email)||'—'}</div></div>
+      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Governorate</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${(c&&c.gov)||state.selectedGov||'—'}</div></div>
+      ${isAdminUser(c)?`<div class="m-panel-row" style="cursor:pointer" onclick="goAdmin()"><div style="font:600 14px/1.3 'Figtree',sans-serif;color:var(--accInk)">★ Admin panel</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">›</div></div>`:''}
+    </div>
+    <button class="m-btn-outline" style="width:100%" onclick="logout()">Log out</button>
+    <div style="font:400 12px/1.6 'Figtree',sans-serif;color:var(--muted);text-align:center;margin-top:14px">Lebanon Store · mobile</div>
+  </div>`;
+}
+
+function mTabBar(){
+  const count = cartCount();
+  const active = state.mScreen==='product' ? 'list' : (state.mScreen==='checkout'||state.mScreen==='confirm' ? 'cart' : (state.mScreen==='track' ? 'orders' : state.mScreen));
+  const tabs = [
+    {k:'home', label:'Home', d:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z", go:'mGoHome()'},
+    {k:'list', label:'Shop', d:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", go:'mGoShopAll()'},
+    {k:'cart', label:'Basket', d:"M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0", go:"mGo('cart')"},
+    {k:'orders', label:'Orders', d:"M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8", go:'goMyOrders()'},
+    {k:'account', label:'You', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:"mGo('account')"}
+  ];
+  return `
+  <div class="m-tabbar">
+    ${tabs.map(t=>`
+    <button class="m-tab ${active===t.k?'active':''}" onclick="${t.go}">
+      <svg viewBox="0 0 24 24"><path d="${t.d}"></path></svg>
+      <span class="m-tab-label">${t.label}</span>
+      ${t.k==='cart'&&count?`<span class="m-tab-badge">${count}</span>`:''}
+    </button>`).join('')}
+  </div>`;
+}
+function mSheet(){
+  if(!state.mSheetProduct) return '';
+  const p = findProduct(state.mSheetProduct);
+  if(!p) return '';
+  const color = PALETTE[p.color % PALETTE.length];
+  return `
+  <div class="m-sheet-overlay" onclick="mCloseSheet()"></div>
+  <div class="m-sheet">
+    <div class="m-sheet-handle"></div>
+    <div style="display:flex;gap:13px;align-items:center;margin-bottom:18px">
+      <div class="m-sheet-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2Ink)">Added to basket</div>
+        <div style="font:600 14.5px/1.35 'Figtree',sans-serif">${p.name_en}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="m-btn-outline" style="flex:1" onclick="mCloseSheet()">Keep browsing</button>
+      <button class="m-btn-primary" style="flex:1" onclick="mGoCartFromSheet()">View basket</button>
+    </div>
+  </div>`;
+}
+
+function renderMobileApp(){
+  state.lang = 'en'; // this UI is English-only; keeps shared logic (GOV_FEES, status labels) consistent
+  let body = '';
+  if(state.mScreen==='home') body = mHome();
+  else if(state.mScreen==='list') body = mList();
+  else if(state.mScreen==='product') body = mProduct();
+  else if(state.mScreen==='cart') body = mCart();
+  else if(state.mScreen==='checkout') body = mCheckout();
+  else if(state.mScreen==='confirm') body = mConfirm();
+  else if(state.mScreen==='orders') body = mOrders();
+  else if(state.mScreen==='track') body = mTrack();
+  else if(state.mScreen==='account') body = mAccount();
+  else body = mHome();
+  const showTabbar = state.mScreen!=='confirm';
+  return `<div class="mstore" data-theme="${state.mTheme}"><div class="m-scr">${body}</div>${showTabbar?mTabBar():''}${mSheet()}</div>`;
+}
+
 function render(){
   const app = document.getElementById('app');
+  const showMobileApp = state.currentUserId && state.view!=='admin' && state.view!=='login' && isMobileViewport();
+  if(showMobileApp) state.lang = 'en'; // mobile UI is English-only; set before dir/lang below
+
   document.documentElement.lang = state.lang;
   document.documentElement.dir = state.lang==='ar' ? 'rtl' : 'ltr';
 
   if(state.view==='login' || !state.currentUserId){
     app.innerHTML = renderLogin();
+    document.getElementById('overlay').classList.remove('open');
+    return;
+  }
+
+  if(showMobileApp){
+    app.innerHTML = renderMobileApp() + renderShippingModal();
     document.getElementById('overlay').classList.remove('open');
     return;
   }
@@ -2577,6 +3246,11 @@ async function initApp(){
   }
   render();
 }
+let _resizeT = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(()=>{ if(state.currentUserId) render(); }, 150);
+});
 initApp();
 </script>
 </body>
