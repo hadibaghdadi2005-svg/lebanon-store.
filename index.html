@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -307,7 +307,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .pay-option.active{border-color:var(--cedar);background:var(--sand)}
 
 /* ---------- LOGIN ---------- */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:20px;position:relative;overflow:hidden}
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:20px;position:relative;overflow-y:auto}
 .login-wrap::after{content:'';position:absolute;inset-inline-end:-10%;top:-15%;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.25), transparent 70%)}
 .login-card{position:relative;background:var(--paper);border-radius:18px;padding:36px 32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .login-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
@@ -325,7 +325,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .login-switch a{color:var(--cedar);font-weight:700;border-bottom:1.5px solid var(--brass);margin-inline-start:4px}
 .login-form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .login-form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
-.login-form-field input{padding:11px 13px;border:1.4px solid var(--line);border-radius:9px;font-size:14px;outline:none}
+.login-form-field input{padding:11px 13px;border:1.4px solid var(--line);border-radius:9px;font-size:16px;outline:none}
 .login-form-field input:focus{border-color:var(--cedar)}
 .login-back{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:14px;display:inline-flex;align-items:center;gap:4px}
 .login-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.6}
@@ -844,7 +844,7 @@ function computeSuggestedPrice(cost, marginPctOverride){
 const ADMIN_EMAIL = 'hadibaghdadi11@gmail.com';
 
 let state = {
-  lang: 'ar',
+  lang: 'en',
   view: 'login', // login | home | product | checkout | confirm | admin
   productId: null,
   listFilter: null, // null | {type:'cat', id} | {type:'flag', key}
@@ -1352,7 +1352,6 @@ function renderHeader(){
         <input placeholder="${t('search')}" />
       </div>
       <div class="topbar-icons">
-        <button class="lang-switch" onclick="setLang('${state.lang==='ar'?'en':'ar'}')">${state.lang==='ar'?'EN':'AR'}</button>
         <button class="icon-btn" onclick="logout()">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
           <span>${currentCustomer() ? currentCustomer().name.split(' ')[0] : t('account')}</span>
@@ -1396,15 +1395,15 @@ function renderLogin(){
     ${isSignup ? `
     <div class="login-form-field">
       <label>${t('fullName')}</label>
-      <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+      <input type="text" autocomplete="name" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
     </div>` : ''}
     <div class="login-form-field">
       <label>${t('email')}</label>
-      <input type="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
+      <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
     </div>
     <div class="login-form-field">
       <label>${t('password')}</label>
-      <input type="password" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="${isAr?'••••••••':'••••••••'}" onkeydown="if(event.key==='Enter')submitAuth()"/>
+      <input type="password" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="${isAr?'••••••••':'••••••••'}" onkeydown="if(event.key==='Enter')submitAuth()"/>
     </div>
     <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
     <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<a href="#" onclick="setAuthMode('${isSignup?'signin':'signup'}');return false;">${isSignup ? t('signIn') : t('createAccount')}</a></div>
@@ -2471,7 +2470,6 @@ function renderAdmin(){
     <div class="admin-main">
       <div class="admin-topline">
         <h2 class="font-display">${t('admin')}</h2>
-        <button class="lang-switch" style="background:var(--cedar);color:#fff" onclick="setLang('${state.lang==='ar'?'en':'ar'}')">${state.lang==='ar'?'EN':'AR'}</button>
       </div>
 
       ${state.adminView==='overview'?`
