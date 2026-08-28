@@ -340,6 +340,22 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .cust-avatar{width:38px;height:38px;border-radius:50%;background:var(--cedar);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
 .cust-meta{font-size:12px;color:var(--ink-soft)}
 .method-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--sand);color:var(--cedar)}
+
+/* ---------- SHIPPING CONSENT MODAL ---------- */
+.ship-modal-overlay{position:fixed;inset:0;background:rgba(15,20,17,.62);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px}
+.ship-modal{background:var(--paper);border-radius:18px;padding:30px 26px;max-width:420px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.4);text-align:center}
+.ship-modal-icon{font-size:34px;margin-bottom:10px}
+.ship-modal h3{font-size:18px;margin-bottom:12px}
+.ship-modal p{font-size:13.5px;line-height:1.75;color:var(--ink);text-align:start}
+.ship-modal-note{background:#FBE9D2;color:#8A5A15;border-radius:9px;padding:11px 13px;font-size:12.5px;margin:14px 0;font-weight:600;text-align:start}
+.ship-ack-btn{margin-top:18px;transition:box-shadow .3s ease, opacity .2s ease}
+.ship-ack-btn:disabled{opacity:.45;cursor:not-allowed}
+.ship-ack-btn.ready{animation:ackGlow 1.3s ease-in-out infinite}
+@keyframes ackGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(224,181,74,.55)}
+  50%{box-shadow:0 0 0 12px rgba(224,181,74,0)}
+}
+.ship-modal-cancel{margin-top:10px;background:none;border:none;font-size:12.5px;color:var(--ink-soft);font-weight:600;text-decoration:underline}
 .order-conf{text-align:center;padding:60px 20px}
 .order-conf .check-circle{width:70px;height:70px;border-radius:50%;background:#DCEFE5;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
 .order-conf .check-circle svg{width:34px;height:34px;stroke:var(--cedar);stroke-width:2.4}
@@ -433,7 +449,10 @@ function dbRowToCustomer(row){
   return {
     id: row.id, name: row.name, email: row.email, phone: row.phone, method: row.method,
     cart: row.cart || [], wishlist: new Set(row.wishlist || []),
-    createdAt: (row.created_at || '').slice(0,10)
+    createdAt: (row.created_at || '').slice(0,10),
+    gov: row.gov || null, city: row.city || '', area: row.area || '',
+    building: row.building || '', floor: row.floor || '', apartment: row.apartment || '',
+    address: row.address || '', notes: row.notes || ''
   };
 }
 function dbRowToOrder(row){
@@ -676,6 +695,8 @@ let state = {
   adminSideOpen: false,
   adminSelectedCustomer: null,
   adminEditingProduct: null,
+  shippingModalOpen: false,
+  shippingModalCountdown: 3,
   formData: {},
 
   /* ---- accounts / login ---- */
@@ -792,6 +813,14 @@ function completeLogin(c){
   state.formData.fullName = c.name || '';
   state.formData.phone = c.phone || '';
   state.formData.email = c.email || '';
+  state.formData.city = c.city || '';
+  state.formData.area = c.area || '';
+  state.formData.building = c.building || '';
+  state.formData.floor = c.floor || '';
+  state.formData.apartment = c.apartment || '';
+  state.formData.address = c.address || '';
+  state.formData.notes = c.notes || '';
+  state.selectedGov = c.gov || null;
   state.view = 'home';
   subscribeCustomerOrders(c.id);
   window.scrollTo(0,0);
@@ -1456,6 +1485,60 @@ function applyCoupon(){
 }
 function selectGov(g){ state.selectedGov = g; render(); }
 
+/* Items in these categories are treated as electronics/battery items for the shipping notice */
+function cartHasElectronics(){
+  return state.cart.some(l=>{ const p = findProduct(l.id); return p && (p.cat==='electronics' || p.cat==='phones'); });
+}
+function openShippingModal(){
+  const f = state.formData;
+  if(!f.fullName || !f.phone || !state.selectedGov || !f.city || !f.address){
+    showToast(state.lang==='ar'?'يرجى تعبئة الحقول المطلوبة':'Please fill in the required fields');
+    return;
+  }
+  state.shippingModalOpen = true;
+  state.shippingModalCountdown = 3;
+  render();
+  const tick = ()=>{
+    state.shippingModalCountdown--;
+    render();
+    if(state.shippingModalCountdown > 0) setTimeout(tick, 1000);
+  };
+  setTimeout(tick, 1000);
+}
+function closeShippingModal(){
+  state.shippingModalOpen = false;
+  state.shippingModalCountdown = 3;
+  render();
+}
+function confirmShippingAndPlaceOrder(){
+  if(state.shippingModalCountdown > 0) return;
+  state.shippingModalOpen = false;
+  state.shippingModalCountdown = 3;
+  placeOrder();
+}
+function renderShippingModal(){
+  if(!state.shippingModalOpen) return '';
+  const isAr = state.lang==='ar';
+  const ready = state.shippingModalCountdown <= 0;
+  const hasElectronics = cartHasElectronics();
+  return `
+  <div class="ship-modal-overlay">
+    <div class="ship-modal">
+      <div class="ship-modal-icon">📦</div>
+      <h3>${isAr?'قبل تأكيد الطلب':'Before You Confirm'}</h3>
+      <p>${isAr
+        ? 'تُحتسب رسوم الشحن الدولي بمعدل <strong>$15 لكل كيلوغرام</strong>. أما المنتجات الإلكترونية أو التي تحتوي على بطارية فتُحتسب بمعدل <strong>$17 لكل كيلوغرام</strong> بسبب قيود شحن البطاريات.'
+        : 'International shipping is charged at <strong>$15 per kilogram</strong>. Electronics or items containing a battery are charged at <strong>$17 per kilogram</strong> due to battery shipping restrictions.'}</p>
+      ${hasElectronics?`
+      <div class="ship-modal-note">⚠️ ${isAr?'طلبك الحالي يحتوي على منتج إلكتروني، وسيُحتسب بمعدل 17$/كغ.':'Your current order includes an electronic item and will be charged at the $17/kg rate.'}</div>`:''}
+      <button class="btn btn-primary btn-block ship-ack-btn ${ready?'ready':''}" ${ready?'':'disabled'} onclick="confirmShippingAndPlaceOrder()">
+        ${ready ? (isAr?'✅ فهمت، تابع الطلب':'✅ I Get It — Continue') : (isAr?`فهمت (${state.shippingModalCountdown})`:`I Get It (${state.shippingModalCountdown})`)}
+      </button>
+      <button class="ship-modal-cancel" onclick="closeShippingModal()">${isAr?'إلغاء':'Cancel'}</button>
+    </div>
+  </div>`;
+}
+
 async function placeOrder(){
   const f = state.formData;
   if(!f.fullName || !f.phone || !state.selectedGov || !f.city || !f.address){
@@ -1489,6 +1572,15 @@ async function placeOrder(){
   state.cart = [];
   state.coupon = null;
   syncCustomerCart();
+  if(c){
+    const addrFields = {
+      gov: state.selectedGov, city: f.city||'', area: f.area||'', building: f.building||'',
+      floor: f.floor||'', apartment: f.apartment||'', address: f.address||'', notes: f.notes||''
+    };
+    Object.assign(c, addrFields);
+    sb.from('customers').update(addrFields).eq('id', c.id)
+      .then(({error})=>{ if(error) console.error('Address save failed:', error); });
+  }
   state.view = 'confirm';
   window.scrollTo(0,0);
   render();
@@ -1536,21 +1628,21 @@ function renderCheckout(){
               ${govs.map(g=>`<option value="${g}" ${state.selectedGov===g?'selected':''}>${g} (+${fmt(GOV_FEES[state.lang][g])})</option>`).join('')}
             </select>
           </div>
-          <div class="form-field"><label>${t('city')} *</label><input type="text" oninput="updateForm('city',this.value)"/></div>
+          <div class="form-field"><label>${t('city')} *</label><input type="text" value="${state.formData.city||''}" oninput="updateForm('city',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field"><label>${t('area')}</label><input type="text" oninput="updateForm('area',this.value)"/></div>
-          <div class="form-field"><label>${t('building')}</label><input type="text" oninput="updateForm('building',this.value)"/></div>
+          <div class="form-field"><label>${t('area')}</label><input type="text" value="${state.formData.area||''}" oninput="updateForm('area',this.value)"/></div>
+          <div class="form-field"><label>${t('building')}</label><input type="text" value="${state.formData.building||''}" oninput="updateForm('building',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field"><label>${t('floor')}</label><input type="text" oninput="updateForm('floor',this.value)"/></div>
-          <div class="form-field"><label>${t('apartment')}</label><input type="text" oninput="updateForm('apartment',this.value)"/></div>
+          <div class="form-field"><label>${t('floor')}</label><input type="text" value="${state.formData.floor||''}" oninput="updateForm('floor',this.value)"/></div>
+          <div class="form-field"><label>${t('apartment')}</label><input type="text" value="${state.formData.apartment||''}" oninput="updateForm('apartment',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field full"><label>${t('address')} *</label><input type="text" oninput="updateForm('address',this.value)"/></div>
+          <div class="form-field full"><label>${t('address')} *</label><input type="text" value="${state.formData.address||''}" oninput="updateForm('address',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field full"><label>${t('notes')}</label><textarea rows="2" oninput="updateForm('notes',this.value)"></textarea></div>
+          <div class="form-field full"><label>${t('notes')}</label><textarea rows="2" oninput="updateForm('notes',this.value)">${state.formData.notes||''}</textarea></div>
         </div>
 
         <h3 style="margin-top:22px">${t('payMethod')}</h3>
@@ -1568,8 +1660,21 @@ function renderCheckout(){
         </div>
         ${state.cart.map(l=>{
           const p = findProduct(l.id);
-          return `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-            <span>${pname(p)} (${l.variant}) × ${l.qty}</span><span class="font-mono">${fmt(p.price*l.qty)}</span></div>`;
+          const color = PALETTE[p.color % PALETTE.length];
+          const desc = pdesc(p);
+          const shortDesc = desc.length>80 ? desc.slice(0,80)+'…' : desc;
+          return `
+          <div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--sand-dark)">
+            <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:${color};position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
+              ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700">
+                <span>${pname(p)} (${l.variant}) × ${l.qty}</span><span class="font-mono" style="flex-shrink:0">${fmt(p.price*l.qty)}</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4">${shortDesc}</div>
+            </div>
+          </div>`;
         }).join('')}
         <div style="display:flex;gap:8px;margin:14px 0">
           <input type="text" placeholder="${t('couponCode')}" style="flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px" oninput="state.couponInput=this.value"/>
@@ -1579,7 +1684,7 @@ function renderCheckout(){
         ${disc>0?`<div class="sum-row"><span>${t('discount')}</span><span class="font-mono">-${fmt(disc)}</span></div>`:''}
         <div class="sum-row"><span>${t('deliveryFee')}</span><span class="font-mono">${fee===0?(state.selectedGov?(state.lang==='ar'?'مجاني':'Free'):'—'):fmt(fee)}</span></div>
         <div class="sum-row total"><span>${t('total')}</span><span class="font-mono">${fmt(total)}</span></div>
-        <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="placeOrder()">${t('placeOrder')}</button>
+        <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="openShippingModal()">${t('placeOrder')}</button>
       </div>
     </div>
   </div>`;
@@ -2184,7 +2289,7 @@ function render(){
     else if(state.view==='checkout') body = renderCheckout();
     else if(state.view==='confirm') body = renderConfirm();
     else if(state.view==='orders') body = renderMyOrders();
-    app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat();
+    app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat() + renderShippingModal();
   }
 
   document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
