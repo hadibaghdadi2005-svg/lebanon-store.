@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>متجر لبنان | Lebanon Store</title>
+<title>متجر لبنان | HABIBI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Tajawal:wght@400;500;700;800&family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -35,7 +35,7 @@ body{
 [dir="rtl"] .font-display{font-family:'Tajawal',system-ui,sans-serif;font-weight:800}
 .font-mono{font-family:'IBM Plex Mono',monospace}
 img,svg{display:block;max-width:100%}
-button{font-family:inherit;cursor:pointer}
+button{font-family:inherit;cursor:pointer;background:transparent;border:none}
 a{color:inherit;text-decoration:none}
 .container{max-width:1180px;margin:0 auto;padding:0 20px}
 .zellige-divider{
@@ -73,7 +73,7 @@ header.site{
 .topbar{display:flex;align-items:center;gap:14px;padding:12px 0}
 .logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .logo-mark{width:38px;height:38px;border-radius:9px;background:var(--brass);display:flex;align-items:center;justify-content:center}
-.logo-mark svg{width:20px;height:20px;stroke:var(--cedar);fill:none;stroke-width:2}
+.logo-mark svg{width:20px;height:20px;stroke:var(--cedar);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .logo-text{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1}
 .logo-sub{font-size:10.5px;color:var(--brass-light);letter-spacing:.08em;text-transform:uppercase}
 .searchbar{
@@ -101,7 +101,7 @@ header.site{
 
 /* ---------- HERO ---------- */
 .hero{
-  position:relative;background:var(--cedar);color:var(--paper);padding:64px 0 76px;overflow:hidden;
+  position:relative;background:var(--cedar);color:var(--paper);padding:64px 0 76px;overflow:hidden;will-change:opacity,transform;
 }
 .hero::after{
   content:'';position:absolute;inset-inline-end:-8%;top:-20%;width:520px;height:520px;border-radius:50%;
@@ -114,12 +114,17 @@ header.site{
 .hero p{font-size:16.5px;color:rgba(255,255,255,.78);margin-bottom:28px;max-width:460px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
 
-/* ---------- BILLBOARD (admin-editable promo banner) ---------- */
-.billboard{position:relative;border-radius:20px;overflow:hidden;background:var(--cedar) center/cover no-repeat;min-height:220px;display:flex;align-items:center}
-.billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg, rgba(28,20,15,.74), rgba(28,20,15,.2))}
-.billboard-inner{position:relative;padding:36px 40px;max-width:520px;color:var(--paper)}
+/* ---------- BILLBOARD (admin-editable promo carousel) ---------- */
+.billboard-full{width:100%;margin-bottom:32px}
+.billboard{position:relative;overflow:hidden;background:var(--cedar) center/cover no-repeat;min-height:340px;display:flex;align-items:center}
+.billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg, rgba(28,20,15,.74), rgba(28,20,15,.2));z-index:1}
+.billboard-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.billboard-inner{position:relative;padding:36px 60px;max-width:560px;color:var(--paper);z-index:2}
 .billboard-inner h2{font-size:28px;line-height:1.15;margin-bottom:10px}
 .billboard-inner p{font-size:14.5px;color:rgba(255,255,255,.82);margin-bottom:18px}
+.billboard-dots{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
+.billboard-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);border:none;cursor:pointer;padding:0}
+.billboard-dot.active{background:#fff}
 
 /* ---------- SECTIONS ---------- */
 section{padding:52px 0}
@@ -666,14 +671,14 @@ const T = {
     orderConfirmedSub:"سنتواصل معك قريبًا لتأكيد التوصيل.", orderNumber:"رقم الطلب",
     backHome:"العودة للرئيسية", couponCode:"رمز الخصم", apply:"تطبيق", aiAssistant:"مساعد المنتج الذكي",
     askAbout:"اسأل عن هذا المنتج...", askPlaceholder:"مثال: هل يناسب مطبخ صغير؟",
-    chatTitle:"اسأل متجر لبنان", chatSub:"مساعد ذكي حقيقي", chatPlaceholder:"اكتب سؤالك...",
+    chatTitle:"اسأل فريقنا", chatSub:"مساعد ذكي حقيقي", chatPlaceholder:"اكتب سؤالك...",
     addedToCart:"تمت الإضافة إلى السلة", removedFromWish:"أُزيل من المفضلة", addedToWish:"أُضيف إلى المفضلة",
     specifications:"المواصفات", relatedProducts:"منتجات ذات صلة",
     admin:"لوحة التحكم", aboutStore:"عن المتجر", aboutText:"متجر لبنان هو وجهتك للتسوق الإلكتروني الموثوق في لبنان.",
     contact:"تواصل معنا", shipping:"الشحن", returns:"الإرجاع", privacy:"سياسة الخصوصية", terms:"الشروط", faq:"الأسئلة الشائعة",
     newsletter:"النشرة البريدية", newsletterSub:"اشترك لتصلك أحدث العروض", subscribe:"اشترك",
     rights:"جميع الحقوق محفوظة", demoNote:"هذا عرض تجريبي تفاعلي — البيانات وهمية والذكاء الاصطناعي محاكى محليًا.",
-    goAdmin:"لوحة الإدارة", storeName:"متجر لبنان",
+    goAdmin:"لوحة الإدارة", storeName:"HABIBI",
     estDelivery:"التوصيل المتوقع", days:"أيام", adminSettings:"الإعدادات",
     deliveryMinLabel:"أقل عدد أيام", deliveryMaxLabel:"أكثر عدد أيام",
     deliveryHelp:"مدة التوصيل من المورد إلى لبنان (عادة 10-15 يومًا). يظهر هذا للعملاء في صفحة المنتج والدفع.",
@@ -702,14 +707,14 @@ const T = {
     orderConfirmedSub:"We'll contact you shortly to confirm delivery.", orderNumber:"Order number",
     backHome:"Back to home", couponCode:"Coupon code", apply:"Apply", aiAssistant:"AI Product Assistant",
     askAbout:"Ask about this product...", askPlaceholder:"e.g. Is this good for a small kitchen?",
-    chatTitle:"Ask Lebanon Store", chatSub:"AI assistant (simulated)", chatPlaceholder:"Type your question...",
+    chatTitle:"Ask us", chatSub:"AI assistant (simulated)", chatPlaceholder:"Type your question...",
     addedToCart:"Added to cart", removedFromWish:"Removed from wishlist", addedToWish:"Added to wishlist",
     specifications:"Specifications", relatedProducts:"Related Products",
-    admin:"Admin Dashboard", aboutStore:"About Lebanon Store", aboutText:"Lebanon Store is your trusted online shopping destination in Lebanon.",
+    admin:"Admin Dashboard", aboutStore:"About HABIBI", aboutText:"HABIBI is your trusted online shopping destination in Lebanon.",
     contact:"Contact", shipping:"Shipping", returns:"Returns", privacy:"Privacy Policy", terms:"Terms", faq:"FAQ",
     newsletter:"Newsletter", newsletterSub:"Subscribe for the latest offers", subscribe:"Subscribe",
     rights:"All rights reserved", demoNote:"This is an interactive demo — data is mock and AI responses are simulated locally.",
-    goAdmin:"Admin Panel", storeName:"Lebanon Store",
+    goAdmin:"Admin Panel", storeName:"HABIBI",
     estDelivery:"Estimated delivery", days:"days", adminSettings:"Settings",
     deliveryMinLabel:"Min days", deliveryMaxLabel:"Max days",
     deliveryHelp:"Shipping time from the supplier to Lebanon (typically 10-15 days). Shown to customers on the product and checkout pages.",
@@ -743,7 +748,7 @@ const CATS = [
   {id:'tools', ar:'أدوات', en:'Tools', icon:'tools'},
   {id:'car', ar:'إكسسوارات السيارات', en:'Car Accessories', icon:'car'},
   {id:'kids', ar:'أطفال', en:'Kids', icon:'kids'},
-  {id:'offers', ar:'عروض', en:'Offers', icon:'offers'},
+  {id:'offers', ar:'عروض 🔥', en:'Offers 🔥', icon:'offers'},
 ];
 const PALETTE = ['#0F3D2E','#175943','#8A5A15','#C2542D','#3D5A80','#6B4226','#2E4B3A','#A6473A'];
 
@@ -875,7 +880,11 @@ let state = {
   couponInput: '',
   selectedGov: null,
   orders: [], // {num, date, items:[...], total, gov, customer, phone, status, customerId, customerName}
-  settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: false, billboardTitle: '', billboardSubtitle: '', billboardImageUrl: '', billboardLinkType: 'none', billboardLinkValue: '', billboardButtonLabel: '' },
+  settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: true, billboardSlides: [
+    {type:'image', mediaUrl:'', title:'Big Savings, Every Day', subtitle:'New drops added weekly — shop the collection', linkType:'none', linkValue:'', buttonLabel:''},
+    {type:'image', mediaUrl:'', title:'Free Delivery Across Lebanon', subtitle:'On every order, every governorate', linkType:'none', linkValue:'', buttonLabel:''}
+  ] },
+  billboardIndex: 0,
   adminView: 'overview',
   adminSideOpen: false,
   adminSelectedCustomer: null,
@@ -1161,7 +1170,7 @@ function buildStoreSystemPrompt(){
   const orderLine = lastOrder
     ? `The current customer has one order on file: #${lastOrder.num}, status "${ORDER_STATUS_LABELS.en[lastOrder.status]}", total $${lastOrder.total.toFixed(2)}, placed ${lastOrder.date}, estimated delivery ${state.settings.deliveryMin}-${state.settings.deliveryMax} days from order date.`
     : `The current customer has no orders on file yet.`;
-  return `You are the customer support agent for "Lebanon Store", an online store serving Lebanon. ${AI_LANG_NOTE[state.lang]}
+  return `You are the customer support agent for "HABIBI", an online store serving Lebanon. ${AI_LANG_NOTE[state.lang]}
 Ground every answer strictly in the store data listed below. Never invent or guess prices, stock levels, delivery fees, specifications, or order details that aren't listed here — if something isn't covered, say plainly that the information isn't available and suggest contacting support.
 You only have access to the current customer's own order — never claim to know about any other customer's orders or data.
 Be warm and concise.
@@ -1177,7 +1186,7 @@ ${orderLine}`;
 }
 function buildProductSystemPrompt(p){
   const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
-  return `You are a product assistant answering questions about ONE specific product on "Lebanon Store". ${AI_LANG_NOTE[state.lang]}
+  return `You are a product assistant answering questions about ONE specific product on "HABIBI". ${AI_LANG_NOTE[state.lang]}
 Only use the facts about this product listed below. Never invent specifications, materials, dimensions, or capabilities that aren't listed. If asked about something not covered, say plainly that this information isn't available for this product.
 
 PRODUCT: ${pname(p)}
@@ -1355,15 +1364,15 @@ function renderHeader(){
         <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <a class="logo" href="#" onclick="goHome();return false;">
-        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
         <div>
           <div class="logo-text">${t('storeName')}</div>
-          <div class="logo-sub">${state.lang==='ar'?'متجرك اللبناني':'Your Lebanese Store'}</div>
+          <div class="logo-sub">${state.lang==='ar'?'كل شيء، بمحبة':'Everything, with love'}</div>
         </div>
       </a>
       <div class="searchbar">
         <svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input placeholder="${t('search')}" />
+        <input placeholder="Shu 3ayez...." />
       </div>
       <div class="topbar-icons">
         <button class="icon-btn" onclick="logout()">
@@ -1388,7 +1397,7 @@ function renderHeader(){
     <div class="catbar">
       <div class="container">
         ${CATS.map(c=>`<a href="#" onclick="filterByCat('${c.id}');return false;">${catName(c)}</a>`).join('')}
-        ${isAdminUser(currentCustomer())?`<a href="#" onclick="goAdmin();return false;" style="color:var(--brass-light);font-weight:700">★ ${t('goAdmin')}</a>`:''}
+        ${isAdminUser(currentCustomer())?`<a href="#" onclick="goAdmin();return false;" style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,42,.16);color:var(--brass-light);font-weight:700;padding:6px 14px;border-radius:999px;border:1px solid rgba(196,151,42,.35)"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4Z"/></svg>${t('goAdmin')}</a>`:''}
       </div>
     </div>
     ${state.mobileMenuOpen?`
@@ -1427,7 +1436,7 @@ function renderLogin(){
   <div class="login-wrap">
     <div class="login-card">
       <div class="login-logo">
-        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
       </div>
       <div class="login-title font-display">${t('storeName')}</div>
       <div class="login-sub">${isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store'}</div>
@@ -1506,7 +1515,7 @@ function renderHome(){
   const news = PRODUCTS.filter(p=>p.new);
   const offers = PRODUCTS.filter(p=>p.was>p.price);
   return `
-  <section class="hero">
+  <section class="hero" id="hero-sec">
     <div class="container hero-inner">
       <div class="eyebrow">${state.lang==='ar'?'سوق لبنان الإلكتروني':'Lebanon\'s Online Souk'}</div>
       <h1 class="font-display">${t('heroTitle')}</h1>
@@ -1518,20 +1527,10 @@ function renderHome(){
     </div>
   </section>
   <div class="zellige-divider"></div>
-  ${state.settings.billboardEnabled && (state.settings.billboardTitle || state.settings.billboardImageUrl) ? `
-  <section class="container" style="margin-bottom:32px">
-    <div class="billboard" ${state.settings.billboardImageUrl?`style="background-image:url('${state.settings.billboardImageUrl}')"`:''}>
-      <div class="billboard-inner">
-        ${state.settings.billboardTitle?`<h2 class="font-display">${state.settings.billboardTitle}</h2>`:''}
-        ${state.settings.billboardSubtitle?`<p>${state.settings.billboardSubtitle}</p>`:''}
-        ${state.settings.billboardLinkType!=='none' && state.settings.billboardLinkValue?`
-        <button class="btn btn-primary" onclick="${state.settings.billboardLinkType==='category'?`filterByCat('${state.settings.billboardLinkValue}')`:`window.open('${state.settings.billboardLinkValue}','_blank')`}">${state.settings.billboardButtonLabel || (state.lang==='ar'?'تسوق الآن':'Shop now')}</button>`:''}
-      </div>
-    </div>
-  </section>` : ''}
+  ${state.settings.billboardEnabled && state.settings.billboardSlides && state.settings.billboardSlides.length ? renderBillboard() : ''}
 
   <section id="cats-sec" class="container">
-    <div class="section-head"><div><div class="eyebrow">${t('categories')}</div><h2 class="font-display">${t('categories')}</h2></div></div>
+    <div class="section-head"><div><h2 class="font-display">${t('categories')}</h2></div></div>
     <div class="cat-grid">
       ${CATS.map(c=>`
         <button class="cat-card" onclick="filterByCat('${c.id}')" style="border:1px solid var(--line)">
@@ -1543,7 +1542,7 @@ function renderHome(){
 
   <section id="featured-sec" class="container">
     <div class="section-head">
-      <div><div class="eyebrow">${t('featured')}</div><h2 class="font-display">${t('featured')}</h2></div>
+      <div><h2 class="font-display">${t('featured')}</h2></div>
       <a class="view-all" href="#" onclick="filterByFlag('featured');return false;">${t('viewAll')}</a>
     </div>
     <div class="prod-grid">${featured.map(productCard).join('')}</div>
@@ -1559,7 +1558,7 @@ function renderHome(){
 
   <section class="container">
     <div class="section-head">
-      <div><div class="eyebrow">✦</div><h2 class="font-display">${t('newArrivals')}</h2></div>
+      <div><div class="eyebrow">✦</div><h2 class="font-display" style="background:linear-gradient(90deg, var(--cedar), var(--brass-light));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-flex;align-items:center;gap:10px">${t('newArrivals')}<span style="font-family:'Figtree',sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;background:var(--brass);color:#2e1a0a;padding:4px 10px;border-radius:999px">NEW</span></h2></div>
       <a class="view-all" href="#" onclick="filterByFlag('new');return false;">${t('viewAll')}</a>
     </div>
     <div class="prod-grid">${news.map(productCard).join('')}</div>
@@ -2126,7 +2125,7 @@ function renderFooter(){
           <h4 class="font-display" style="color:var(--paper);font-size:18px">${t('storeName')}</h4>
           <p style="margin-top:8px">${t('aboutText')}</p>
         </div>
-        <div><h4>${t('contact')}</h4><ul><li><a href="#">+961 1 234 567</a></li><li><a href="#">hello@lebanonstore.com</a></li><li><a href="#">Beirut, Lebanon</a></li></ul></div>
+        <div><h4>${t('contact')}</h4><ul><li><a href="#">+961 81687016</a></li><li><a href="#">hadibaghdadi11@gmail.com</a></li><li><a href="#">Beirut, Lebanon</a></li></ul></div>
         <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
         <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
         <div>
@@ -2137,7 +2136,6 @@ function renderFooter(){
       </div>
       <div class="footer-bottom">
         <span>© 2026 ${t('storeName')} — ${t('rights')}</span>
-        <span>${t('demoNote')}</span>
       </div>
     </div>
   </footer>`;
@@ -2301,40 +2299,67 @@ function updateSettings(field, val){
   sb.from('settings').update({[dbField]: state.settings[field]}).eq('id', 1)
     .then(({error})=>{ if(error) console.error('Settings sync failed:', error); });
 }
-const BILLBOARD_FIELD_DB = {
-  billboardEnabled:'billboard_enabled', billboardTitle:'billboard_title', billboardSubtitle:'billboard_subtitle',
-  billboardImageUrl:'billboard_image_url', billboardLinkType:'billboard_link_type', billboardLinkValue:'billboard_link_value',
-  billboardButtonLabel:'billboard_button_label'
-};
 function updateBillboardField(field, val){
   state.settings[field] = field==='billboardEnabled' ? !!val : val;
   render();
-  sb.from('settings').update({[BILLBOARD_FIELD_DB[field]]: state.settings[field]}).eq('id', 1)
+  sb.from('settings').update({billboard_enabled: state.settings.billboardEnabled}).eq('id', 1)
     .then(({error})=>{ if(error) console.error('Billboard settings sync failed:', error); });
 }
-async function handleBillboardImageUpload(event){
+function syncBillboardSlides(){
+  sb.from('settings').update({billboard_slides: JSON.stringify(state.settings.billboardSlides)}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Billboard slides sync failed:', error); });
+}
+function addBillboardSlide(){
+  state.settings.billboardSlides = state.settings.billboardSlides || [];
+  state.settings.billboardSlides.push({type:'image', mediaUrl:'', title:'', subtitle:'', linkType:'none', linkValue:'', buttonLabel:''});
+  render(); syncBillboardSlides();
+}
+function removeBillboardSlide(idx){
+  state.settings.billboardSlides.splice(idx,1);
+  if(state.billboardIndex>=state.settings.billboardSlides.length) state.billboardIndex=0;
+  render(); syncBillboardSlides();
+}
+function updateBillboardSlide(idx, field, val){
+  state.settings.billboardSlides[idx][field] = val;
+  render(); syncBillboardSlides();
+}
+function goBillboardSlide(idx){ state.billboardIndex = idx; render(); }
+async function handleBillboardSlideUpload(event, idx){
   const file = event.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){
-    showToast(state.lang==='ar' ? 'يرجى اختيار ملف صورة' : 'Please choose an image file');
-    return;
-  }
-  showToast(state.lang==='ar' ? 'جارٍ رفع الصورة...' : 'Uploading image...');
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `billboard-${Date.now()}.${ext}`;
     const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true });
     if(upErr) throw upErr;
     const { data } = sb.storage.from('product-images').getPublicUrl(path);
-    updateBillboardField('billboardImageUrl', data.publicUrl);
-    showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
+    updateBillboardSlide(idx, 'mediaUrl', data.publicUrl);
+    showToast(state.lang==='ar' ? 'تم رفع الملف!' : 'File uploaded!');
   } catch(e){
-    console.error('Billboard image upload failed:', e);
-    showToast(state.lang==='ar' ? 'تعذر رفع الصورة، تحقق من إعداد التخزين' : 'Could not upload the image — check storage setup');
+    console.error('Billboard slide upload failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر رفع الملف' : 'Could not upload the file');
   }
 }
-function removeBillboardImage(){
-  updateBillboardField('billboardImageUrl', '');
+function renderBillboard(){
+  const slides = state.settings.billboardSlides;
+  const i = state.billboardIndex % slides.length;
+  const s = slides[i];
+  return `
+  <section class="billboard-full">
+    <div class="billboard" ${s.type!=='video' && s.mediaUrl?`style="background-image:url('${s.mediaUrl}')"`:''}>
+      ${s.type==='video' && s.mediaUrl?`<video class="billboard-video" src="${s.mediaUrl}" autoplay muted loop playsinline></video>`:''}
+      <div class="billboard-inner">
+        ${s.title?`<h2 class="font-display">${s.title}</h2>`:''}
+        ${s.subtitle?`<p>${s.subtitle}</p>`:''}
+        ${s.linkType && s.linkType!=='none' && s.linkValue?`
+        <button class="btn btn-primary" onclick="${s.linkType==='category'?`filterByCat('${s.linkValue}')`:`window.open('${s.linkValue}','_blank')`}">${s.buttonLabel || (state.lang==='ar'?'تسوق الآن':'Shop now')}</button>`:''}
+      </div>
+      ${slides.length>1?`
+      <div class="billboard-dots">
+        ${slides.map((_,idx)=>`<button class="billboard-dot ${idx===i?'active':''}" onclick="goBillboardSlide(${idx})"></button>`).join('')}
+      </div>`:''}
+    </div>
+  </section>`;
 }
 function setAdminView(v){ state.adminView=v; render(); refreshAdminData(); }
 
@@ -2514,7 +2539,7 @@ function renderAdmin(){
   <div class="admin-shell">
     <div class="admin-side ${state.adminSideOpen?'open':''}">
       <a class="logo" href="#" onclick="goHome();return false;" style="margin-bottom:24px">
-        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.2L18.5 21 12 16.5 5.5 21l2-7.8L2 9h7z"/></svg></div>
+        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
         <div class="logo-text">${t('storeName')}</div>
       </a>
       <div class="admin-nav">
@@ -2679,43 +2704,54 @@ function renderAdmin(){
           <h3 style="margin:0">${state.lang==='ar'?'لافتة الصفحة الرئيسية':'Home page billboard'}</h3>
           <button class="mini-toggle ${state.settings.billboardEnabled?'on':''}" onclick="updateBillboardField('billboardEnabled', ${!state.settings.billboardEnabled})">${state.lang==='ar'?'مفعّلة':'Enabled'}</button>
         </div>
-        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'لافتة قابلة للتعديل تظهر أعلى الصفحة الرئيسية (سطح المكتب والجوال) للترويج لعرض أو منتجات جديدة.':'An editable banner near the top of the home page (desktop and mobile) to promote an offer or new items.'}</p>
-        <div class="form-field" style="margin-bottom:12px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${state.settings.billboardTitle||''}" placeholder="${state.lang==='ar'?'مثال: تخفيضات نهاية الموسم':'e.g. End of season sale'}" onchange="updateBillboardField('billboardTitle', this.value)"/></div>
-        <div class="form-field" style="margin-bottom:12px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${state.settings.billboardSubtitle||''}" placeholder="${state.lang==='ar'?'مثال: خصم يصل إلى 30% لفترة محدودة':'e.g. Up to 30% off, for a limited time'}" onchange="updateBillboardField('billboardSubtitle', this.value)"/></div>
-        <div class="form-field" style="margin-bottom:12px">
-          <label>${state.lang==='ar'?'الصورة':'Image'}</label>
-          ${state.settings.billboardImageUrl?`
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <img src="${state.settings.billboardImageUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>
-            <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeBillboardImage()">${state.lang==='ar'?'🗑️ إزالة':'🗑️ Remove'}</button>
-          </div>`:''}
-          <input type="file" accept="image/*" onchange="handleBillboardImageUpload(event)"/>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'لافتة كاملة العرض تعرض صورًا أو فيديو بالتناوب تلقائيًا.':'A full-bleed banner that auto-rotates through images or a video.'}</p>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          ${(state.settings.billboardSlides||[]).map((s,idx)=>`
+          <div style="border:1px solid var(--line);border-radius:10px;padding:12px;position:relative">
+            <button class="btn btn-ghost btn-sm" style="position:absolute;top:8px;right:8px;color:var(--brick)" onclick="removeBillboardSlide(${idx})">🗑️</button>
+            <div class="form-row" style="margin-bottom:10px">
+              <div class="form-field"><label>${state.lang==='ar'?'النوع':'Type'}</label>
+                <select onchange="updateBillboardSlide(${idx},'type',this.value)">
+                  <option value="image" ${s.type==='image'?'selected':''}>${state.lang==='ar'?'صورة':'Image'}</option>
+                  <option value="video" ${s.type==='video'?'selected':''}>${state.lang==='ar'?'فيديو':'Video'}</option>
+                </select>
+              </div>
+            </div>
+            ${s.mediaUrl?`
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
+            </div>`:''}
+            <input type="file" accept="${s.type==='video'?'video/*':'image/*'}" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
+            <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${s.title||''}" onchange="updateBillboardSlide(${idx},'title',this.value)"/></div>
+            <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${s.subtitle||''}" onchange="updateBillboardSlide(${idx},'subtitle',this.value)"/></div>
+            <div class="form-row" style="margin-bottom:10px">
+              <div class="form-field">
+                <label>${state.lang==='ar'?'الرابط':'Link'}</label>
+                <select onchange="updateBillboardSlide(${idx},'linkType',this.value)">
+                  <option value="none" ${s.linkType==='none'||!s.linkType?'selected':''}>${state.lang==='ar'?'بدون رابط':'No link'}</option>
+                  <option value="category" ${s.linkType==='category'?'selected':''}>${state.lang==='ar'?'فئة في المتجر':'A category on the site'}</option>
+                  <option value="url" ${s.linkType==='url'?'selected':''}>${state.lang==='ar'?'رابط خارجي':'Custom URL'}</option>
+                </select>
+              </div>
+              ${s.linkType==='category'?`
+              <div class="form-field">
+                <label>${state.lang==='ar'?'الفئة':'Category'}</label>
+                <select onchange="updateBillboardSlide(${idx},'linkValue',this.value)">
+                  <option value="">${state.lang==='ar'?'اختر فئة':'Choose a category'}</option>
+                  ${CATS.map(c=>`<option value="${c.id}" ${s.linkValue===c.id?'selected':''}>${catName(c)}</option>`).join('')}
+                </select>
+              </div>`:''}
+              ${s.linkType==='url'?`
+              <div class="form-field">
+                <label>URL</label>
+                <input type="text" value="${s.linkValue||''}" placeholder="https://..." onchange="updateBillboardSlide(${idx},'linkValue',this.value)"/>
+              </div>`:''}
+            </div>
+            ${s.linkType && s.linkType!=='none'?`
+            <div class="form-field" style="max-width:240px"><label>${state.lang==='ar'?'نص الزر':'Button label'}</label><input type="text" value="${s.buttonLabel||''}" placeholder="${state.lang==='ar'?'تسوق الآن':'Shop now'}" onchange="updateBillboardSlide(${idx},'buttonLabel',this.value)"/></div>`:''}
+          </div>`).join('')}
         </div>
-        <div class="form-row" style="margin-bottom:12px">
-          <div class="form-field">
-            <label>${state.lang==='ar'?'الرابط':'Link'}</label>
-            <select onchange="updateBillboardField('billboardLinkType', this.value)">
-              <option value="none" ${state.settings.billboardLinkType==='none'?'selected':''}>${state.lang==='ar'?'بدون رابط':'No link'}</option>
-              <option value="category" ${state.settings.billboardLinkType==='category'?'selected':''}>${state.lang==='ar'?'فئة في المتجر':'A category on the site'}</option>
-              <option value="url" ${state.settings.billboardLinkType==='url'?'selected':''}>${state.lang==='ar'?'رابط خارجي':'Custom URL'}</option>
-            </select>
-          </div>
-          ${state.settings.billboardLinkType==='category'?`
-          <div class="form-field">
-            <label>${state.lang==='ar'?'الفئة':'Category'}</label>
-            <select onchange="updateBillboardField('billboardLinkValue', this.value)">
-              <option value="">${state.lang==='ar'?'اختر فئة':'Choose a category'}</option>
-              ${CATS.map(c=>`<option value="${c.id}" ${state.settings.billboardLinkValue===c.id?'selected':''}>${catName(c)}</option>`).join('')}
-            </select>
-          </div>`:''}
-          ${state.settings.billboardLinkType==='url'?`
-          <div class="form-field">
-            <label>URL</label>
-            <input type="text" value="${state.settings.billboardLinkValue||''}" placeholder="https://..." onchange="updateBillboardField('billboardLinkValue', this.value)"/>
-          </div>`:''}
-        </div>
-        ${state.settings.billboardLinkType!=='none'?`
-        <div class="form-field" style="max-width:240px"><label>${state.lang==='ar'?'نص الزر':'Button label'}</label><input type="text" value="${state.settings.billboardButtonLabel||''}" placeholder="${state.lang==='ar'?'تسوق الآن':'Shop now'}" onchange="updateBillboardField('billboardButtonLabel', this.value)"/></div>`:''}
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="addBillboardSlide()">+ ${state.lang==='ar'?'إضافة شريحة':'Add slide'}</button>
       </div>`:''}
     </div>
   </div>`;
@@ -2930,27 +2966,29 @@ function mHome(){
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
   const deal = featured[0];
-  const bb = state.settings;
-  const bbShow = bb.billboardEnabled && (bb.billboardTitle || bb.billboardImageUrl);
-  const bbHasLink = bb.billboardLinkType!=='none' && !!bb.billboardLinkValue;
-  const bbClick = bbHasLink ? (bb.billboardLinkType==='category' ? `mFilterByCat('${bb.billboardLinkValue}')` : `window.open('${bb.billboardLinkValue}','_blank')`) : '';
+  const bbSlides = state.settings.billboardSlides || [];
+  const bbShow = state.settings.billboardEnabled && bbSlides.length>0;
+  const bbSlide = bbShow ? bbSlides[state.billboardIndex % bbSlides.length] : null;
+  const bbHasLink = bbSlide && bbSlide.linkType && bbSlide.linkType!=='none' && !!bbSlide.linkValue;
+  const bbClick = bbHasLink ? (bbSlide.linkType==='category' ? `mFilterByCat('${bbSlide.linkValue}')` : `window.open('${bbSlide.linkValue}','_blank')`) : '';
   return `
   <div style="animation:fadeIn .3s ease">
     <div class="m-header">
-      <div class="m-logo-mark"><svg viewBox="0 0 24 24"><path d="M12 3l2.4 5.3 5.6.6-4.2 3.9 1.2 5.7L12 15.6 6.9 18.5l1.2-5.7L4 8.9l5.6-.6z"></path></svg></div>
+      <div class="m-logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
       <div style="flex:1;min-width:0">
         <div class="m-kicker">ya halaa ya halaa</div>
-        <div class="m-title">Lebanon Store</div>
+        <div class="m-title">HABIBI</div>
       </div>
       ${mThemeToggleBtn()}
     </div>
     <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>What are you looking for?</span></button>
     ${bbShow ? `
-    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" ${bbHasLink?`onclick="${bbClick}"`:''} ${bb.billboardImageUrl?`style="background-image:url('${bb.billboardImageUrl}')"`:''}>
+    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" ${bbHasLink?`onclick="${bbClick}"`:''} ${bbSlide.type!=='video' && bbSlide.mediaUrl?`style="background-image:url('${bbSlide.mediaUrl}')"`:''}>
+      ${bbSlide.type==='video' && bbSlide.mediaUrl?`<video class="billboard-video" src="${bbSlide.mediaUrl}" autoplay muted loop playsinline></video>`:''}
       <div class="m-billboard-inner">
-        ${bb.billboardTitle?`<div class="m-billboard-title">${bb.billboardTitle}</div>`:''}
-        ${bb.billboardSubtitle?`<div class="m-billboard-sub">${bb.billboardSubtitle}</div>`:''}
-        ${bbHasLink?`<div class="m-billboard-cta">${bb.billboardButtonLabel || 'Shop now'}</div>`:''}
+        ${bbSlide.title?`<div class="m-billboard-title">${bbSlide.title}</div>`:''}
+        ${bbSlide.subtitle?`<div class="m-billboard-sub">${bbSlide.subtitle}</div>`:''}
+        ${bbHasLink?`<div class="m-billboard-cta">${bbSlide.buttonLabel || 'Shop now'}</div>`:''}
       </div>
     </div>` : ''}
     ${deal ? `
@@ -3227,7 +3265,7 @@ function mAccount(){
       ${isAdminUser(c)?`<div class="m-panel-row" style="cursor:pointer" onclick="goAdmin()"><div style="font:600 14px/1.3 'Figtree',sans-serif;color:var(--accInk)">★ Admin panel</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">›</div></div>`:''}
     </div>
     <button class="m-btn-outline" style="width:100%" onclick="logout()">Log out</button>
-    <div style="font:400 12px/1.6 'Figtree',sans-serif;color:var(--muted);text-align:center;margin-top:14px">Lebanon Store · mobile</div>
+    <div style="font:400 12px/1.6 'Figtree',sans-serif;color:var(--muted);text-align:center;margin-top:14px">HABIBI · mobile</div>
   </div>`;
 }
 
@@ -3326,6 +3364,15 @@ function render(){
 
   document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
   document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
+  updateHeroFade();
+}
+function updateHeroFade(){
+  const hero = document.getElementById('hero-sec');
+  if(!hero) return;
+  const h = hero.offsetHeight || 400;
+  const p = Math.min(1, window.scrollY / h);
+  hero.style.opacity = String(1 - p);
+  hero.style.transform = `translateY(${p*40}px)`;
 }
 
 async function initApp(){
@@ -3334,13 +3381,8 @@ async function initApp(){
     if(!error && data){
       state.settings.deliveryMin = data.delivery_min;
       state.settings.deliveryMax = data.delivery_max;
-      state.settings.billboardEnabled = !!data.billboard_enabled;
-      state.settings.billboardTitle = data.billboard_title || '';
-      state.settings.billboardSubtitle = data.billboard_subtitle || '';
-      state.settings.billboardImageUrl = data.billboard_image_url || '';
-      state.settings.billboardLinkType = data.billboard_link_type || 'none';
-      state.settings.billboardLinkValue = data.billboard_link_value || '';
-      state.settings.billboardButtonLabel = data.billboard_button_label || '';
+      if(data.billboard_enabled !== undefined && data.billboard_enabled !== null) state.settings.billboardEnabled = !!data.billboard_enabled;
+      if(data.billboard_slides){ try{ state.settings.billboardSlides = JSON.parse(data.billboard_slides); }catch(e){} }
     }
   } catch(e){
     console.error('Could not load settings:', e);
@@ -3366,6 +3408,14 @@ window.addEventListener('resize', ()=>{
   clearTimeout(_resizeT);
   _resizeT = setTimeout(()=>{ if(state.currentUserId) render(); }, 150);
 });
+window.addEventListener('scroll', updateHeroFade, {passive:true});
+let _billboardTimer = setInterval(()=>{
+  const slides = state.settings.billboardSlides;
+  if(state.settings.billboardEnabled && slides && slides.length>1 && state.view==='home'){
+    state.billboardIndex = (state.billboardIndex+1) % slides.length;
+    render();
+  }
+}, 5000);
 initApp();
 </script>
 </body>
