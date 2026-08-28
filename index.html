@@ -891,7 +891,7 @@ function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
 function cartSubtotal(){
   return state.cart.reduce((s,l)=>{
     const p = findProduct(l.id);
-    return s + p.price*l.qty;
+    return p ? s + p.price*l.qty : s;
   },0);
 }
 function deliveryFee(){
@@ -1283,7 +1283,7 @@ function renderHome(){
   <section class="container">
     <div class="section-head"><div><h2 class="font-display">${t('reviews')}</h2></div></div>
     <div class="review-grid">
-      ${REVIEWS.map(r=>`
+      ${REVIEWS.filter(r=>findProduct(r.prod)).map(r=>`
         <div class="review-card">
           <div class="review-top">
             <span class="review-name">${state.lang==='ar'?r.name_ar:r.name_en}</span>
@@ -1445,6 +1445,7 @@ function renderDrawer(){
         </div>`:
         lines.map(l=>{
           const p = findProduct(l.id);
+          if(!p) return '';
           const color = PALETTE[p.color % PALETTE.length];
           return `
           <div class="cart-line">
@@ -1547,7 +1548,7 @@ async function placeOrder(){
     return;
   }
   const num = 'LB-2026-' + String(Math.floor(100000+Math.random()*899999)).slice(0,6);
-  const items = state.cart.map(l=>{
+  const items = state.cart.filter(l=>findProduct(l.id)).map(l=>{
     const p = findProduct(l.id);
     return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, cost:p.cost, supplierUrl:p.supplierUrl, sku:p.sku, status:'confirmed' };
   });
@@ -1709,6 +1710,7 @@ function renderCheckout(){
         </div>
         ${state.cart.map(l=>{
           const p = findProduct(l.id);
+          if(!p) return '';
           const color = PALETTE[p.color % PALETTE.length];
           const desc = pdesc(p);
           const shortDesc = desc.length>80 ? desc.slice(0,80)+'…' : desc;
