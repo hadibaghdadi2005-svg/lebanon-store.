@@ -321,6 +321,8 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .login-method svg{width:19px;height:19px;flex-shrink:0}
 .login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-soft);font-size:12px}
 .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.login-switch{text-align:center;margin-top:16px;font-size:12.5px;color:var(--ink-soft)}
+.login-switch a{color:var(--cedar);font-weight:700;border-bottom:1.5px solid var(--brass);margin-inline-start:4px}
 .login-form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .login-form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
 .login-form-field input{padding:11px 13px;border:1.4px solid var(--line);border-radius:9px;font-size:14px;outline:none}
@@ -498,7 +500,9 @@ const T = {
     deliveryHelp:"مدة التوصيل من المورد إلى لبنان (عادة 10-15 يومًا). يظهر هذا للعملاء في صفحة المنتج والدفع.",
     costLabel:"التكلفة", profitLabel:"الربح", supplierLink:"رابط المورد",
     openSupplier:"فتح", supplierLinkPrivacy:"رابط المورد يظهر فقط في لوحة الإدارة، ولا يظهر للعملاء أبدًا.",
-    suggestPrice:"اقترح السعر", suggestPriceHint:"يقترح سعرًا مناسبًا تلقائيًا حسب التكلفة (هامش أعلى للمنتجات الرخيصة)"
+    suggestPrice:"اقترح السعر", suggestPriceHint:"يقترح سعرًا مناسبًا تلقائيًا حسب التكلفة (هامش أعلى للمنتجات الرخيصة)",
+    password:"كلمة المرور", signIn:"تسجيل الدخول", createAccount:"إنشاء حساب",
+    haveAccount:"لديك حساب بالفعل؟", noAccount:"ليس لديك حساب؟"
   },
   en:{
     search:"Search products...", categories:"Categories", shopNow:"Shop Now", explore:"Explore Products",
@@ -532,7 +536,9 @@ const T = {
     deliveryHelp:"Shipping time from the supplier to Lebanon (typically 10-15 days). Shown to customers on the product and checkout pages.",
     costLabel:"Cost", profitLabel:"Profit", supplierLink:"Supplier Link",
     openSupplier:"Open", supplierLinkPrivacy:"Supplier links are visible only in this admin panel — customers never see them.",
-    suggestPrice:"Suggest Price", suggestPriceHint:"Auto-suggests a fair price from cost (higher margin on cheaper items)"
+    suggestPrice:"Suggest Price", suggestPriceHint:"Auto-suggests a fair price from cost (higher margin on cheaper items)",
+    password:"Password", signIn:"Sign In", createAccount:"Create Account",
+    haveAccount:"Already have an account?", noAccount:"Don't have an account?"
   }
 };
 
@@ -668,10 +674,9 @@ function computeSuggestedPrice(cost, marginPctOverride){
 }
 
 /* ============ STATE ============ */
-/* Whoever logs in with this email OR this phone number becomes the admin account
-   and is the only one who ever sees the ★ Admin link. Change these to your own. */
+/* Whoever signs in (with a verified password, via Supabase Auth) using this email
+   becomes the admin account and is the only one who ever sees the ★ Admin link. */
 const ADMIN_EMAIL = 'hadibaghdadi11@gmail.com';
-const ADMIN_PHONE = '81687016';
 
 let state = {
   lang: 'ar',
@@ -703,8 +708,9 @@ let state = {
   /* ---- accounts / login ---- */
   customers: [], // {id, name, email, phone, method, cart, wishlist, createdAt}
   currentUserId: null,
-  loginMethod: null, // null | 'google' | 'apple' | 'phone'
+  authMode: 'signin', // 'signin' | 'signup'
   loginForm: {},
+  authBusy: false,
   impersonateFromAdmin: null, // holds the admin's own id while they're "shopping as" a customer
 };
 
@@ -725,7 +731,7 @@ function showToast(msg){
 
 /* ============ ACCOUNTS / LOGIN ============ */
 function currentCustomer(){ return state.customers.find(c=>c.id===state.currentUserId) || null; }
-function isAdminUser(c){ return !!c && ((c.email && c.email.toLowerCase()===ADMIN_EMAIL.toLowerCase()) || (c.phone && c.phone.replace(/\s+/g,'')===ADMIN_PHONE)); }
+function isAdminUser(c){ return !!c && !!c.email && c.email.toLowerCase()===ADMIN_EMAIL.toLowerCase(); }
 function syncCustomerCart(){
   const c = currentCustomer();
   if(!c) return;
@@ -738,7 +744,7 @@ function loadCustomerCart(c){
   state.cart = c.cart || [];
   state.wishlist = c.wishlist || new Set();
 }
-function setLoginMethod(m){ state.loginMethod = m; state.loginForm = {}; render(); }
+function setAuthMode(m){ state.authMode = m; state.loginForm = {}; render(); }
 function updateLoginForm(field, val){ state.loginForm[field] = val; }
 
 async function findOrCreateCustomer({name, email, phone, method}){
@@ -809,7 +815,7 @@ function subscribeAdminOrders(){
 function completeLogin(c){
   state.currentUserId = c.id;
   loadCustomerCart(c);
-  state.loginMethod = null;
+  state.authMode = 'signin';
   state.loginForm = {};
   state.formData.fullName = c.name || '';
   state.formData.phone = c.phone || '';
@@ -827,39 +833,70 @@ function completeLogin(c){
   window.scrollTo(0,0);
   render();
 }
-async function submitSocialLogin(method){
+/* ============ REAL AUTH (Supabase Auth — email + password) ============
+   Identity is verified by Supabase itself (the account owner is whoever knows
+   the password / can confirm the email), not just typed into a form. This is
+   what makes the ★ Admin check on ADMIN_EMAIL above actually mean something. */
+async function submitAuth(){
   const f = state.loginForm;
-  if(!f.name || !f.email){
-    showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم والبريد الإلكتروني' : 'Please fill in your name and email');
+  const email = (f.email||'').trim().toLowerCase();
+  const password = f.password || '';
+  const isAr = state.lang==='ar';
+  if(!email || !password){
+    showToast(isAr ? 'يرجى تعبئة البريد الإلكتروني وكلمة المرور' : 'Please fill in your email and password');
     return;
   }
-  showToast(state.lang==='ar' ? 'جارٍ تسجيل الدخول...' : 'Logging in...');
-  const c = await findOrCreateCustomer({name:f.name, email:f.email, method});
-  if(!c) return;
-  completeLogin(c);
-}
-async function submitPhoneLogin(){
-  const f = state.loginForm;
-  if(!f.name || !f.phone){
-    showToast(state.lang==='ar' ? 'يرجى تعبئة الاسم ورقم الهاتف' : 'Please fill in your name and phone number');
+  if(state.authMode==='signup' && !f.name){
+    showToast(isAr ? 'يرجى تعبئة الاسم الكامل' : 'Please fill in your full name');
     return;
   }
-  showToast(state.lang==='ar' ? 'جارٍ تسجيل الدخول...' : 'Logging in...');
-  const c = await findOrCreateCustomer({name:f.name, phone:f.phone, method:'phone'});
-  if(!c) return;
-  completeLogin(c);
+  if(state.authMode==='signup' && password.length < 6){
+    showToast(isAr ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
+    return;
+  }
+  if(state.authBusy) return;
+  state.authBusy = true;
+  showToast(isAr ? 'جارٍ التحقق...' : 'Verifying...');
+  try{
+    if(state.authMode==='signup'){
+      const { data, error } = await sb.auth.signUp({ email, password, options:{ data:{ name:f.name } } });
+      if(error){ showToast(error.message); return; }
+      if(!data.session){
+        showToast(isAr ? 'تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتأكيده ثم سجّل الدخول.' : 'Account created! Check your email to confirm it, then sign in.');
+        state.authMode = 'signin';
+        state.loginForm = { email };
+        render();
+        return;
+      }
+      const c = await findOrCreateCustomer({ name:f.name, email:data.session.user.email, method:'password' });
+      if(!c) return;
+      completeLogin(c);
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if(error){
+        showToast(isAr ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'Incorrect email or password');
+        return;
+      }
+      const c = await findOrCreateCustomer({ email:data.session.user.email, method:'password' });
+      if(!c) return;
+      completeLogin(c);
+    }
+  } finally {
+    state.authBusy = false;
+  }
 }
 function logout(){
   const msg = state.lang==='ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out of your account?';
   if(!confirm(msg)) return;
   syncCustomerCart();
   unsubscribeCustomerOrders();
+  sb.auth.signOut();
   state.currentUserId = null;
   state.impersonateFromAdmin = null;
   state.cart = [];
   state.wishlist = new Set();
   state.view = 'login';
-  state.loginMethod = null;
+  state.authMode = 'signin';
   window.scrollTo(0,0);
   render();
 }
@@ -1103,52 +1140,25 @@ function filterByCat(id){ showToast(state.lang==='ar'?'تصفية حسب الف�
 function renderLogin(){
   const f = state.loginForm;
   const isAr = state.lang==='ar';
-  let body = '';
+  const isSignup = state.authMode === 'signup';
 
-  if(state.loginMethod === 'google' || state.loginMethod === 'apple'){
-    const isGoogle = state.loginMethod === 'google';
-    body = `
-      <a href="#" class="login-back" onclick="setLoginMethod(null);return false;">${isAr?'→ رجوع':'← Back'}</a>
-      <div class="login-form-field">
-        <label>${t('fullName')}</label>
-        <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
-      </div>
-      <div class="login-form-field">
-        <label>${t('email')}</label>
-        <input type="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="${isGoogle?'name@gmail.com':'name@icloud.com'}"/>
-      </div>
-      <button class="btn btn-primary btn-block" onclick="submitSocialLogin('${state.loginMethod}')">${isAr?'متابعة':'Continue'}</button>
-    `;
-  } else if(state.loginMethod === 'phone'){
-    body = `
-      <a href="#" class="login-back" onclick="setLoginMethod(null);return false;">${isAr?'→ رجوع':'← Back'}</a>
-      <div class="login-form-field">
-        <label>${t('fullName')}</label>
-        <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
-      </div>
-      <div class="login-form-field">
-        <label>${t('phone')}</label>
-        <input type="tel" value="${f.phone||''}" oninput="updateLoginForm('phone',this.value)" placeholder="+961 7X XXX XXX"/>
-      </div>
-      <button class="btn btn-primary btn-block" onclick="submitPhoneLogin()">${isAr?'متابعة':'Continue'}</button>
-    `;
-  } else {
-    body = `
-      <button class="login-method" onclick="setLoginMethod('google')">
-        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.85A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.09A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.43.34-2.09V7.06H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.94l3.66-2.85z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.06l3.66 2.85C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
-        ${isAr?'المتابعة عبر Google':'Continue with Google'}
-      </button>
-      <button class="login-method" onclick="setLoginMethod('apple')">
-        <svg viewBox="0 0 24 24" fill="#000"><path d="M16.36 1.43c0 1.14-.46 2.2-1.2 2.98-.83.87-2.06 1.53-3.15 1.44-.14-1.1.43-2.26 1.18-3 .84-.87 2.27-1.5 3.17-1.42zM20.9 17.35c-.5 1.15-.74 1.66-1.38 2.68-.9 1.42-2.16 3.2-3.72 3.21-1.39.02-1.75-.9-3.63-.89-1.88.01-2.28.9-3.68.88-1.56-.02-2.75-1.62-3.65-3.03-2.5-3.92-2.76-8.51-1.22-10.96 1.1-1.74 2.83-2.76 4.46-2.76 1.66 0 2.7.91 4.07.91 1.32 0 2.13-.91 4.05-.91 1.45 0 2.98.79 4.08 2.16-3.58 1.96-3 7.06.62 8.71z"/></svg>
-        ${isAr?'المتابعة عبر Apple':'Continue with Apple'}
-      </button>
-      <div class="login-divider">${isAr?'أو':'or'}</div>
-      <button class="login-method" onclick="setLoginMethod('phone')">
-        <svg class="icon" style="width:19px;height:19px;stroke:var(--cedar)" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
-        ${isAr?'المتابعة برقم الهاتف':'Continue with Phone Number'}
-      </button>
-    `;
-  }
+  const body = `
+    ${isSignup ? `
+    <div class="login-form-field">
+      <label>${t('fullName')}</label>
+      <input type="text" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+    </div>` : ''}
+    <div class="login-form-field">
+      <label>${t('email')}</label>
+      <input type="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
+    </div>
+    <div class="login-form-field">
+      <label>${t('password')}</label>
+      <input type="password" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="${isAr?'••••••••':'••••••••'}" onkeydown="if(event.key==='Enter')submitAuth()"/>
+    </div>
+    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
+    <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<a href="#" onclick="setAuthMode('${isSignup?'signin':'signup'}');return false;">${isSignup ? t('signIn') : t('createAccount')}</a></div>
+  `;
 
   return `
   <div class="login-wrap">
@@ -1159,10 +1169,6 @@ function renderLogin(){
       <div class="login-title font-display">${t('storeName')}</div>
       <div class="login-sub">${isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store'}</div>
       ${body}
-      <div class="login-note">${isAr
-        ? 'هذا عرض تجريبي: تسجيل الدخول عبر Google/Apple هنا محاكى (بدون OAuth حقيقي)، والبيانات تُحفظ فقط لهذه الجلسة في المتصفح.'
-        : 'This is a demo: Google/Apple sign-in here is simulated (no real OAuth), and data is only kept for this browser session.'}
-      </div>
     </div>
   </div>`;
 }
