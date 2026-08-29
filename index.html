@@ -1920,6 +1920,21 @@ async function updateItemStatus(dbId, itemIndex, status){
     showToast(state.lang==='ar' ? 'تعذر حفظ الحالة' : 'Could not save the status');
   }
 }
+/* Lets admin attach a supplier tracking code to an already-placed order's item,
+   separate from the product's own SKU (each purchase from the supplier gets its own). */
+async function updateItemSku(dbId, itemIndex, sku){
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o || !o.items[itemIndex]) return;
+  o.items[itemIndex].sku = sku.trim();
+  render();
+  try{
+    const { error } = await sb.from('orders').update({ items: o.items }).eq('id', dbId);
+    if(error) throw error;
+  } catch(e){
+    console.error('Item SKU update failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر حفظ الرمز' : 'Could not save the code');
+  }
+}
 async function deleteOrder(dbId){
   const isAr = state.lang==='ar';
   if(!confirm(isAr ? 'هل تريد حذف هذا الطلب نهائيًا؟ لا يمكن التراجع عن هذا.' : 'Delete this order permanently? This can\'t be undone.')) return;
@@ -2414,14 +2429,16 @@ function renderAdminItemStatusTable(o){
   <table class="admin-table">
     <thead><tr>
       <th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th>
+      <th>${isAr?'رمز التتبع':'Tracking code'}</th>
       <th>${isAr?'الحالة/اللوجستيات':'Status / Logistics'}</th>
     </tr></thead>
     <tbody>
       ${o.items.map((it,i)=>`
         <tr>
-          <td>${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-size:11px">(${it.sku||''})</span></td>
+          <td>${isAr?it.name_ar:it.name_en}</td>
           <td>${it.variant}</td>
           <td>${it.qty}</td>
+          <td><input type="text" class="font-mono" value="${it.sku||''}" onchange="updateItemSku('${o._dbId}', ${i}, this.value)" style="width:100px;font-size:11px"/></td>
           <td>
             <select onchange="updateItemStatus('${o._dbId}', ${i}, this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:700">
               ${ORDER_STATUSES.map(s=>`<option value="${s}" ${(it.status||'confirmed')===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
@@ -2733,15 +2750,17 @@ function renderAdmin(){
             <table class="admin-table">
               <thead><tr>
                 <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>${state.lang==='ar'?'الخيار':'Variant'}</th><th>${state.lang==='ar'?'الكمية':'Qty'}</th>
+                <th>${state.lang==='ar'?'رمز التتبع':'Tracking code'}</th>
                 <th>${state.lang==='ar'?'سعر البيع':'Sell Price'}</th><th>${t('costLabel')}</th><th>${t('supplierLink')}</th>
                 <th>${state.lang==='ar'?'الحالة/اللوجستيات':'Status / Logistics'}</th>
               </tr></thead>
               <tbody>
                 ${o.items.map((it,i)=>`
                   <tr>
-                    <td>${state.lang==='ar'?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-size:11px">(${it.sku})</span></td>
+                    <td>${state.lang==='ar'?it.name_ar:it.name_en}</td>
                     <td>${it.variant}</td>
                     <td>${it.qty}</td>
+                    <td><input type="text" class="font-mono" value="${it.sku||''}" onchange="updateItemSku('${o._dbId}', ${i}, this.value)" style="width:100px;font-size:11px"/></td>
                     <td class="font-mono">${fmt(it.price)}</td>
                     <td class="font-mono">${it.cost!==undefined?fmt(it.cost):'—'}</td>
                     <td>${it.supplierUrl?`<a href="${it.supplierUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">${t('openSupplier')} ↗</a>`:'—'}</td>
