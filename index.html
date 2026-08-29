@@ -319,28 +319,52 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .pay-option.active{border-color:var(--cedar);background:var(--sand)}
 
 /* ---------- LOGIN ---------- */
-.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:20px;position:relative;overflow-y:auto}
-.login-wrap::after{content:'';position:absolute;inset-inline-end:-10%;top:-15%;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.25), transparent 70%);pointer-events:none}
-.login-card{position:relative;background:var(--paper);border-radius:18px;padding:36px 32px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.login-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
-.login-title{font-size:22px;text-align:center;margin-bottom:6px}
-.login-sub{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:26px}
-.login-method{
-  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 16px;border-radius:10px;
-  border:1.5px solid var(--line);background:var(--paper);font-weight:700;font-size:14px;margin-bottom:11px;transition:border-color .15s ease,background .15s ease;
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:32px 20px;position:relative;overflow-y:auto}
+.login-wrap::before{content:'';position:absolute;inset-inline-end:-12%;top:-18%;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.22), transparent 70%);pointer-events:none}
+.login-wrap::after{content:'';position:absolute;inset-inline-start:-14%;bottom:-16%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle, rgba(194,84,45,.16), transparent 70%);pointer-events:none}
+.login-shell{position:relative;display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:900px;background:var(--paper);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.login-brand{
+  background:linear-gradient(158deg, var(--cedar) 0%, var(--cedar-light) 62%, #0c2e22 100%);
+  color:var(--paper);padding:44px 40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
 }
-.login-method:hover{border-color:var(--cedar);background:var(--sand)}
-.login-method svg{width:19px;height:19px;flex-shrink:0}
-.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-soft);font-size:12px}
-.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line)}
-.login-switch{text-align:center;margin-top:16px;font-size:12.5px;color:var(--ink-soft)}
-.login-switch a{color:var(--cedar);font-weight:700;border-bottom:1.5px solid var(--brass);margin-inline-start:4px}
-.login-form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.login-brand::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle, rgba(224,181,74,.35) 1px, transparent 1.6px);background-size:22px 22px;opacity:.35}
+.login-brand-top{position:relative;z-index:1}
+.login-brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:34px}
+.login-brand-logo .logo-mark{background:var(--brass)}
+.login-brand-logo .logo-mark svg{stroke:#2b1c05}
+.login-brand-wordmark{font-size:20px;font-weight:800;letter-spacing:.02em}
+.login-brand-title{font-size:28px;line-height:1.25;margin-bottom:14px;max-width:280px}
+.login-brand-sub{font-size:14px;line-height:1.6;color:rgba(255,253,248,.78);max-width:280px}
+.login-brand-feats{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;margin-top:30px}
+.login-brand-feat{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:rgba(255,253,248,.9)}
+.login-brand-feat svg{width:18px;height:18px;flex-shrink:0;stroke:var(--brass-light);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+.login-panel{padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
+.login-title{font-size:24px;margin-bottom:6px}
+.login-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:26px}
+.login-form-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .login-form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
-.login-form-field input{padding:11px 13px;border:1.4px solid var(--line);border-radius:9px;font-size:16px;outline:none}
-.login-form-field input:focus{border-color:var(--cedar)}
+.login-input-wrap{position:relative;display:flex;align-items:center}
+.login-input-wrap svg{position:absolute;inset-inline-start:13px;width:16px;height:16px;stroke:var(--ink-soft);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.login-form-field input{width:100%;padding:12px 13px 12px 38px;border:1.4px solid var(--line);border-radius:10px;font-size:16px;outline:none;background:var(--paper);transition:border-color .15s ease,box-shadow .15s ease}
+[dir="rtl"] .login-form-field input{padding:12px 38px 12px 13px}
+[dir="rtl"] .login-input-wrap svg{inset-inline-start:auto;inset-inline-end:13px}
+.login-form-field input:focus{border-color:var(--cedar);box-shadow:0 0 0 3px rgba(15,61,46,.1)}
+.login-pw-toggle{position:absolute;inset-inline-end:12px;background:none;border:none;padding:4px;color:var(--ink-soft);display:flex}
+[dir="rtl"] .login-pw-toggle{inset-inline-end:auto;inset-inline-start:12px}
+.login-pw-toggle svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.login-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--ink-soft)}
+.login-switch a{color:var(--cedar);font-weight:700;border-bottom:1.5px solid var(--brass);margin-inline-start:4px}
 .login-back{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:14px;display:inline-flex;align-items:center;gap:4px}
-.login-note{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.6}
+.login-note{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:22px;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:6px}
+.login-note svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;flex-shrink:0}
+@media (max-width:760px){
+  .login-wrap{padding:0}
+  .login-shell{grid-template-columns:1fr;max-width:460px;border-radius:0;min-height:100dvh;box-shadow:none}
+  .login-brand{padding:32px 28px 26px}
+  .login-brand-feats{display:none}
+  .login-brand-title{font-size:23px}
+  .login-panel{padding:32px 28px 40px}
+}
 
 /* ---------- IMPERSONATION BANNER ---------- */
 .impersonate-bar{
@@ -492,7 +516,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .m-price{font:600 20px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
 .m-was{font:500 13px/1 'IBM Plex Mono',monospace;color:var(--muted);text-decoration:line-through}
 .m-shipfree{margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)}
-.m-billboard{margin:0 0 20px;position:relative;border-radius:0;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end}
+.m-billboard{margin:0 0 20px;position:relative;border-radius:0;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end;transition:opacity .1s linear,transform .1s linear;will-change:opacity,transform;transform-origin:top center}
 .m-billboard-clickable{cursor:pointer}
 .m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72))}
 .m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%}
@@ -900,6 +924,7 @@ let state = {
   authMode: 'signin', // 'signin' | 'signup'
   loginForm: {},
   authBusy: false,
+  loginPwShown: false,
   impersonateFromAdmin: null, // holds the admin's own id while they're "shopping as" a customer
 
   /* ---- mobile app UI (phone-width customer experience) ---- */
@@ -948,6 +973,10 @@ function loadCustomerCart(c){
   state.wishlist = c.wishlist || new Set();
 }
 function setAuthMode(m){ state.authMode = m; state.loginForm = {}; render(); }
+function toggleLoginPw(){
+  state.loginPwShown = !state.loginPwShown;
+  render();
+}
 function updateLoginForm(field, val){ state.loginForm[field] = val; }
 
 async function findOrCreateCustomer({name, email, phone, method}){
@@ -1426,20 +1455,35 @@ function renderLogin(){
   const f = state.loginForm;
   const isAr = state.lang==='ar';
   const isSignup = state.authMode === 'signup';
+  const pwShown = state.loginPwShown;
 
   const body = `
     ${isSignup ? `
     <div class="login-form-field">
       <label>${t('fullName')}</label>
-      <input type="text" autocomplete="name" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <input type="text" autocomplete="name" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
+      </div>
     </div>` : ''}
     <div class="login-form-field">
       <label>${t('email')}</label>
-      <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
+      </div>
     </div>
     <div class="login-form-field">
       <label>${t('password')}</label>
-      <input type="password" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="${isAr?'••••••••':'••••••••'}" onkeydown="if(event.key==='Enter')submitAuth()"/>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="login-pw-input" type="${pwShown?'text':'password'}" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()"/>
+        <button type="button" class="login-pw-toggle" onclick="toggleLoginPw()" aria-label="${pwShown?'Hide password':'Show password'}">
+          ${pwShown
+            ? `<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`
+            : `<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-6.5 0-10-8-10-8a18.6 18.6 0 0 1 4.22-5.06M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`}
+        </button>
+      </div>
     </div>
     <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
     <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<a href="#" onclick="setAuthMode('${isSignup?'signin':'signup'}');return false;">${isSignup ? t('signIn') : t('createAccount')}</a></div>
@@ -1447,13 +1491,31 @@ function renderLogin(){
 
   return `
   <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo">
-        <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+    <div class="login-shell">
+      <div class="login-brand">
+        <div class="login-brand-top">
+          <div class="login-brand-logo">
+            <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+            <span class="login-brand-wordmark">${t('storeName')}</span>
+          </div>
+          <div class="login-brand-title font-display">${isAr?'كل شيء، بمحبة':'Everything, with love'}</div>
+          <div class="login-brand-sub">${isAr?'تسوّق بثقة مع توصيل سريع لجميع المناطق اللبنانية':'Shop with confidence — fast delivery across every region in Lebanon.'}</div>
+        </div>
+        <div class="login-brand-feats">
+          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'منتجات مضمونة الجودة':'Quality-checked products'}</div>
+          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'توصيل لجميع المناطق':'Delivery to every governorate'}</div>
+          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'دفع آمن عند الاستلام':'Secure checkout, every time'}</div>
+        </div>
       </div>
-      <div class="login-title font-display">${t('storeName')}</div>
-      <div class="login-sub">${isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store'}</div>
-      ${body}
+      <div class="login-panel">
+        <div class="login-title font-display">${isSignup ? (isAr?'إنشاء حساب':'Create your account') : (isAr?'مرحبًا بعودتك':'Welcome back')}</div>
+        <div class="login-sub">${isSignup ? (isAr?'انضم إلينا وابدأ التسوّق':'Join us and start shopping in minutes') : (isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store')}</div>
+        ${body}
+        <div class="login-note">
+          <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          ${isAr?'معلوماتك محمية ولا تُشارك مع أي طرف ثالث':'Your information is protected and never shared'}
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -3066,9 +3128,8 @@ function mHome(){
       </div>
       ${mThemeToggleBtn()}
     </div>
-    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${bbShow ? `
-    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" ${bbHasLink?`onclick="${bbClick}"`:''} ${bbSlide.type!=='video' && bbSlide.mediaUrl?`style="background-image:url('${bbSlide.mediaUrl}')"`:''}>
+    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" id="m-billboard-sec" ${bbHasLink?`onclick="${bbClick}"`:''} ${bbSlide.type!=='video' && bbSlide.mediaUrl?`style="background-image:url('${bbSlide.mediaUrl}')"`:''}>
       ${bbSlide.type==='video' && bbSlide.mediaUrl?`<video class="billboard-video" src="${bbSlide.mediaUrl}" autoplay muted loop playsinline></video>`:''}
       <div class="m-billboard-inner">
         ${bbSlide.title?`<div class="m-billboard-title">${bbSlide.title}</div>`:''}
@@ -3076,6 +3137,7 @@ function mHome(){
         ${bbHasLink?`<div class="m-billboard-cta">${bbSlide.buttonLabel || 'Shop now'}</div>`:''}
       </div>
     </div>` : ''}
+    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${deal ? `
     <div class="m-feature" onclick="mOpenProduct(${deal.id})">
       <div class="m-feature-img" style="background:${PALETTE[deal.color % PALETTE.length]}">
@@ -3471,6 +3533,14 @@ function updateMobileHeaderFade(){
   const p = Math.min(1, scrollTop / 90);
   header.style.opacity = String(1 - p);
   header.style.transform = `translateY(${p*-16}px)`;
+  const bb = document.getElementById('m-billboard-sec');
+  if(bb){
+    const bp = Math.min(1, scrollTop / 220);
+    bb.style.opacity = String(1 - bp*0.9);
+    bb.style.transform = `scale(${1 - bp*0.06}) translateY(${bp*-30}px)`;
+    const inner = bb.querySelector('.m-billboard-inner');
+    if(inner) inner.style.transform = `translateY(${scrollTop*0.25}px)`;
+  }
 }
 
 async function initApp(){
