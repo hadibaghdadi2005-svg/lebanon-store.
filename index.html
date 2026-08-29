@@ -471,7 +471,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .mstore button{font-family:inherit}
 .mstore img,.mstore svg{display:block}
 
-.m-header{padding:16px 20px 14px;display:flex;align-items:center;gap:12px}
+.m-header{padding:16px 20px 14px;display:flex;align-items:center;gap:12px;transition:opacity .08s linear,transform .08s linear;will-change:opacity,transform}
 .m-logo-mark{width:38px;height:38px;border-radius:14px;background:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
 .m-logo-mark svg{width:20px;height:20px;fill:none;stroke:#2e1a0a;stroke-width:2.75;stroke-linecap:round;stroke-linejoin:round}
 .m-kicker{font:600 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accInk)}
@@ -492,7 +492,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .m-price{font:600 20px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
 .m-was{font:500 13px/1 'IBM Plex Mono',monospace;color:var(--muted);text-decoration:line-through}
 .m-shipfree{margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)}
-.m-billboard{margin:0 20px 20px;position:relative;border-radius:24px;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end}
+.m-billboard{margin:0 0 20px;position:relative;border-radius:0;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end}
 .m-billboard-clickable{cursor:pointer}
 .m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72))}
 .m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%}
@@ -2973,7 +2973,7 @@ function mHome(){
   const bbClick = bbHasLink ? (bbSlide.linkType==='category' ? `mFilterByCat('${bbSlide.linkValue}')` : `window.open('${bbSlide.linkValue}','_blank')`) : '';
   return `
   <div style="animation:fadeIn .3s ease">
-    <div class="m-header">
+    <div class="m-header" id="m-header-sec">
       <div class="m-logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
       <div style="flex:1;min-width:0">
         <div class="m-kicker">ya halaa ya halaa</div>
@@ -2981,7 +2981,7 @@ function mHome(){
       </div>
       ${mThemeToggleBtn()}
     </div>
-    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>What are you looking for?</span></button>
+    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${bbShow ? `
     <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" ${bbHasLink?`onclick="${bbClick}"`:''} ${bbSlide.type!=='video' && bbSlide.mediaUrl?`style="background-image:url('${bbSlide.mediaUrl}')"`:''}>
       ${bbSlide.type==='video' && bbSlide.mediaUrl?`<video class="billboard-video" src="${bbSlide.mediaUrl}" autoplay muted loop playsinline></video>`:''}
@@ -3346,6 +3346,10 @@ function render(){
   if(showMobileApp){
     app.innerHTML = renderMobileApp() + renderShippingModal();
     document.getElementById('overlay').classList.remove('open');
+    const scr = document.querySelector('.m-scr');
+    if(scr){ scr.onscroll = updateMobileHeaderFade; }
+    if(!window._mHeaderFadeBound){ window.addEventListener('scroll', updateMobileHeaderFade, {passive:true}); window._mHeaderFadeBound = true; }
+    updateMobileHeaderFade();
     return;
   }
 
@@ -3373,6 +3377,15 @@ function updateHeroFade(){
   const p = Math.min(1, window.scrollY / h);
   hero.style.opacity = String(1 - p);
   hero.style.transform = `translateY(${p*40}px)`;
+}
+function updateMobileHeaderFade(){
+  const header = document.getElementById('m-header-sec');
+  const scr = document.querySelector('.m-scr');
+  if(!header || !scr) return;
+  const scrollTop = scr.scrollTop || window.scrollY || 0;
+  const p = Math.min(1, scrollTop / 90);
+  header.style.opacity = String(1 - p);
+  header.style.transform = `translateY(${p*-16}px)`;
 }
 
 async function initApp(){
