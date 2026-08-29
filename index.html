@@ -960,6 +960,7 @@ let state = {
   adminProductSearch: '',
   adminExpandedCatRow: null,
   adminCustomerSearch: '',
+  searchDraft: '',
   aiLogByProduct: {},
   coupon: null,
   couponInput: '',
@@ -1467,9 +1468,19 @@ function goHome(){ state.view='home'; state.productId=null; state.listFilter=nul
 function filterByCat(id){ state.listFilter={type:'cat', id}; state.view='home'; window.scrollTo(0,0); render(); }
 function filterByFlag(key){ state.listFilter={type:'flag', key}; state.view='home'; window.scrollTo(0,0); render(); }
 function clearListFilter(){ state.listFilter=null; render(); }
+/* Used by the admin search boxes (Products/Customers/Orders) so typing filters live without
+   losing focus: a plain oninput="...;render()" tears down and rebuilds the input element on
+   every keystroke, dropping the cursor out of the field — this refocuses it after each render. */
+function adminSearchInput(field, val, inputId){
+  state[field] = val;
+  render();
+  const inp = document.getElementById(inputId);
+  if(inp){ inp.focus(); const len = inp.value.length; inp.setSelectionRange(len, len); }
+}
 function submitSearch(query){
   const q = (query||'').trim();
   if(!q) return;
+  state.searchDraft = q;
   state.listFilter = {type:'search', query:q};
   state.view = 'home';
   window.scrollTo(0,0);
@@ -1767,7 +1778,7 @@ function renderHeader(){
       </a>
       <div class="searchbar">
         <svg class="icon" style="width:16px;height:16px;cursor:pointer" viewBox="0 0 24 24" onclick="submitSearch(document.getElementById('site-search-input').value)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input id="site-search-input" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${(state.listFilter&&state.listFilter.type==='search')?state.listFilter.query:''}" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
+        <input id="site-search-input" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${state.searchDraft||''}" oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
       </div>
       <div class="topbar-icons">
         <button class="icon-btn" onclick="goAccount()">
@@ -3209,7 +3220,7 @@ function renderAdminCustomers(){
       <h3 style="margin:0">${isAr?'العملاء':'Customers'} (${filteredCustomers.length}${filteredCustomers.length!==customers.length?` / ${customers.length}`:''})</h3>
       <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
     </div>
-    <input type="text" value="${state.adminCustomerSearch||''}" placeholder="${isAr?'ابحث بالاسم أو البريد أو الهاتف':'Search by name, email, or phone'}" oninput="state.adminCustomerSearch=this.value;render()" style="width:100%;max-width:320px;margin-bottom:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
+    <input id="admin-customer-search-input" type="text" value="${state.adminCustomerSearch||''}" placeholder="${isAr?'ابحث بالاسم أو البريد أو الهاتف':'Search by name, email, or phone'}" oninput="adminSearchInput('adminCustomerSearch', this.value, 'admin-customer-search-input')" style="width:100%;max-width:320px;margin-bottom:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
     ${filteredCustomers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${customers.length===0?(isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'):(isAr?'لا يوجد عملاء مطابقون':'No matching customers')}</p>` :
     filteredCustomers.map(c=>{
       const cartCount = (c.cart||[]).reduce((s,l)=>s+l.qty,0);
@@ -3391,7 +3402,7 @@ function renderAdmin(){
         </div>
         <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px">🔒 ${t('supplierLinkPrivacy')}</p>
         ${state.adminAddingProduct ? renderAddProductForm() : ''}
-        <input type="text" value="${state.adminProductSearch||''}" placeholder="${isAr?'ابحث بالاسم أو SKU':'Search by name or SKU'}" oninput="state.adminProductSearch=this.value;render()" style="width:100%;max-width:320px;margin-bottom:12px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
+        <input id="admin-product-search-input" type="text" value="${state.adminProductSearch||''}" placeholder="${isAr?'ابحث بالاسم أو SKU':'Search by name or SKU'}" oninput="adminSearchInput('adminProductSearch', this.value, 'admin-product-search-input')" style="width:100%;max-width:320px;margin-bottom:12px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
         <div style="overflow-x:auto">
         <table class="admin-table">
           <thead><tr>
@@ -3481,7 +3492,7 @@ function renderAdmin(){
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-          <input type="text" value="${state.adminOrderSearch||''}" placeholder="${isAr?'ابحث برقم الطلب أو اسم العميل أو الهاتف':'Search by order #, customer, or phone'}" oninput="state.adminOrderSearch=this.value;render()" style="flex:1;min-width:200px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
+          <input id="admin-order-search-input" type="text" value="${state.adminOrderSearch||''}" placeholder="${isAr?'ابحث برقم الطلب أو اسم العميل أو الهاتف':'Search by order #, customer, or phone'}" oninput="adminSearchInput('adminOrderSearch', this.value, 'admin-order-search-input')" style="flex:1;min-width:200px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
           <select onchange="state.adminOrderStatusFilter=this.value;render()" style="padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:600">
             <option value="">${isAr?'كل الحالات':'All statuses'}</option>
             ${ORDER_STATUSES.map(s=>`<option value="${s}" ${statusF===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
@@ -3940,12 +3951,15 @@ function mToggleTheme(){
   try{ localStorage.setItem('mstore-theme', state.mTheme); }catch(e){}
   render();
 }
-function mSearchTap(){ state.listFilter = {type:'search', query:''}; mGo('list'); }
-function mSearchInput(val){
+function mSearchTap(){ state.searchDraft = ''; state.listFilter = {type:'search', query:''}; mGo('list'); }
+/* Searches on Enter/tap rather than live per-keystroke — re-rendering the whole app on every
+   character (as an oninput handler would) tears down and rebuilds the input element each time,
+   which drops focus and the on-screen keyboard mid-type on real mobile browsers. */
+function mSubmitSearchBox(){
+  const val = document.getElementById('m-search-input').value;
+  state.searchDraft = val;
   state.listFilter = {type:'search', query:val};
   render();
-  const inp = document.getElementById('m-search-input');
-  if(inp){ inp.focus(); const len=inp.value.length; inp.setSelectionRange(len,len); }
 }
 
 /* ---- product screen ---- */
@@ -4119,8 +4133,9 @@ function mList(){
   <div style="animation:fadeIn .25s ease">
     <div class="m-list-head">${mBackBtn('mBack()')}<div class="m-list-title">${title}</div></div>
     ${f && f.type==='search' ? `
-    <div style="padding:0 20px 14px">
-      <input id="m-search-input" class="m-input" value="${f.query||''}" placeholder="Shu 3ayez...." oninput="mSearchInput(this.value)"/>
+    <div style="padding:0 20px 14px;display:flex;gap:8px">
+      <input id="m-search-input" class="m-input" value="${state.searchDraft||''}" placeholder="Shu 3ayez...." oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')mSubmitSearchBox()" style="flex:1"/>
+      <button class="m-btn-primary" style="padding:0 20px" onclick="mSubmitSearchBox()">Go</button>
     </div>` : `
     <div class="m-rail">
       <button class="m-chip ${!f?'active':''}" onclick="mClearFilter()">All</button>
