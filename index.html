@@ -916,6 +916,13 @@ function pname(p){ return state.lang==='ar' ? p.name_ar : p.name_en; }
 function pdesc(p){ return state.lang==='ar' ? p.desc_ar : p.desc_en; }
 function catName(c){ return state.lang==='ar' ? c.ar : c.en; }
 function findProduct(id){ return PRODUCTS.find(p=>p.id===id); }
+/* A product can belong to several real categories at once (p.cats); "offers" isn't
+   a real category at all — it's automatic, true whenever there's a genuine discount. */
+function productCats(p){ return (p.cats && p.cats.length) ? p.cats : (p.cat ? [p.cat] : []); }
+function productInCat(p, catId){
+  if(catId==='offers') return p.was > p.price;
+  return productCats(p).includes(catId);
+}
 
 function showToast(msg){
   const el = document.getElementById('toast');
@@ -1161,7 +1168,8 @@ const AI_LANG_NOTE = { ar:'أجب دائمًا باللغة العربية، ب�
 function buildCatalogContext(){
   return PRODUCTS.map(p=>{
     const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
-    return `- "${pname(p)}" | SKU ${p.sku} | category: ${catName(CATS.find(c=>c.id===p.cat))} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.rating}/5 (${p.reviews} reviews) | specs: ${specStr}`;
+    const catList = productCats(p).map(id=>{ const c=CATS.find(x=>x.id===id); return c?catName(c):id; }).join(', ');
+    return `- "${pname(p)}" | SKU ${p.sku} | categories: ${catList}${p.was>p.price?' | on offer':''} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.rating}/5 (${p.reviews} reviews) | specs: ${specStr}`;
   }).join('\n');
 }
 function buildStoreSystemPrompt(){
@@ -1231,14 +1239,15 @@ function applyProductRows(data){
     if(row.is_custom){
       if(row.deleted) return; // never existed on this device — skip entirely
       if(PRODUCTS.find(p=>p.id===row.id)) return; // already added (shouldn't normally happen on a fresh load)
-      const catInfo = CATS.find(c=>c.id===row.cat);
+      const cats = (row.cats && row.cats.length) ? row.cats : (row.cat ? [row.cat] : []);
+      const catInfo = CATS.find(c=>c.id===cats[0]);
       PRODUCTS.push({
-        id: row.id, cat: row.cat || 'offers', icon: catInfo ? catInfo.icon : 'offers',
+        id: row.id, cat: cats[0] || null, cats, icon: catInfo ? catInfo.icon : 'offers',
         color: PRODUCTS.length % PALETTE.length,
         name_ar: row.name_ar || 'منتج', name_en: row.name_en || 'Product',
         desc_ar: row.desc_ar || '', desc_en: row.desc_en || '',
         sku: row.sku || ('LB-NEW-' + row.id),
-        price: row.price!=null?Number(row.price):0, was: row.price!=null?Number(row.price):0,
+        price: row.price!=null?Number(row.price):0, was: row.was!=null?Number(row.was):(row.price!=null?Number(row.price):0),
         stock: row.stock!=null?Number(row.stock):0, rating:0, reviews:0,
         best: !!row.best, featured: !!row.featured, new: row.new!=null?!!row.new:true,
         cost: row.cost!=null?Number(row.cost):0, marginPct:0, supplierUrl: row.supplier_url || '',
@@ -1254,8 +1263,8 @@ function applyProductRows(data){
       if(row.stock!=null) p.stock = Number(row.stock);
       if(row.cost!=null) p.cost = Number(row.cost);
       if(row.supplier_url!=null) p.supplierUrl = row.supplier_url;
+      if(row.cats && row.cats.length){ p.cats = row.cats; p.cat = row.cats[0]; const ci = CATS.find(c=>c.id===p.cat); if(ci) p.icon = ci.icon; }
       if(row.variants && row.variants.length) p.variants = row.variants;
-      if(row.cat){ p.cat = row.cat; const ci = CATS.find(c=>c.id===row.cat); if(ci) p.icon = ci.icon; }
       if(row.featured!=null) p.featured = row.featured;
       if(row.best!=null) p.best = row.best;
       if(row.new!=null) p.new = row.new;
@@ -1495,7 +1504,7 @@ function renderFilteredList(){
   let list, title;
   if(f.type==='cat'){
     const c = CATS.find(x=>x.id===f.id);
-    list = PRODUCTS.filter(p=>p.cat===f.id);
+    list = PRODUCTS.filter(p=>productInCat(p, f.id));
     title = c ? catName(c) : '';
   } else {
     list = PRODUCTS.filter(LIST_FLAG_TESTS[f.key] || (()=>false));
@@ -1650,7 +1659,7 @@ function renderProductPage(){
   const variant = state.modalVariant || p.variants[0];
   const specs = specsFor(p);
   const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
-  const related = PRODUCTS.filter(x=>x.cat===p.cat && x.id!==p.id).slice(0,4);
+  const related = PRODUCTS.filter(x=>x.id!==p.id && productCats(x).some(c=>productCats(p).includes(c))).slice(0,4);
   const log = currentAiLog(p.id);
   return `
   <div class="page container">
@@ -1795,7 +1804,7 @@ function selectGov(g){ state.selectedGov = g; render(); }
 
 /* Items in these categories are treated as electronics/battery items for the shipping notice */
 function cartHasElectronics(){
-  return state.cart.some(l=>{ const p = findProduct(l.id); return p && (p.cat==='electronics' || p.cat==='phones'); });
+  return state.cart.some(l=>{ const p = findProduct(l.id); return p && (productCats(p).includes('electronics') || productCats(p).includes('phones')); });
 }
 function openShippingModal(){
   const f = state.formData;
@@ -2191,13 +2200,17 @@ function adminUpdateSupplierUrl(id, val){
   findProduct(id).supplierUrl = supplierUrl; render();
   syncProductField(id, { supplier_url: supplierUrl });
 }
-function adminUpdateCategory(id, val){
+function adminToggleCategory(id, catId, checked){
   const p = findProduct(id);
-  p.cat = val;
-  const catInfo = CATS.find(c=>c.id===val);
+  const cur = new Set(productCats(p));
+  if(checked) cur.add(catId); else cur.delete(catId);
+  const cats = Array.from(cur);
+  p.cats = cats;
+  p.cat = cats[0] || null; // keep the legacy single-category field as "primary" for anything still reading it
+  const catInfo = CATS.find(c=>c.id===p.cat);
   if(catInfo) p.icon = catInfo.icon;
   render();
-  syncProductField(id, { cat: val });
+  syncProductField(id, { cats, cat: p.cat });
 }
 function adminSuggestPrice(id){
   const p = findProduct(id);
@@ -2226,7 +2239,7 @@ function submitNewProduct(){
   const isAr = state.lang==='ar';
   const nameAr = document.getElementById('new-name-ar').value.trim();
   const nameEn = document.getElementById('new-name-en').value.trim();
-  const cat = document.getElementById('new-cat').value;
+  const cats = Array.from(document.querySelectorAll('.new-cat-check:checked')).map(el=>el.value);
   const price = Number(document.getElementById('new-price').value) || 0;
   const cost = Number(document.getElementById('new-cost').value) || 0;
   const stock = Number(document.getElementById('new-stock').value) || 0;
@@ -2239,17 +2252,18 @@ function submitNewProduct(){
     return;
   }
   const newId = Math.max(0, ...PRODUCTS.map(p=>p.id)) + 1;
-  const catInfo = CATS.find(c=>c.id===cat);
+  const primaryCat = cats[0] || null;
+  const catInfo = CATS.find(c=>c.id===primaryCat);
   const sku = 'LB-NEW-' + newId;
   const newProduct = {
-    id:newId, cat, icon: catInfo?catInfo.icon:'offers', color: PRODUCTS.length % PALETTE.length,
+    id:newId, cat:primaryCat, cats, icon: catInfo?catInfo.icon:'offers', color: PRODUCTS.length % PALETTE.length,
     name_ar:nameAr, name_en:nameEn, desc_ar:descAr, desc_en:descEn, sku,
     price, was:price, stock, rating:0, reviews:0, best:false, featured:false, new:true,
     cost, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, isCustom:true
   };
   PRODUCTS.push(newProduct);
   syncProductField(newId, {
-    is_custom:true, name_ar:nameAr, name_en:nameEn, cat, sku, price, cost, stock,
+    is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock,
     desc_ar:descAr, desc_en:descEn, variants, deleted:false, new:true, featured:false, best:false
   });
   state.adminAddingProduct = false;
@@ -2503,10 +2517,16 @@ function renderAddProductForm(){
     </div>
     <div class="form-row">
       <div class="form-field">
-        <label>${isAr?'الفئة':'Category'}</label>
-        <select id="new-cat">${CATS.map(c=>`<option value="${c.id}">${catName(c)}</option>`).join('')}</select>
+        <label>${isAr?'الفئات (يمكن اختيار أكثر من واحدة)':'Categories (pick any that apply)'}</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:9px 0">
+          ${CATS.filter(c=>c.id!=='offers').map(c=>`
+            <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;cursor:pointer">
+              <input type="checkbox" class="new-cat-check" value="${c.id}"/> ${catName(c)}
+            </label>`).join('')}
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft)">${isAr?'"عروض" تظهر تلقائيًا عند إدخال سعر أصلي أعلى من السعر الحالي.':'"Offers" is automatic — it shows up whenever you set a "Was" price higher than the current price.'}</p>
       </div>
-      <div class="form-field"><label>${isAr?'الخيارات (مفصولة بفاصلة)':'Variants (comma separated)'}</label><input id="new-variants" type="text" placeholder="${isAr?'أسود, أبيض':'Black, White'}"/></div>
+      <div class="form-field"><label>${isAr?'الخيارات (مفصولة بفاصلة)':'Variants (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/></div>
     </div>
     <div class="form-row">
       <div class="form-field"><label>${t('costLabel')}</label><input id="new-cost" type="number" step="0.1" value="0"/></div>
@@ -2636,9 +2656,14 @@ function renderAdmin(){
               <td>${pname(p)}</td>
               <td class="font-mono" style="font-size:11.5px">${p.sku}</td>
               <td>
-                <select onchange="adminUpdateCategory(${p.id}, this.value)" style="padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:12px">
-                  ${CATS.map(c=>`<option value="${c.id}" ${p.cat===c.id?'selected':''}>${catName(c)}</option>`).join('')}
-                </select>
+                <div style="display:flex;flex-direction:column;gap:2px;max-height:92px;overflow-y:auto;font-size:11px;min-width:120px">
+                  ${CATS.filter(c=>c.id!=='offers').map(c=>`
+                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap">
+                      <input type="checkbox" ${productCats(p).includes(c.id)?'checked':''} onchange="adminToggleCategory(${p.id}, '${c.id}', this.checked)"/>
+                      ${catName(c)}
+                    </label>`).join('')}
+                </div>
+                ${p.was>p.price?`<div style="margin-top:4px;font-size:10px;font-weight:700;color:var(--brick)">🔥 ${state.lang==='ar'?'يظهر في العروض تلقائيًا':'Auto-shown in Offers'}</div>`:''}
               </td>
               <td><input type="number" step="0.1" value="${p.cost!==undefined?p.cost:''}" onchange="adminUpdateCost(${p.id}, this.value)" style="width:64px"/></td>
               <td><input type="number" value="${p.price}" onchange="adminUpdatePrice(${p.id}, this.value)" style="width:64px"/></td>
@@ -3060,7 +3085,7 @@ function mHome(){
 function mList(){
   const f = state.listFilter;
   let list = PRODUCTS, title = 'All products';
-  if(f && f.type==='cat'){ const c = CATS.find(x=>x.id===f.id); list = PRODUCTS.filter(p=>p.cat===f.id); title = c ? c.en : title; }
+  if(f && f.type==='cat'){ const c = CATS.find(x=>x.id===f.id); list = PRODUCTS.filter(p=>productInCat(p, f.id)); title = c ? c.en : title; }
   else if(f && f.type==='flag'){
     const tests = { best:p=>p.best, new:p=>p.new, featured:p=>p.featured, offer:p=>p.was>p.price };
     const labels = { best:'Best sellers', new:'New arrivals', featured:'Featured', offer:'Special offers' };
