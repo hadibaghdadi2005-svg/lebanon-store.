@@ -671,7 +671,7 @@ function dbRowToCustomer(row){
     createdAt: (row.created_at || '').slice(0,10),
     gov: row.gov || null, city: row.city || '', area: row.area || '',
     building: row.building || '', floor: row.floor || '', apartment: row.apartment || '',
-    address: row.address || '', notes: row.notes || ''
+    address: row.address || '', notes: row.notes || '', blocked: !!row.blocked
   };
 }
 function dbRowToOrder(row){
@@ -771,7 +771,12 @@ const ICONS = {
   kids:'<svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M6 21c0-4 2.5-6 6-6s6 2 6 6"/></svg>',
   offers:'<svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V4h7l9 9a1 1 0 0 1 1 1z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
 };
-const CATS = [
+/* CATS is admin-editable (Settings → Categories) and loaded from the `categories` table by
+   loadCategories() at startup; the synthetic "offers" entry is always appended locally since
+   it isn't a real stored category (see productInCat). This starter list is only the fallback
+   shown before that fetch resolves. */
+const OFFERS_CAT = {id:'offers', ar:'عروض 🔥', en:'Offers 🔥', icon:'offers'};
+let CATS = [
   {id:'electronics', ar:'إلكترونيات', en:'Electronics', icon:'electronics'},
   {id:'kitchen', ar:'المطبخ والمنزل', en:'Home & Kitchen', icon:'kitchen'},
   {id:'beauty', ar:'الجمال', en:'Beauty', icon:'beauty'},
@@ -781,8 +786,13 @@ const CATS = [
   {id:'tools', ar:'أدوات', en:'Tools', icon:'tools'},
   {id:'car', ar:'إكسسوارات السيارات', en:'Car Accessories', icon:'car'},
   {id:'kids', ar:'أطفال', en:'Kids', icon:'kids'},
-  {id:'offers', ar:'عروض 🔥', en:'Offers 🔥', icon:'offers'},
+  OFFERS_CAT,
 ];
+async function loadCategories(){
+  const { data, error } = await sb.from('categories').select('*').order('sort_order');
+  if(error || !data) return;
+  CATS = data.map(r=>({id:r.id, ar:r.name_ar, en:r.name_en, icon:r.icon})).concat([OFFERS_CAT]);
+}
 const PALETTE = ['#0F3D2E','#175943','#8A5A15','#C2542D','#3D5A80','#6B4226','#2E4B3A','#A6473A'];
 
 const PRODUCTS = [
@@ -864,12 +874,24 @@ const REVIEWS = [
   {name_ar:'مايا فرح', name_en:'Maya Farah', rating:5, prod:6, ar:'حقيبة عملية جدًا وخفيفة، أنصح بها لكل طالب جامعي.', en:'Very practical and lightweight bag, I recommend it to every student.', date:'2026-08-11'},
 ];
 
-const GOV_FEES = {
+/* GOV_FEES and COUPONS are admin-editable (Settings → Shipping Fees / Coupons) and rebuilt
+   from state.settings.shippingFees/coupons by applySettingsDerived() once loaded; these are
+   only the fallback shown before that fetch resolves. */
+let GOV_FEES = {
   ar:{'بيروت':3,'جبل لبنان':4,'الشمال':6,'الجنوب':6,'البقاع':6,'النبطية':7},
   en:{'Beirut':3,'Mount Lebanon':4,'North':6,'South':6,'Bekaa':6,'Nabatieh':7}
 };
 const FREE_DELIVERY_MIN = 75;
-const COUPONS = {'LEB10':{type:'pct',value:10}};
+let COUPONS = {'LEB10':{type:'pct',value:10,active:true}};
+function applySettingsDerived(){
+  const fees = state.settings.shippingFees || [];
+  GOV_FEES = {
+    ar: Object.fromEntries(fees.map(f=>[f.name_ar, f.fee])),
+    en: Object.fromEntries(fees.map(f=>[f.name_en, f.fee]))
+  };
+  const coupons = state.settings.coupons || [];
+  COUPONS = Object.fromEntries(coupons.map(c=>[c.code, c]));
+}
 
 const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered','cancelled','returned'];
 const ORDER_STATUS_LABELS = {
@@ -916,13 +938,17 @@ let state = {
   settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: true, billboardSlides: [
     {type:'image', mediaUrl:'', title:'Big Savings, Every Day', subtitle:'New drops added weekly — shop the collection', linkType:'none', linkValue:'', buttonLabel:''},
     {type:'image', mediaUrl:'', title:'Free Delivery Across Lebanon', subtitle:'On every order, every governorate', linkType:'none', linkValue:'', buttonLabel:''}
-  ] },
+  ], shippingFees: [], coupons: [], contactPhone: '', contactEmail: '', contactAddress: '', socialLinks: [] },
   billboardIndex: 0,
   adminView: 'overview',
   adminSideOpen: false,
   adminSelectedCustomer: null,
+  adminEditingCustomer: false,
   adminEditingProduct: null,
   adminAddingProduct: false,
+  adminOrderSearch: '',
+  adminOrderStatusFilter: '',
+  auditLog: [],
   shippingModalOpen: false,
   shippingModalCountdown: 3,
   formData: {},
@@ -1058,6 +1084,14 @@ function subscribeAdminOrders(){
 }
 
 function completeLogin(c){
+  if(c.blocked && !isAdminUser(c)){
+    sb.auth.signOut();
+    state.currentUserId = null;
+    state.view = 'login';
+    showToast(state.lang==='ar' ? 'تم تعليق هذا الحساب. يرجى التواصل مع الدعم.' : 'This account has been suspended. Please contact support.');
+    render();
+    return;
+  }
   state.currentUserId = c.id;
   loadCustomerCart(c);
   state.authMode = 'signin';
@@ -1401,6 +1435,63 @@ function shopAsCustomer(id){
 }
 function viewCustomer(id){ state.adminSelectedCustomer = id; render(); }
 function backToCustomerList(){ state.adminSelectedCustomer = null; render(); }
+async function adminUpdateCustomerField(id, field, val){
+  const c = state.customers.find(x=>x.id===id);
+  if(!c) return;
+  const prev = c[field];
+  c[field] = val;
+  render();
+  try{
+    const { error } = await sb.from('customers').update({ [field]: val }).eq('id', id);
+    if(error) throw error;
+  } catch(e){
+    console.error('Customer field update failed:', e);
+    c[field] = prev;
+    render();
+    showToast(state.lang==='ar' ? 'تعذر الحفظ' : 'Could not save');
+  }
+}
+async function adminToggleBlockCustomer(id){
+  const c = state.customers.find(x=>x.id===id);
+  if(!c) return;
+  const isAr = state.lang==='ar';
+  const next = !c.blocked;
+  const msg = next ? (isAr?'هل تريد تعليق حساب هذا العميل؟ لن يتمكن من تسجيل الدخول.':"Suspend this customer's account? They won't be able to sign in.")
+                    : (isAr?'هل تريد إعادة تفعيل الحساب؟':'Reactivate this account?');
+  if(!confirm(msg)) return;
+  c.blocked = next;
+  render();
+  try{
+    const { error } = await sb.from('customers').update({ blocked: next }).eq('id', id);
+    if(error) throw error;
+    logAdminAction(next?'block_customer':'unblock_customer', { customer_id: id, email: c.email });
+    showToast(next ? (isAr?'تم تعليق الحساب':'Account suspended') : (isAr?'تم تفعيل الحساب':'Account reactivated'));
+  } catch(e){
+    console.error('Block toggle failed:', e);
+    c.blocked = !next;
+    render();
+    showToast(isAr?'تعذر الحفظ':'Could not save');
+  }
+}
+async function adminDeleteCustomer(id){
+  const c = state.customers.find(x=>x.id===id);
+  if(!c) return;
+  const isAr = state.lang==='ar';
+  if(state.orders.some(o=>o.customerId===id)){ showToast(isAr?'احذف طلبات هذا العميل أولاً':"Delete this customer's orders first"); return; }
+  if(!confirm(isAr?`هل تريد حذف حساب "${c.name}" نهائيًا؟ لا يمكن التراجع عن هذا.`:`Delete "${c.name}"'s account permanently? This can't be undone.`)) return;
+  try{
+    const { error } = await sb.from('customers').delete().eq('id', id);
+    if(error) throw error;
+    logAdminAction('delete_customer', { customer_id: id, email: c.email });
+    state.customers = state.customers.filter(x=>x.id!==id);
+    state.adminSelectedCustomer = null;
+    showToast(isAr?'تم حذف الحساب':'Account deleted');
+    render();
+  } catch(e){
+    console.error('Customer delete failed:', e);
+    showToast(isAr?'تعذر حذف الحساب':'Could not delete account');
+  }
+}
 function setLang(l){ state.lang=l; document.documentElement.lang = l; document.documentElement.dir = l==='ar' ? 'rtl':'ltr'; render(); }
 function toggleDrawer(v){ state.drawerOpen = v!==undefined ? v : !state.drawerOpen; render(); }
 function toggleMobileMenu(v){ state.mobileMenuOpen = v!==undefined ? v : !state.mobileMenuOpen; render(); }
@@ -1868,7 +1959,7 @@ function renderDrawer(){
 function updateForm(field, val){ state.formData[field] = val; }
 function applyCoupon(){
   const code = (state.couponInput||'').trim().toUpperCase();
-  if(COUPONS[code]){ state.coupon = COUPONS[code]; showToast(state.lang==='ar'?'تم تطبيق الرمز!':'Coupon applied!'); }
+  if(COUPONS[code] && COUPONS[code].active!==false){ state.coupon = COUPONS[code]; showToast(state.lang==='ar'?'تم تطبيق الرمز!':'Coupon applied!'); }
   else { state.coupon = null; showToast(state.lang==='ar'?'رمز غير صالح':'Invalid coupon'); }
   render();
 }
@@ -2015,6 +2106,7 @@ async function deleteOrder(dbId){
   try{
     const { error } = await sb.from('orders').delete().eq('id', dbId);
     if(error) throw error;
+    logAdminAction('delete_order', { order_id: dbId });
     showToast(isAr ? 'تم حذف الطلب' : 'Order deleted');
   } catch(e){
     console.error('Order delete failed:', e);
@@ -2031,6 +2123,7 @@ async function clearAllOrders(){
   try{
     const { error } = await sb.from('orders').delete().in('id', ids);
     if(error) throw error;
+    logAdminAction('clear_all_orders', { count: ids.length });
     showToast(isAr ? 'تم حذف جميع الطلبات' : 'All orders deleted');
   } catch(e){
     console.error('Clear all orders failed:', e);
@@ -2048,6 +2141,7 @@ async function clearCustomerOrders(customerId){
   try{
     const { error } = await sb.from('orders').delete().in('id', ids);
     if(error) throw error;
+    logAdminAction('clear_customer_orders', { customer_id: customerId, count: ids.length });
     showToast(isAr ? 'تم حذف طلبات العميل' : "Customer's orders deleted");
   } catch(e){
     console.error('Clear customer orders failed:', e);
@@ -2224,7 +2318,12 @@ function renderFooter(){
           <h4 class="font-display" style="color:var(--paper);font-size:18px">${t('storeName')}</h4>
           <p style="margin-top:8px">${t('aboutText')}</p>
         </div>
-        <div><h4>${t('contact')}</h4><ul><li><a href="#">+961 81687016</a></li><li><a href="#">hadibaghdadi11@gmail.com</a></li><li><a href="#">Beirut, Lebanon</a></li></ul></div>
+        <div><h4>${t('contact')}</h4><ul>
+          ${state.settings.contactPhone?`<li><a href="tel:${state.settings.contactPhone.replace(/\s+/g,'')}">${state.settings.contactPhone}</a></li>`:''}
+          ${state.settings.contactEmail?`<li><a href="mailto:${state.settings.contactEmail}">${state.settings.contactEmail}</a></li>`:''}
+          ${state.settings.contactAddress?`<li><a href="#">${state.settings.contactAddress}</a></li>`:''}
+          ${(state.settings.socialLinks||[]).map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener">${s.platform}</a></li>`).join('')}
+        </ul></div>
         <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
         <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
         <div>
@@ -2241,14 +2340,25 @@ function renderFooter(){
 }
 
 /* ============ ADMIN ============ */
-const MOCK_SALES = [
-  {d:'Sat', v:420},{d:'Sun', v:610},{d:'Mon', v:380},{d:'Tue', v:740},{d:'Wed', v:520},{d:'Thu', v:860},{d:'Fri', v:690}
-];
+/* Real sales for the last 7 calendar days, aggregated from state.orders (replaces the old
+   MOCK_SALES placeholder — orders carry a plain 'YYYY-MM-DD' date string, see dbRowToOrder). */
+function last7DaysSales(){
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const dt = new Date();
+    dt.setDate(dt.getDate()-i);
+    const key = dt.toISOString().slice(0,10);
+    const label = dt.toLocaleDateString('en-US', {weekday:'short'});
+    const v = state.orders.filter(o=>o.date===key).reduce((s,o)=>s+(o.total||0),0);
+    days.push({d:label, v});
+  }
+  return days;
+}
 function adminStats(){
   const totalStock = PRODUCTS.reduce((s,p)=>s+p.stock,0);
   const low = PRODUCTS.filter(p=>p.stock>0 && p.stock<=5).length;
   const outOf = PRODUCTS.filter(p=>p.stock===0).length;
-  const totalSales = MOCK_SALES.reduce((s,d)=>s+d.v,0);
+  const totalSales = last7DaysSales().reduce((s,d)=>s+d.v,0);
   return {totalStock, low, outOf, totalSales};
 }
 /* Persists any product-field edit to the database so it survives refreshes and shows for everyone */
@@ -2320,6 +2430,7 @@ function deleteProduct(id){
   const msg = state.lang==='ar' ? `هل تريد حذف "${p.name_ar}" نهائيًا؟ لا يمكن التراجع عن هذا.` : `Delete "${p.name_en}" permanently? This can't be undone.`;
   if(!confirm(msg)) return;
   syncProductField(id, { deleted: true });
+  logAdminAction('delete_product', { product_id: id, name_en: p.name_en });
   const idx = PRODUCTS.findIndex(x=>x.id===id);
   if(idx>=0) PRODUCTS.splice(idx,1);
   if(state.adminEditingProduct===id) state.adminEditingProduct = null;
@@ -2454,6 +2565,111 @@ function updateBillboardSlide(idx, field, val){
   render(); syncBillboardSlides();
 }
 function goBillboardSlide(idx){ state.billboardIndex = idx; render(); }
+
+/* ---- Shipping fees (Settings → Shipping Fees) ---- */
+function syncShippingFees(){
+  applySettingsDerived();
+  sb.from('settings').update({shipping_fees: state.settings.shippingFees}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Shipping fees sync failed:', error); });
+}
+function addShippingFee(){
+  state.settings.shippingFees.push({ id:'gov_'+Date.now(), name_ar:'', name_en:'', fee:0 });
+  render(); syncShippingFees();
+  logAdminAction('add_shipping_fee', {});
+}
+function updateShippingFee(idx, field, val){
+  state.settings.shippingFees[idx][field] = field==='fee' ? (Number(val)||0) : val;
+  render(); syncShippingFees();
+}
+function removeShippingFee(idx){
+  const removed = state.settings.shippingFees[idx];
+  state.settings.shippingFees.splice(idx,1);
+  render(); syncShippingFees();
+  logAdminAction('remove_shipping_fee', removed);
+}
+
+/* ---- Coupons (Settings → Coupons) ---- */
+function syncCoupons(){
+  applySettingsDerived();
+  sb.from('settings').update({coupons: state.settings.coupons}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Coupons sync failed:', error); });
+}
+function addCoupon(){
+  state.settings.coupons.push({ code:'', type:'pct', value:10, active:true });
+  render(); syncCoupons();
+  logAdminAction('add_coupon', {});
+}
+function updateCoupon(idx, field, val){
+  const c = state.settings.coupons[idx];
+  if(field==='code') c.code = val.trim().toUpperCase();
+  else if(field==='value') c.value = Number(val)||0;
+  else if(field==='active') c.active = !!val;
+  else c.type = val;
+  render(); syncCoupons();
+}
+function removeCoupon(idx){
+  const removed = state.settings.coupons[idx];
+  state.settings.coupons.splice(idx,1);
+  render(); syncCoupons();
+  logAdminAction('remove_coupon', removed);
+}
+
+/* ---- Contact & social links (Settings → Contact & Social) ---- */
+function updateContactField(field, val){
+  state.settings[field] = val;
+  render();
+  const dbField = {contactPhone:'contact_phone', contactEmail:'contact_email', contactAddress:'contact_address'}[field];
+  sb.from('settings').update({[dbField]: val}).eq('id', 1).then(({error})=>{
+    if(error) console.error('Contact info sync failed:', error);
+    else logAdminAction('update_contact_info', { field, value: val });
+  });
+}
+function syncSocialLinks(){
+  sb.from('settings').update({social_links: state.settings.socialLinks}).eq('id', 1)
+    .then(({error})=>{ if(error) console.error('Social links sync failed:', error); });
+}
+function addSocialLink(){
+  state.settings.socialLinks.push({ platform:'', url:'' });
+  render(); syncSocialLinks();
+}
+function updateSocialLink(idx, field, val){
+  state.settings.socialLinks[idx][field] = val;
+  render(); syncSocialLinks();
+}
+function removeSocialLink(idx){
+  state.settings.socialLinks.splice(idx,1);
+  render(); syncSocialLinks();
+}
+
+/* ---- Categories (Settings → Categories) ---- */
+async function addCategory(){
+  const isAr = state.lang==='ar';
+  const id = 'cat_'+Date.now();
+  const { error } = await sb.from('categories').insert({ id, name_ar:isAr?'فئة جديدة':'New category', name_en:'New category', icon:'electronics', sort_order: CATS.filter(c=>c.id!=='offers').length });
+  if(error){ console.error('Add category failed:', error); showToast(isAr?'تعذر الإضافة':'Could not add'); return; }
+  await loadCategories();
+  logAdminAction('add_category', { id });
+  render();
+}
+async function updateCategoryField(id, field, val){
+  const dbField = field==='ar' ? 'name_ar' : field==='en' ? 'name_en' : 'icon';
+  const c = CATS.find(x=>x.id===id);
+  if(c) c[field] = val;
+  render();
+  const { error } = await sb.from('categories').update({ [dbField]: val }).eq('id', id);
+  if(error) console.error('Category field update failed:', error);
+}
+async function deleteCategory(id){
+  const isAr = state.lang==='ar';
+  const inUse = PRODUCTS.some(p=>productCats(p).includes(id));
+  if(inUse){ showToast(isAr?'لا يمكن حذف فئة مستخدمة في منتجات':"Can't delete a category that's in use by products"); return; }
+  if(!confirm(isAr?'هل تريد حذف هذه الفئة؟':'Delete this category?')) return;
+  const { error } = await sb.from('categories').delete().eq('id', id);
+  if(error){ console.error('Category delete failed:', error); showToast(isAr?'تعذر الحذف':'Could not delete'); return; }
+  await loadCategories();
+  logAdminAction('delete_category', { id });
+  render();
+}
 async function handleBillboardSlideUpload(event, idx){
   const file = event.target.files[0];
   if(!file) return;
@@ -2491,7 +2707,23 @@ function renderBillboard(){
     </div>
   </section>`;
 }
-function setAdminView(v){ state.adminView=v; state.adminSideOpen=false; render(); refreshAdminData(); }
+function setAdminView(v){
+  state.adminView=v; state.adminSideOpen=false; render();
+  if(v==='activity') loadAuditLog(); else refreshAdminData();
+}
+/* ============ AUDIT LOG (destructive/sensitive admin actions only) ============ */
+async function logAdminAction(action, detail){
+  const actor = (currentCustomer()||{}).email || ADMIN_EMAIL;
+  try{ await sb.from('admin_actions_log').insert({ actor_email: actor, action, detail: detail||null }); }
+  catch(e){ console.error('Could not write audit log entry:', e); }
+}
+async function loadAuditLog(){
+  try{
+    const { data, error } = await sb.from('admin_actions_log').select('*').order('created_at', {ascending:false}).limit(100);
+    if(!error && data) state.auditLog = data;
+    render();
+  } catch(e){ console.error('Could not load audit log:', e); }
+}
 function toggleAdminSide(v){ state.adminSideOpen = v!==undefined ? v : !state.adminSideOpen; render(); }
 
 /* Renders a table of an order's items, each with its own logistics status dropdown */
@@ -2538,12 +2770,23 @@ function renderAdminCustomers(){
         <div style="display:flex;align-items:center;gap:12px">
           <div class="cust-avatar" style="width:48px;height:48px;font-size:17px">${(c.name||'?').charAt(0).toUpperCase()}</div>
           <div>
-            <div style="font-weight:700;font-size:16px">${c.name}</div>
+            <div style="font-weight:700;font-size:16px">${c.name} ${c.blocked?`<span style="color:var(--brick);font-size:10.5px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:2px 6px;margin-inline-start:6px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
             <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span> · ${isAr?'انضم':'joined'} ${c.createdAt}</div>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="shopAsCustomer('${c.id}')">${isAr?'🛒 تسوّق نيابة عن هذا العميل':'🛒 Shop for this customer'}</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="shopAsCustomer('${c.id}')">${isAr?'🛒 تسوّق نيابة عن هذا العميل':'🛒 Shop for this customer'}</button>
+          <button class="btn btn-ghost" onclick="adminToggleBlockCustomer('${c.id}')">${c.blocked?(isAr?'✅ إعادة تفعيل':'✅ Reactivate'):(isAr?'⛔ تعليق الحساب':'⛔ Suspend')}</button>
+          ${custOrders.length===0
+            ? `<button class="btn btn-ghost" style="color:var(--brick)" onclick="adminDeleteCustomer('${c.id}')">🗑️ ${isAr?'حذف الحساب':'Delete account'}</button>`
+            : `<span style="font-size:11px;color:var(--ink-soft)">${isAr?'احذف طلباته أولاً لحذف الحساب':"Delete their orders first to remove the account"}</span>`}
+        </div>
       </div>
+      <div class="form-row" style="margin-top:14px">
+        <div class="form-field"><label>${isAr?'الاسم':'Name'}</label><input type="text" value="${c.name||''}" onchange="adminUpdateCustomerField('${c.id}','name',this.value)"/></div>
+        <div class="form-field"><label>${isAr?'الهاتف':'Phone'}</label><input type="text" value="${c.phone||''}" onchange="adminUpdateCustomerField('${c.id}','phone',this.value)"/></div>
+      </div>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:2px">${isAr?'البريد الإلكتروني مرتبط بحساب الدخول ولا يمكن تعديله من هنا.':"Email is tied to their login account and can't be edited here."}</p>
     </div>
 
     <div class="panel" style="margin-bottom:18px">
@@ -2588,7 +2831,7 @@ function renderAdminCustomers(){
         <div class="cust-row-info">
           <div class="cust-avatar">${(c.name||'?').charAt(0).toUpperCase()}</div>
           <div style="min-width:0">
-            <div style="font-weight:700;font-size:13.5px">${c.name}</div>
+            <div style="font-weight:700;font-size:13.5px">${c.name} ${c.blocked?`<span style="color:var(--brick);font-size:10px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:1px 5px;margin-inline-start:4px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
             <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span></div>
           </div>
         </div>
@@ -2678,7 +2921,8 @@ function renderProductEditorPanel(p){
 
 function renderAdmin(){
   const s = adminStats();
-  const maxBar = Math.max(...MOCK_SALES.map(d=>d.v));
+  const salesData = last7DaysSales();
+  const maxBar = Math.max(1, ...salesData.map(d=>d.v));
   return `
   <div class="admin-shell">
     <div class="admin-side-overlay ${state.adminSideOpen?'open':''}" onclick="toggleAdminSide(false)"></div>
@@ -2693,6 +2937,7 @@ function renderAdmin(){
         <a class="${state.adminView==='customers'?'active':''}" href="#" onclick="setAdminView('customers');state.adminSelectedCustomer=null;return false;">${state.lang==='ar'?'العملاء':'Customers'}</a>
         <a class="${state.adminView==='orders'?'active':''}" href="#" onclick="setAdminView('orders');return false;">${state.lang==='ar'?'الطلبات':'Orders'}</a>
         <a class="${state.adminView==='settings'?'active':''}" href="#" onclick="setAdminView('settings');return false;">${t('adminSettings')}</a>
+        <a class="${state.adminView==='activity'?'active':''}" href="#" onclick="setAdminView('activity');return false;">${state.lang==='ar'?'سجل النشاط':'Activity Log'}</a>
         <a href="#" onclick="goHome();return false;" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.15);padding-top:16px">← ${t('backHome')}</a>
       </div>
     </div>
@@ -2719,7 +2964,7 @@ function renderAdmin(){
         <div class="panel">
           <h3>${state.lang==='ar'?'المبيعات (٧ أيام)':'Sales (7 days)'}</h3>
           <div class="bars">
-            ${MOCK_SALES.map(d=>`<div class="bar" style="height:${(d.v/maxBar*100)}%"><span>${d.d}</span></div>`).join('')}
+            ${salesData.map(d=>`<div class="bar" style="height:${(d.v/maxBar*100)}%"><span>${d.d}</span></div>`).join('')}
           </div>
         </div>
         <div class="panel">
@@ -2802,17 +3047,31 @@ function renderAdmin(){
 
       ${state.adminView==='customers'?renderAdminCustomers():''}
 
-      ${state.adminView==='orders'?`
+      ${state.adminView==='orders'?(function(){
+        const isAr = state.lang==='ar';
+        const q = (state.adminOrderSearch||'').trim().toLowerCase();
+        const statusF = state.adminOrderStatusFilter||'';
+        let filtered = [...state.orders].reverse();
+        if(q) filtered = filtered.filter(o=>(o.num||'').toLowerCase().includes(q) || (o.customer||'').toLowerCase().includes(q) || (o.phone||'').toLowerCase().includes(q));
+        if(statusF) filtered = filtered.filter(o=>(o.status||'confirmed')===statusF);
+        return `
       <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <h3 style="margin:0">${state.lang==='ar'?'الطلبات':'Orders'} (${state.orders.length})</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">${isAr?'الطلبات':'Orders'} (${filtered.length}${filtered.length!==state.orders.length?` / ${state.orders.length}`:''})</h3>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${state.lang==='ar'?'تحديث':'Refresh'}</button>
-            ${state.orders.length>0?`<button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="clearAllOrders()">🗑️ ${state.lang==='ar'?'حذف كل الطلبات':'Clear All Orders'}</button>`:''}
+            <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+            ${state.orders.length>0?`<button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="clearAllOrders()">🗑️ ${isAr?'حذف كل الطلبات':'Clear All Orders'}</button>`:''}
           </div>
         </div>
-        ${state.orders.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${state.lang==='ar'?'لا توجد طلبات بعد — أكمل عملية شراء تجريبية من المتجر لرؤيتها هنا.':'No orders yet — complete a demo checkout in the store to see it here.'}</p>`:
-        [...state.orders].reverse().map(o=>`
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          <input type="text" value="${state.adminOrderSearch||''}" placeholder="${isAr?'ابحث برقم الطلب أو اسم العميل أو الهاتف':'Search by order #, customer, or phone'}" oninput="state.adminOrderSearch=this.value;render()" style="flex:1;min-width:200px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
+          <select onchange="state.adminOrderStatusFilter=this.value;render()" style="padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:600">
+            <option value="">${isAr?'كل الحالات':'All statuses'}</option>
+            ${ORDER_STATUSES.map(s=>`<option value="${s}" ${statusF===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
+          </select>
+        </div>
+        ${filtered.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${state.orders.length===0?(isAr?'لا توجد طلبات بعد — أكمل عملية شراء تجريبية من المتجر لرؤيتها هنا.':'No orders yet — complete a demo checkout in the store to see it here.'):(isAr?'لا توجد طلبات مطابقة':'No matching orders')}</p>`:
+        filtered.map(o=>`
           <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
             <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
               <div>
@@ -2851,7 +3110,7 @@ function renderAdmin(){
               </tbody>
             </table>
           </div>`).join('')}
-      </div>`:''}
+      </div>`; })():''}
 
       ${state.adminView==='settings'?`
       <div class="panel" style="max-width:480px">
@@ -2915,6 +3174,82 @@ function renderAdmin(){
           </div>`).join('')}
         </div>
         <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="addBillboardSlide()">+ ${state.lang==='ar'?'إضافة شريحة':'Add slide'}</button>
+      </div>
+
+      <div class="panel" style="max-width:640px;margin-top:20px">
+        <h3 style="margin-bottom:6px">${state.lang==='ar'?'رسوم التوصيل حسب المحافظة':'Shipping fees by governorate'}</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'تُطبّق هذه الرسوم في السلة والدفع، ويُعفى الطلب منها تلقائيًا فوق الحد المجاني.':'These fees are used at cart and checkout; orders above the free-delivery minimum skip them automatically.'}</p>
+        ${(state.settings.shippingFees||[]).map((f,idx)=>`
+        <div class="form-row" style="margin-bottom:8px;align-items:end">
+          <div class="form-field"><label>${state.lang==='ar'?'الاسم (عربي)':'Name (Arabic)'}</label><input type="text" dir="rtl" value="${f.name_ar||''}" onchange="updateShippingFee(${idx},'name_ar',this.value)"/></div>
+          <div class="form-field"><label>${state.lang==='ar'?'الاسم (إنكليزي)':'Name (English)'}</label><input type="text" value="${f.name_en||''}" onchange="updateShippingFee(${idx},'name_en',this.value)"/></div>
+          <div class="form-field" style="max-width:100px"><label>${state.lang==='ar'?'الرسم $':'Fee $'}</label><input type="number" step="0.5" value="${f.fee}" onchange="updateShippingFee(${idx},'fee',this.value)"/></div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeShippingFee(${idx})">🗑️</button>
+        </div>`).join('')}
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addShippingFee()">+ ${state.lang==='ar'?'إضافة محافظة':'Add governorate'}</button>
+      </div>
+
+      <div class="panel" style="max-width:640px;margin-top:20px">
+        <h3 style="margin-bottom:6px">${state.lang==='ar'?'أكواد الخصم':'Coupons'}</h3>
+        ${(state.settings.coupons||[]).map((c,idx)=>`
+        <div class="form-row" style="margin-bottom:8px;align-items:end">
+          <div class="form-field"><label>${state.lang==='ar'?'الكود':'Code'}</label><input type="text" class="font-mono" value="${c.code||''}" onchange="updateCoupon(${idx},'code',this.value)"/></div>
+          <div class="form-field" style="max-width:130px"><label>${state.lang==='ar'?'النوع':'Type'}</label>
+            <select onchange="updateCoupon(${idx},'type',this.value)">
+              <option value="pct" ${c.type==='pct'?'selected':''}>${state.lang==='ar'?'نسبة %':'Percent %'}</option>
+              <option value="flat" ${c.type==='flat'?'selected':''}>${state.lang==='ar'?'مبلغ ثابت $':'Flat $'}</option>
+            </select>
+          </div>
+          <div class="form-field" style="max-width:100px"><label>${state.lang==='ar'?'القيمة':'Value'}</label><input type="number" step="0.5" value="${c.value}" onchange="updateCoupon(${idx},'value',this.value)"/></div>
+          <button class="mini-toggle ${c.active!==false?'on':''}" onclick="updateCoupon(${idx},'active',${c.active===false})" style="margin-bottom:9px">${state.lang==='ar'?'مفعّل':'Active'}</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeCoupon(${idx})">🗑️</button>
+        </div>`).join('')}
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addCoupon()">+ ${state.lang==='ar'?'إضافة كود':'Add coupon'}</button>
+      </div>
+
+      <div class="panel" style="max-width:560px;margin-top:20px">
+        <h3 style="margin-bottom:6px">${state.lang==='ar'?'الفئات':'Categories'}</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'"عروض 🔥" فئة تلقائية ولا تظهر هنا.':'"Offers 🔥" is automatic and doesn\'t appear here.'}</p>
+        ${CATS.filter(c=>c.id!=='offers').map(c=>`
+        <div class="form-row" style="margin-bottom:8px;align-items:end">
+          <div class="form-field"><label>${state.lang==='ar'?'الاسم (عربي)':'Name (Arabic)'}</label><input type="text" dir="rtl" value="${c.ar}" onchange="updateCategoryField('${c.id}','ar',this.value)"/></div>
+          <div class="form-field"><label>${state.lang==='ar'?'الاسم (إنكليزي)':'Name (English)'}</label><input type="text" value="${c.en}" onchange="updateCategoryField('${c.id}','en',this.value)"/></div>
+          <div class="form-field" style="max-width:150px"><label>${state.lang==='ar'?'الأيقونة':'Icon'}</label>
+            <select onchange="updateCategoryField('${c.id}','icon',this.value)">
+              ${Object.keys(ICONS).filter(k=>k!=='offers').map(k=>`<option value="${k}" ${c.icon===k?'selected':''}>${k}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="deleteCategory('${c.id}')">🗑️</button>
+        </div>`).join('')}
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addCategory()">+ ${state.lang==='ar'?'إضافة فئة':'Add category'}</button>
+      </div>
+
+      <div class="panel" style="max-width:560px;margin-top:20px">
+        <h3 style="margin-bottom:14px">${state.lang==='ar'?'التواصل والروابط الاجتماعية':'Contact & social links'}</h3>
+        <div class="form-row">
+          <div class="form-field"><label>${state.lang==='ar'?'الهاتف':'Phone'}</label><input type="text" value="${state.settings.contactPhone||''}" onchange="updateContactField('contactPhone',this.value)"/></div>
+          <div class="form-field"><label>${state.lang==='ar'?'البريد الإلكتروني':'Email'}</label><input type="text" value="${state.settings.contactEmail||''}" onchange="updateContactField('contactEmail',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>${state.lang==='ar'?'العنوان':'Address'}</label><input type="text" value="${state.settings.contactAddress||''}" onchange="updateContactField('contactAddress',this.value)"/></div>
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:14px 0 8px">${state.lang==='ar'?'روابط اجتماعية (تظهر في تذييل الصفحة)':'Social links (shown in the site footer)'}</p>
+        ${(state.settings.socialLinks||[]).map((s,idx)=>`
+        <div class="form-row" style="margin-bottom:8px;align-items:end">
+          <div class="form-field"><label>${state.lang==='ar'?'المنصة':'Platform'}</label><input type="text" placeholder="Instagram" value="${s.platform||''}" onchange="updateSocialLink(${idx},'platform',this.value)"/></div>
+          <div class="form-field"><label>URL</label><input type="text" placeholder="https://..." value="${s.url||''}" onchange="updateSocialLink(${idx},'url',this.value)"/></div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeSocialLink(${idx})">🗑️</button>
+        </div>`).join('')}
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addSocialLink()">+ ${state.lang==='ar'?'إضافة رابط':'Add link'}</button>
+      </div>`:''}
+
+      ${state.adminView==='activity'?`
+      <div class="panel">
+        <h3 style="margin-bottom:6px">${state.lang==='ar'?'سجل النشاط':'Activity Log'}</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'آخر ١٠٠ إجراء إداري حساس (حذف، تعليق حساب، تعديل الإعدادات).':'The last 100 sensitive admin actions (deletes, account suspensions, settings changes).'}</p>
+        ${state.auditLog.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${state.lang==='ar'?'لا يوجد نشاط بعد':'No activity yet'}</p>`:
+        `<table class="admin-table"><thead><tr><th>${state.lang==='ar'?'الوقت':'When'}</th><th>${state.lang==='ar'?'الإجراء':'Action'}</th><th>${state.lang==='ar'?'التفاصيل':'Detail'}</th></tr></thead>
+        <tbody>${state.auditLog.map(a=>`<tr><td style="white-space:nowrap;font-size:11.5px">${(a.created_at||'').replace('T',' ').slice(0,19)}</td><td class="font-mono" style="font-size:11.5px">${a.action}</td><td style="font-size:11.5px;color:var(--ink-soft)">${a.detail?JSON.stringify(a.detail):''}</td></tr>`).join('')}</tbody></table>`}
       </div>`:''}
     </div>
   </div>`;
@@ -3567,9 +3902,21 @@ async function initApp(){
       state.settings.deliveryMax = data.delivery_max;
       if(data.billboard_enabled !== undefined && data.billboard_enabled !== null) state.settings.billboardEnabled = !!data.billboard_enabled;
       if(data.billboard_slides){ try{ state.settings.billboardSlides = JSON.parse(data.billboard_slides); }catch(e){} }
+      if(data.shipping_fees) state.settings.shippingFees = data.shipping_fees;
+      if(data.coupons) state.settings.coupons = data.coupons;
+      state.settings.contactPhone = data.contact_phone || '';
+      state.settings.contactEmail = data.contact_email || '';
+      state.settings.contactAddress = data.contact_address || '';
+      if(data.social_links) state.settings.socialLinks = data.social_links;
     }
   } catch(e){
     console.error('Could not load settings:', e);
+  }
+  applySettingsDerived();
+  try{
+    await loadCategories();
+  } catch(e){
+    console.error('Could not load categories:', e);
   }
   try{
     await loadPublicProducts();
