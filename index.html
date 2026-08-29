@@ -1250,6 +1250,7 @@ function applyProductRows(data){
       if(!p) return;
       if(row.deleted){ toRemove.push(row.id); return; }
       if(row.price!=null) p.price = Number(row.price);
+      if(row.was!=null) p.was = Number(row.was);
       if(row.stock!=null) p.stock = Number(row.stock);
       if(row.cost!=null) p.cost = Number(row.cost);
       if(row.supplier_url!=null) p.supplierUrl = row.supplier_url;
@@ -2168,6 +2169,11 @@ function adminUpdatePrice(id, val){
   findProduct(id).price = price; render();
   syncProductField(id, { price });
 }
+function adminUpdateWas(id, val){
+  const was = Number(val)||0;
+  findProduct(id).was = was; render();
+  syncProductField(id, { was });
+}
 function adminUpdateStock(id, val){
   const stock = Number(val)||0;
   findProduct(id).stock = stock;
@@ -2598,7 +2604,7 @@ function renderAdmin(){
         <table class="admin-table">
           <thead><tr>
             <th></th><th>${state.lang==='ar'?'المنتج':'Product'}</th><th>SKU</th><th>${state.lang==='ar'?'الفئة':'Category'}</th>
-            <th>${t('costLabel')}</th><th>${state.lang==='ar'?'السعر':'Price'}</th><th>${t('profitLabel')}</th><th></th>
+            <th>${t('costLabel')}</th><th>${state.lang==='ar'?'السعر':'Price'}</th><th>${state.lang==='ar'?'السعر الأصلي':'Was (crossed-out price)'}</th><th>${t('profitLabel')}</th><th></th>
             <th>${state.lang==='ar'?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th><th></th><th></th>
           </tr></thead>
           <tbody>
@@ -2622,6 +2628,7 @@ function renderAdmin(){
               </td>
               <td><input type="number" step="0.1" value="${p.cost!==undefined?p.cost:''}" onchange="adminUpdateCost(${p.id}, this.value)" style="width:64px"/></td>
               <td><input type="number" value="${p.price}" onchange="adminUpdatePrice(${p.id}, this.value)" style="width:64px"/></td>
+              <td><input type="number" value="${p.was!==undefined?p.was:''}" onchange="adminUpdateWas(${p.id}, this.value)" style="width:64px" title="${state.lang==='ar'?'اتركه مساويًا للسعر لإخفاء الخصم':'Set equal to Price to hide the discount badge'}"/></td>
               <td class="font-mono" style="font-weight:700;color:${profitColor}">${fmt(profit)} <span style="font-size:10.5px;font-weight:600;color:var(--ink-soft)">(${pct}%)</span></td>
               <td><button class="btn btn-ghost btn-sm" onclick="adminSuggestPrice(${p.id})" title="${t('suggestPriceHint')}">${t('suggestPrice')}</button></td>
               <td><input type="number" value="${p.stock}" onchange="adminUpdateStock(${p.id}, this.value)" style="width:56px"/></td>
@@ -2643,7 +2650,7 @@ function renderAdmin(){
             </tr>
             ${state.adminEditingProduct===p.id ? `
             <tr>
-              <td colspan="13" style="background:var(--sand);padding:0">
+              <td colspan="14" style="background:var(--sand);padding:0">
                 ${renderProductEditorPanel(p)}
               </td>
             </tr>` : ''}`;}).join('')}
