@@ -4627,14 +4627,28 @@ async function initApp(){
   render();
 }
 let _resizeT = null;
+let _lastWidth = window.innerWidth;
 window.addEventListener('resize', ()=>{
   clearTimeout(_resizeT);
-  _resizeT = setTimeout(()=>{ if(state.currentUserId) render(); }, 150);
+  _resizeT = setTimeout(()=>{
+    /* A mobile on-screen keyboard sliding up also fires 'resize' (it shrinks the viewport
+       height), which would re-render the whole app — and yank focus off whatever input the
+       customer had just tapped into — every time they started typing. Only react to an actual
+       width change (real resize/rotation/breakpoint crossing), which a keyboard never causes. */
+    if(window.innerWidth === _lastWidth) return;
+    _lastWidth = window.innerWidth;
+    if(state.currentUserId) render();
+  }, 150);
 });
 window.addEventListener('scroll', updateHeroFade, {passive:true});
 let _billboardTimer = setInterval(()=>{
   const slides = state.settings.billboardSlides;
-  if(state.settings.billboardEnabled && slides && slides.length>1 && state.view==='home'){
+  /* state.view stays 'home' throughout the whole mobile session (mGo() only ever changes
+     state.mScreen), so checking state.view alone re-rendered the entire app every 5s no matter
+     which mobile screen — search, checkout, account — the customer was actually on, wiping out
+     whatever input they had focused. Must also confirm the home screen is what's on screen. */
+  const onHomeScreen = isMobileViewport() ? state.mScreen==='home' : state.view==='home';
+  if(state.settings.billboardEnabled && slides && slides.length>1 && onHomeScreen){
     state.billboardIndex = (state.billboardIndex+1) % slides.length;
     render();
   }
