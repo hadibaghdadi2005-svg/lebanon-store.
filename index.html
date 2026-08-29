@@ -271,6 +271,13 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .ai-msg{font-size:12.5px;padding:8px 11px;border-radius:9px;max-width:88%;line-height:1.5}
 .ai-msg.user{background:var(--cedar);color:#fff;align-self:flex-end;margin-inline-start:auto}
 .ai-msg.bot{background:var(--paper);border:1px solid var(--line);align-self:flex-start}
+.ai-msg.bot.admin{background:var(--brass);border-color:var(--brass);color:#221604}
+.chat-status-banner{background:var(--sand);border-bottom:1px solid var(--line);padding:8px 14px;font-size:11.5px;font-weight:600;color:var(--cedar)}
+.chat-status-pill{display:inline-block;margin-top:4px;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700}
+.chat-status-pill.ai{background:var(--sand);color:var(--ink-soft)}
+.chat-status-pill.needs_human{background:#f6d9d0;color:var(--brick)}
+.chat-status-pill.human{background:#dcecdf;color:var(--cedar)}
+.chat-status-pill.resolved{background:var(--sand);color:var(--ink-soft)}
 .ai-input-row{display:flex;gap:6px}
 .ai-input-row input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;outline:none}
 
@@ -420,6 +427,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .admin-side .logo{margin-bottom:26px;padding:0 6px}
 .admin-nav a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:3px}
 .admin-nav a.active,.admin-nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.admin-nav-badge{display:inline-block;min-width:17px;height:17px;border-radius:999px;background:var(--acc2Ink,#c2542d);color:#fff;font:700 10px/17px 'IBM Plex Mono',monospace;text-align:center;margin-inline-start:6px;padding:0 4px}
 .admin-main{flex:1;background:var(--sand);padding:26px 30px;overflow-x:hidden}
 .admin-topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
 .stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
@@ -636,6 +644,12 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .m-panel-row:last-child{border-bottom:0}
 .m-switch{width:52px;height:30px;border-radius:999px;border:0;cursor:pointer;padding:3px;display:flex}
 .m-switch-knob{width:24px;height:24px;border-radius:999px;background:#fffcf4;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.m-msg{font:400 13.5px/1.5 'Figtree',sans-serif;padding:10px 13px;border-radius:14px;max-width:85%}
+.m-msg.user{background:var(--acc);color:#2e1a0a;align-self:flex-end;margin-inline-start:auto;border-bottom-right-radius:4px}
+.m-msg.bot{background:var(--card);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.m-msg.bot.admin{background:var(--acc2);color:#fff;border-color:var(--acc2)}
+.m-chat-status{padding:9px 14px;font:600 11.5px/1.4 'Figtree',sans-serif;color:var(--accInk);background:var(--surf);border-radius:10px;margin-bottom:14px}
+.mstore .typing-dots span{background:var(--muted)}
 
 .m-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--card);border-top:1px solid var(--line);padding:9px 10px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;max-width:inherit}
 .m-tab{position:relative;flex:1;background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0;color:var(--muted)}
@@ -740,7 +754,7 @@ const T = {
     orderConfirmedSub:"We'll contact you shortly to confirm delivery.", orderNumber:"Order number",
     backHome:"Back to home", couponCode:"Coupon code", apply:"Apply", aiAssistant:"AI Product Assistant",
     askAbout:"Ask about this product...", askPlaceholder:"e.g. Is this good for a small kitchen?",
-    chatTitle:"Ask us", chatSub:"AI assistant (simulated)", chatPlaceholder:"Type your question...",
+    chatTitle:"Ask us", chatSub:"AI assistant", chatPlaceholder:"Type your question...",
     addedToCart:"Added to cart", removedFromWish:"Removed from wishlist", addedToWish:"Added to wishlist",
     specifications:"Specifications", relatedProducts:"Related Products",
     admin:"Admin Dashboard", aboutStore:"About HABIBI", aboutText:"HABIBI is your trusted online shopping destination in Lebanon.",
@@ -930,6 +944,11 @@ let state = {
   modalVariant: null,
   chatOpen: false,
   chatLog: [],
+  chatConversation: null, // {id, status, updated_at} for the current customer's support conversation
+  chatHistoryLoaded: false,
+  adminChats: [],
+  adminSelectedChat: null,
+  adminChatThread: [],
   aiLogByProduct: {},
   coupon: null,
   couponInput: '',
@@ -1082,6 +1101,83 @@ function subscribeAdminOrders(){
     .on('postgres_changes', { event:'*', schema:'public', table:'customers' }, ()=>{ refreshAdminData(); })
     .subscribe();
 }
+/* Runs from the moment an admin logs in (not just while inside /admin), so the badge/toast
+   alert reaches them anywhere on the site — see completeLogin(). */
+let adminChatChannel = null;
+function subscribeAdminChats(){
+  if(adminChatChannel) return;
+  adminChatChannel = sb.channel('chat-admin-live')
+    .on('postgres_changes', { event:'*', schema:'public', table:'chat_conversations' }, payload=>{
+      const prevStatus = payload.old && payload.old.status;
+      if(payload.eventType!=='DELETE' && payload.new.status==='needs_human' && prevStatus!=='needs_human'){
+        showToast(state.lang==='ar' ? '📨 محادثة جديدة تحتاج ردك' : '📨 New chat needs your attention');
+      }
+      loadAdminChats();
+    })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages' }, ()=>{ loadAdminChats(); })
+    .subscribe();
+}
+function unsubscribeAdminChats(){
+  if(adminChatChannel){ sb.removeChannel(adminChatChannel); adminChatChannel = null; }
+}
+async function loadAdminChats(){
+  try{
+    const { data: convos, error } = await sb.from('chat_conversations').select('*').order('updated_at', {ascending:false});
+    if(error) throw error;
+    const ids = (convos||[]).map(c=>c.id);
+    const lastMsgs = {};
+    if(ids.length){
+      const { data: msgs } = await sb.from('chat_messages').select('conversation_id, content, sender, created_at').in('conversation_id', ids).order('created_at', {ascending:false});
+      (msgs||[]).forEach(m=>{ if(!lastMsgs[m.conversation_id]) lastMsgs[m.conversation_id] = m; });
+    }
+    state.adminChats = (convos||[]).map(c=>({...c, lastMessage: lastMsgs[c.id]||null}));
+    if(state.adminSelectedChat) await refreshAdminChatThread();
+    render();
+  } catch(e){ console.error('Could not load chats:', e); }
+}
+async function refreshAdminChatThread(){
+  try{
+    const { data, error } = await sb.from('chat_messages').select('*').eq('conversation_id', state.adminSelectedChat).order('created_at', {ascending:true});
+    if(error) throw error;
+    state.adminChatThread = data||[];
+  } catch(e){ console.error('Could not load chat thread:', e); }
+}
+async function openAdminChat(id){
+  state.adminSelectedChat = id;
+  state.adminChatThread = [];
+  render();
+  await refreshAdminChatThread();
+  render();
+}
+function closeAdminChat(){ state.adminSelectedChat = null; state.adminChatThread = []; render(); }
+async function sendAdminChatReply(id){
+  const input = document.getElementById('admin-chat-reply');
+  if(!input || !input.value.trim()) return;
+  const content = input.value.trim();
+  input.value = '';
+  const convo = state.adminChats.find(c=>c.id===id);
+  if(!convo) return;
+  try{
+    const { error: msgErr } = await sb.from('chat_messages').insert({ conversation_id:id, customer_id:convo.customer_id, sender:'admin', content });
+    if(msgErr) throw msgErr;
+    const { error: updErr } = await sb.from('chat_conversations').update({ status:'human', updated_at:new Date().toISOString() }).eq('id', id);
+    if(updErr) throw updErr;
+    await loadAdminChats();
+  } catch(e){ console.error('Reply failed:', e); showToast(state.lang==='ar'?'تعذر الإرسال':'Could not send'); }
+}
+async function takeOverChat(id){
+  try{
+    await sb.from('chat_conversations').update({ status:'human', updated_at:new Date().toISOString() }).eq('id', id);
+    await loadAdminChats();
+  } catch(e){ console.error('Take over failed:', e); }
+}
+async function resolveChat(id){
+  try{
+    await sb.from('chat_conversations').update({ status:'resolved', updated_at:new Date().toISOString() }).eq('id', id);
+    await loadAdminChats();
+    closeAdminChat();
+  } catch(e){ console.error('Resolve failed:', e); }
+}
 
 function completeLogin(c){
   if(c.blocked && !isAdminUser(c)){
@@ -1109,6 +1205,8 @@ function completeLogin(c){
   state.selectedGov = c.gov || null;
   state.view = 'home';
   subscribeCustomerOrders(c.id);
+  subscribeCustomerChat(c.id);
+  if(isAdminUser(c)){ subscribeAdminChats(); loadAdminChats(); }
   window.scrollTo(0,0);
   render();
 }
@@ -1169,11 +1267,16 @@ function logout(){
   if(!confirm(msg)) return;
   syncCustomerCart();
   unsubscribeCustomerOrders();
+  unsubscribeCustomerChat();
+  unsubscribeAdminChats();
   sb.auth.signOut();
   state.currentUserId = null;
   state.impersonateFromAdmin = null;
   state.cart = [];
   state.wishlist = new Set();
+  state.chatLog = [];
+  state.chatConversation = null;
+  state.chatHistoryLoaded = false;
   state.view = 'login';
   state.authMode = 'signin';
   window.scrollTo(0,0);
@@ -1253,6 +1356,7 @@ function buildStoreSystemPrompt(){
   return `You are the customer support agent for "HABIBI", an online store serving Lebanon. ${AI_LANG_NOTE[state.lang]}
 Ground every answer strictly in the store data listed below. Never invent or guess prices, stock levels, delivery fees, specifications, or order details that aren't listed here — if something isn't covered, say plainly that the information isn't available and suggest contacting support.
 You only have access to the current customer's own order — never claim to know about any other customer's orders or data.
+You only handle questions about the HABIBI store itself (products, prices, stock, categories, shipping, delivery time, coupons, returns, or the customer's own order). If the customer asks about anything else, use the escalate_to_human tool instead of answering.
 Be warm and concise.
 
 PRODUCT CATALOG:
@@ -1261,7 +1365,7 @@ ${buildCatalogContext()}
 DELIVERY FEES BY GOVERNORATE: ${govLines}. Free delivery on orders over $${FREE_DELIVERY_MIN}.
 ESTIMATED DELIVERY TIME: ${state.settings.deliveryMin}-${state.settings.deliveryMax} business days from order confirmation.
 RETURN POLICY: Items can be returned within 7 days of delivery if still in original condition.
-COUPONS: code "LEB10" gives 10% off.
+COUPONS: ${(state.settings.coupons||[]).filter(c=>c.active!==false).map(c=>`code "${c.code}" gives ${c.type==='pct'?c.value+'% off':'$'+c.value+' off'}`).join('; ') || 'no active coupons right now'}.
 ${orderLine}`;
 }
 function buildProductSystemPrompt(p){
@@ -1277,21 +1381,24 @@ Stock: ${p.stock} units
 Rating: ${p.rating}/5 (${p.reviews} reviews)
 Specifications: ${specStr}`;
 }
-async function callStoreAI(systemPrompt, historyMessages){
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: historyMessages
-    })
-  });
-  if(!res.ok) throw new Error('AI request failed: ' + res.status);
-  const data = await res.json();
-  const text = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+/* Both call the ai-chat Supabase Edge Function, which holds the Anthropic API key
+   server-side. See supabase/functions/ai-chat/index.ts. */
+async function callProductAI(systemPrompt, historyMessages){
+  const { data, error } = await sb.functions.invoke('ai-chat', { body: { mode:'product', system:systemPrompt, messages:historyMessages } });
+  if(error) throw error;
+  const text = (data && data.text || '').trim();
   return text || (state.lang==='ar' ? 'عذرًا، لم أتمكن من إيجاد إجابة مناسبة.' : "Sorry, I couldn't find a good answer.");
+}
+/* The persisted, escalation-capable store-support chat. The function finds-or-creates the
+   customer's one conversation, stores this message, and either answers or hands off to a
+   human — see the Edge Function for the full flow. */
+async function callSupportAPI(message){
+  const c = currentCustomer();
+  const { data, error } = await sb.functions.invoke('ai-chat', { body: {
+    mode:'support', customerId:c.id, customerName:c.name, system:buildStoreSystemPrompt(), message, lang:state.lang
+  } });
+  if(error) throw error;
+  return data || {};
 }
 
 /* ============ NAVIGATION ============ */
@@ -1410,6 +1517,8 @@ function goAdmin(){
   refreshAdminData();
   loadAdminProducts().then(render);
   subscribeAdminOrders();
+  subscribeAdminChats();
+  loadAdminChats();
 }
 function returnFromImpersonation(){
   syncCustomerCart();
@@ -1802,7 +1911,7 @@ async function submitProductQuestion(pid){
   scrollAiLog(pid);
   try{
     const history = state.aiLogByProduct[pid].filter(m=>!m.loading).map(m=>({role: m.role==='user'?'user':'assistant', content:m.text}));
-    const answer = await callStoreAI(buildProductSystemPrompt(p), history);
+    const answer = await callProductAI(buildProductSystemPrompt(p), history);
     const log = state.aiLogByProduct[pid];
     log[log.length-1] = {role:'bot', text:answer};
   } catch(e){
@@ -2709,7 +2818,9 @@ function renderBillboard(){
 }
 function setAdminView(v){
   state.adminView=v; state.adminSideOpen=false; render();
-  if(v==='activity') loadAuditLog(); else refreshAdminData();
+  if(v==='activity') loadAuditLog();
+  else if(v==='chats') loadAdminChats();
+  else refreshAdminData();
 }
 /* ============ AUDIT LOG (destructive/sensitive admin actions only) ============ */
 async function logAdminAction(action, detail){
@@ -2923,6 +3034,7 @@ function renderAdmin(){
   const s = adminStats();
   const salesData = last7DaysSales();
   const maxBar = Math.max(1, ...salesData.map(d=>d.v));
+  const needsHumanCount = state.adminChats.filter(c=>c.status==='needs_human').length;
   return `
   <div class="admin-shell">
     <div class="admin-side-overlay ${state.adminSideOpen?'open':''}" onclick="toggleAdminSide(false)"></div>
@@ -2938,6 +3050,7 @@ function renderAdmin(){
         <a class="${state.adminView==='orders'?'active':''}" href="#" onclick="setAdminView('orders');return false;">${state.lang==='ar'?'الطلبات':'Orders'}</a>
         <a class="${state.adminView==='settings'?'active':''}" href="#" onclick="setAdminView('settings');return false;">${t('adminSettings')}</a>
         <a class="${state.adminView==='activity'?'active':''}" href="#" onclick="setAdminView('activity');return false;">${state.lang==='ar'?'سجل النشاط':'Activity Log'}</a>
+        <a class="${state.adminView==='chats'?'active':''}" href="#" onclick="setAdminView('chats');return false;">${state.lang==='ar'?'المحادثات':'Chats'}${needsHumanCount>0?`<span class="admin-nav-badge">${needsHumanCount}</span>`:''}</a>
         <a href="#" onclick="goHome();return false;" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.15);padding-top:16px">← ${t('backHome')}</a>
       </div>
     </div>
@@ -3243,6 +3356,60 @@ function renderAdmin(){
         <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addSocialLink()">+ ${state.lang==='ar'?'إضافة رابط':'Add link'}</button>
       </div>`:''}
 
+      ${state.adminView==='chats'?(function(){
+        const isAr = state.lang==='ar';
+        const STATUS_LABEL = { ai:{en:'AI handling',ar:'يتولى الأمر الذكاء الاصطناعي'}, needs_human:{en:'Needs you',ar:'يحتاج ردك'}, human:{en:'You\'re handling',ar:'تتولى الأمر'}, resolved:{en:'Resolved',ar:'تم الحل'} };
+        const statusPill = (st)=>`<span class="chat-status-pill ${st}">${STATUS_LABEL[st] ? STATUS_LABEL[st][state.lang] : st}</span>`;
+        const selectedConvo = state.adminSelectedChat ? state.adminChats.find(c=>c.id===state.adminSelectedChat) : null;
+        if(!selectedConvo) state.adminSelectedChat = null;
+        if(selectedConvo){
+          const convo = selectedConvo;
+          return `
+          <a href="#" class="login-back" style="display:inline-flex" onclick="closeAdminChat();return false;">${isAr?'→ رجوع لكل المحادثات':'← Back to all chats'}</a>
+          <div class="panel" style="margin-bottom:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div><div style="font-weight:700;font-size:16px">${convo.customer_name||(isAr?'عميل':'Customer')}</div>${statusPill(convo.status)}</div>
+              <div style="display:flex;gap:8px">
+                ${convo.status!=='human'?`<button class="btn btn-ghost btn-sm" onclick="takeOverChat('${convo.id}')">${isAr?'🙋 تولّي المحادثة':'🙋 Take over'}</button>`:''}
+                ${convo.status!=='resolved'?`<button class="btn btn-ghost btn-sm" onclick="resolveChat('${convo.id}')">✅ ${isAr?'وضع كمحلولة':'Mark resolved'}</button>`:''}
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="chat-body" style="height:360px;position:static;border:1px solid var(--line);border-radius:10px;margin-bottom:14px">
+              ${state.adminChatThread.length===0?`<div class="ai-msg bot">${isAr?'لا توجد رسائل بعد':'No messages yet'}</div>`:
+                state.adminChatThread.map(m=>`<div class="ai-msg ${m.sender==='customer'?'user':'bot'}${m.sender==='admin'?' admin':''}">${m.content}</div>`).join('')}
+            </div>
+            <div style="display:flex;gap:8px">
+              <input id="admin-chat-reply" placeholder="${isAr?'اكتب ردًا...':'Type a reply...'}" onkeydown="if(event.key==='Enter')sendAdminChatReply('${convo.id}')" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px"/>
+              <button class="btn btn-primary btn-sm" onclick="sendAdminChatReply('${convo.id}')">${isAr?'إرسال':'Send'}</button>
+            </div>
+          </div>`;
+        }
+        return `
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h3 style="margin:0">${isAr?'المحادثات':'Chats'} (${state.adminChats.length})</h3>
+            <button class="btn btn-ghost btn-sm" onclick="loadAdminChats()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+          </div>
+          ${state.adminChats.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا توجد محادثات بعد':'No chats yet'}</p>`:
+          state.adminChats.map(c=>`
+          <div class="cust-row" style="cursor:pointer" onclick="openAdminChat('${c.id}')">
+            <div class="cust-row-info">
+              <div class="cust-avatar">${(c.customer_name||'?').charAt(0).toUpperCase()}</div>
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:13.5px">${c.customer_name||(isAr?'عميل':'Customer')}</div>
+                <div class="cust-meta" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.lastMessage?`${c.lastMessage.sender==='customer'?(isAr?'العميل: ':'Customer: '):c.lastMessage.sender==='admin'?(isAr?'أنت: ':'You: '):(isAr?'الذكاء الاصطناعي: ':'AI: ')}${c.lastMessage.content}`:''}</div>
+              </div>
+            </div>
+            <div class="cust-row-stats">
+              ${statusPill(c.status)}
+              <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openAdminChat('${c.id}')">${isAr?'فتح':'Open'}</button>
+            </div>
+          </div>`).join('')}
+        </div>`;
+      })():''}
+
       ${state.adminView==='activity'?`
       <div class="panel">
         <h3 style="margin-bottom:6px">${state.lang==='ar'?'سجل النشاط':'Activity Log'}</h3>
@@ -3255,42 +3422,144 @@ function renderAdmin(){
   </div>`;
 }
 
-/* ============ CHATBOT ============ */
+/* ============ CHATBOT (persisted, escalation-capable store support agent) ============
+   Shared by the desktop widget and the mobile chat screen — one data/send/subscribe path
+   (loadChatHistory/subscribeCustomerChat/sendChatMessage), two render functions
+   (renderChat here, mChat() in the mobile section). */
 let chatBusy = false;
+let customerChatChannel = null;
 function scrollChat(){
   setTimeout(()=>{
-    const body = document.getElementById('chat-body-el');
-    if(body) body.scrollTop = body.scrollHeight;
-    const inp = document.getElementById('chat-input');
-    if(inp) inp.focus();
+    const deskBody = document.getElementById('chat-body-el');
+    if(deskBody) deskBody.scrollTop = deskBody.scrollHeight;
+    if(document.getElementById('m-chat-body-el')){
+      const scr = document.querySelector('.mstore .m-scr');
+      if(scr) scr.scrollTop = scr.scrollHeight;
+    }
+    const inp = document.getElementById('chat-input') || document.getElementById('m-chat-input');
+    if(inp && document.activeElement!==inp) inp.focus();
   },0);
 }
-async function submitChat(){
-  const input = document.getElementById('chat-input');
-  if(!input || !input.value.trim() || chatBusy) return;
-  const q = input.value.trim();
-  if(q.length > AI_MAX_INPUT){ showToast(state.lang==='ar' ? 'السؤال طويل جدًا' : 'Question is too long'); return; }
-  state.chatLog.push({role:'user', text:q});
-  state.chatLog.push({role:'bot', text:'', loading:true});
-  input.value='';
+function chatInHumanMode(){
+  return !!(state.chatConversation && (state.chatConversation.status==='needs_human' || state.chatConversation.status==='human'));
+}
+async function loadChatHistory(){
+  if(state.chatHistoryLoaded) return;
+  state.chatHistoryLoaded = true;
+  const c = currentCustomer();
+  if(!c) return;
+  try{
+    const { data: convo, error: convoErr } = await sb.from('chat_conversations').select('*').eq('customer_id', c.id).maybeSingle();
+    if(convoErr) throw convoErr;
+    if(convo){
+      state.chatConversation = convo;
+      const { data: msgs, error: msgErr } = await sb.from('chat_messages').select('*').eq('conversation_id', convo.id).order('created_at', {ascending:true});
+      if(msgErr) throw msgErr;
+      state.chatLog = (msgs||[]).map(m=>({
+        role: m.sender==='customer' ? 'user' : 'bot',
+        text: m.content,
+        kind: m.sender==='admin' ? 'admin' : undefined
+      }));
+    }
+  } catch(e){ console.error('Could not load chat history:', e); }
+  render();
+  scrollChat();
+}
+/* Only reacts to admin-authored messages: the customer's own messages and every AI reply
+   are already shown via the direct sendChatMessage() response, so re-adding them here from
+   realtime would duplicate them. Admin replies are the only thing that arrives out-of-band. */
+function subscribeCustomerChat(customerId){
+  if(customerChatChannel){ sb.removeChannel(customerChatChannel); customerChatChannel = null; }
+  if(!customerId) return;
+  customerChatChannel = sb.channel('chat-customer-' + customerId)
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'chat_conversations', filter:`customer_id=eq.${customerId}` }, payload=>{
+      const prevStatus = state.chatConversation && state.chatConversation.status;
+      state.chatConversation = payload.new;
+      if(payload.new.status==='human' && prevStatus!=='human'){
+        showToast(state.lang==='ar' ? 'انضم أحد أفراد فريقنا إلى المحادثة' : 'A team member joined the chat');
+      }
+      render();
+    })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_messages', filter:`customer_id=eq.${customerId}` }, payload=>{
+      if(payload.new.sender !== 'admin') return;
+      if(state.chatHistoryLoaded){
+        state.chatLog.push({role:'bot', text:payload.new.content, kind:'admin'});
+        render();
+        if(state.chatOpen) scrollChat();
+      }
+      if(!state.chatOpen){
+        showToast(state.lang==='ar' ? '💬 رسالة جديدة من فريقنا' : '💬 New message from our team');
+      }
+    })
+    .subscribe();
+}
+function unsubscribeCustomerChat(){
+  if(customerChatChannel){ sb.removeChannel(customerChatChannel); customerChatChannel = null; }
+}
+async function sendChatMessage(text){
+  if(!text || chatBusy) return;
+  if(text.length > AI_MAX_INPUT){ showToast(state.lang==='ar' ? 'السؤال طويل جدًا' : 'Question is too long'); return; }
+  const humanMode = chatInHumanMode();
+  state.chatLog.push({role:'user', text});
+  if(!humanMode) state.chatLog.push({role:'bot', text:'', loading:true});
   chatBusy = true;
   render();
   scrollChat();
+  const finish = (msgText)=>{
+    if(humanMode) state.chatLog.push({role:'bot', text:msgText});
+    else state.chatLog[state.chatLog.length-1] = {role:'bot', text:msgText};
+  };
   try{
-    const history = state.chatLog.filter(m=>!m.loading).map(m=>({role: m.role==='user'?'user':'assistant', content:m.text}));
-    const answer = await callStoreAI(buildStoreSystemPrompt(), history);
-    state.chatLog[state.chatLog.length-1] = {role:'bot', text:answer};
+    const data = await callSupportAPI(text);
+    if(data.handoff){
+      state.chatConversation = state.chatConversation ? {...state.chatConversation, status:'needs_human'} : {status:'needs_human'};
+    }
+    const ackText = state.lang==='ar' ? 'تم إرسال رسالتك لفريقنا، سيتواصلون معك قريبًا.' : "We've got your message — our team will reply shortly.";
+    finish(data.text || ackText);
   } catch(e){
-    state.chatLog[state.chatLog.length-1] = {role:'bot', text: state.lang==='ar' ? 'حدث خطأ أثناء الاتصال بالمساعد الذكي. حاول مرة أخرى.' : 'There was an error reaching the AI assistant. Please try again.'};
+    finish(state.lang==='ar' ? 'حدث خطأ أثناء الاتصال بالمساعد الذكي. حاول مرة أخرى.' : 'There was an error reaching the AI assistant. Please try again.');
   } finally {
     chatBusy = false;
     render();
     scrollChat();
   }
 }
+function submitChat(){
+  const input = document.getElementById('chat-input');
+  if(!input || !input.value.trim() || chatBusy) return;
+  const q = input.value.trim();
+  input.value='';
+  sendChatMessage(q);
+}
+function mSubmitChat(){
+  const input = document.getElementById('m-chat-input');
+  if(!input || !input.value.trim() || chatBusy) return;
+  const q = input.value.trim();
+  input.value='';
+  sendChatMessage(q);
+}
 function chatSuggest(q){
   document.getElementById('chat-input').value = q;
   submitChat();
+}
+function mChatSuggest(q){
+  document.getElementById('m-chat-input').value = q;
+  mSubmitChat();
+}
+function toggleChat(v){
+  const opening = v!==undefined ? v : !state.chatOpen;
+  state.chatOpen = opening;
+  if(opening && !state.chatHistoryLoaded) loadChatHistory();
+  render();
+  if(opening) scrollChat();
+}
+function chatStatusBanner(){
+  if(!chatInHumanMode()) return '';
+  const isHuman = state.chatConversation.status==='human';
+  const text = isHuman
+    ? (state.lang==='ar'?'🟢 متصل بفريقنا الآن':'🟢 Connected to our team')
+    : (state.lang==='ar'?'📨 تم إرسال رسالتك، سيتواصل فريقنا معك قريبًا':"📨 We've got your message — our team will reply shortly");
+  return `<div class="chat-status-banner">${text}</div>`;
 }
 function renderChat(){
   const suggestions = state.lang==='ar'
@@ -3308,11 +3577,12 @@ function renderChat(){
         <svg class="icon" style="width:13px;height:13px;stroke:#fff" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
+    ${chatStatusBanner()}
     <div class="chat-body" id="chat-body-el">
       ${state.chatLog.length===0?`<div class="ai-msg bot">${state.lang==='ar'?'أهلًا! كيف بقدر ساعدك اليوم؟':'Hi! How can I help you today?'}</div>`:
-        state.chatLog.map(m=>`<div class="ai-msg ${m.role}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+        state.chatLog.map(m=>`<div class="ai-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
     </div>
-    <div class="chat-suggest">${suggestions.map(s=>`<button class="chat-chip" onclick="chatSuggest('${s.replace(/'/g,"\\'")}')">${s}</button>`).join('')}</div>
+    ${!chatInHumanMode()?`<div class="chat-suggest">${suggestions.map(s=>`<button class="chat-chip" onclick="chatSuggest('${s.replace(/'/g,"\\'")}')">${s}</button>`).join('')}</div>`:''}
     <div class="chat-foot">
       <input id="chat-input" placeholder="${t('chatPlaceholder')}" onkeydown="if(event.key==='Enter')submitChat()" ${chatBusy?'disabled':''}/>
       <button class="chat-send" onclick="submitChat()" ${chatBusy?'disabled':''}><svg class="icon" style="width:15px;height:15px;stroke:#fff" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
@@ -3360,6 +3630,7 @@ function mGo(s){ state.mPrev = state.mScreen; state.mScreen = s; window.scrollTo
 function mBack(){ mGo(state.mPrev==='product' ? 'list' : state.mPrev); }
 function mGoHome(){ state.listFilter = null; mGo('home'); }
 function mGoShopAll(){ state.listFilter = null; mGo('list'); }
+function mGoChat(){ mGo('chat'); if(!state.chatHistoryLoaded) loadChatHistory(); scrollChat(); }
 function mToggleTheme(){
   state.mTheme = state.mTheme==='light' ? 'dark' : 'light';
   try{ localStorage.setItem('mstore-theme', state.mTheme); }catch(e){}
@@ -3767,6 +4038,25 @@ function mAccount(){
   </div>`;
 }
 
+function mChat(){
+  const suggestions = ['What\'s the cheapest item?','How much is delivery?','Recommend something under $30','Where is my order?'];
+  const humanMode = chatInHumanMode();
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 20px">
+    <div class="m-disp" style="font-size:23px;margin:6px 0 4px">Chat</div>
+    <div style="font:400 12.5px/1.4 'Figtree',sans-serif;color:var(--muted);margin-bottom:14px">Ask us anything about HABIBI</div>
+    ${humanMode?`<div class="m-chat-status">${state.chatConversation.status==='human'?'🟢 Connected to our team':"📨 We've got your message — our team will reply shortly"}</div>`:''}
+    <div id="m-chat-body-el" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      ${state.chatLog.length===0?`<div class="m-msg bot">Hi! How can I help you today?</div>`:
+        state.chatLog.map(m=>`<div class="m-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+    </div>
+    ${!humanMode?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${suggestions.map(s=>`<button class="chat-chip" onclick="mChatSuggest('${s.replace(/'/g,"\\'")}')" style="background:var(--card);border:1px solid var(--line);color:var(--text)">${s}</button>`).join('')}</div>`:''}
+    <div style="display:flex;gap:8px;position:sticky;bottom:8px">
+      <input id="m-chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter')mSubmitChat()" ${chatBusy?'disabled':''} style="flex:1;border:1.5px solid var(--line);border-radius:999px;padding:0 16px;font:400 14px/1 'Figtree',sans-serif;background:var(--card);color:var(--text);height:46px"/>
+      <button class="m-btn-primary" onclick="mSubmitChat()" ${chatBusy?'disabled':''} style="padding:0 20px;height:46px;border-radius:999px">Send</button>
+    </div>
+  </div>`;
+}
 function mTabBar(){
   const count = cartCount();
   const active = state.mScreen==='product' ? 'list' : (state.mScreen==='checkout'||state.mScreen==='confirm' ? 'cart' : (state.mScreen==='track' ? 'orders' : state.mScreen));
@@ -3775,6 +4065,7 @@ function mTabBar(){
     {k:'list', label:'Shop', d:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", go:'mGoShopAll()'},
     {k:'cart', label:'Basket', d:"M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0", go:"mGo('cart')"},
     {k:'orders', label:'Orders', d:"M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8", go:'goMyOrders()'},
+    {k:'chat', label:'Chat', d:"M4 4h16v11H4zM8 19h4l3 3v-3", go:'mGoChat()'},
     {k:'account', label:'You', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:"mGo('account')"}
   ];
   return `
@@ -3821,6 +4112,7 @@ function renderMobileApp(){
   else if(state.mScreen==='confirm') body = mConfirm();
   else if(state.mScreen==='orders') body = mOrders();
   else if(state.mScreen==='track') body = mTrack();
+  else if(state.mScreen==='chat') body = mChat();
   else if(state.mScreen==='account') body = mAccount();
   else body = mHome();
   const showTabbar = state.mScreen!=='confirm';
