@@ -722,7 +722,7 @@ const T = {
     addedToCart:"تمت الإضافة إلى السلة", removedFromWish:"أُزيل من المفضلة", addedToWish:"أُضيف إلى المفضلة",
     specifications:"المواصفات", relatedProducts:"منتجات ذات صلة",
     admin:"لوحة التحكم", aboutStore:"عن المتجر", aboutText:"متجر لبنان هو وجهتك للتسوق الإلكتروني الموثوق في لبنان.",
-    contact:"تواصل معنا", shipping:"الشحن", returns:"الإرجاع", privacy:"سياسة الخصوصية", terms:"الشروط", faq:"الأسئلة الشائعة",
+    contact:"تواصل معنا", supportNav:"الدعم", legalNav:"قانوني", shipping:"الشحن", returns:"الإرجاع", privacy:"سياسة الخصوصية", terms:"الشروط", faq:"الأسئلة الشائعة",
     newsletter:"النشرة البريدية", newsletterSub:"اشترك لتصلك أحدث العروض", subscribe:"اشترك",
     rights:"جميع الحقوق محفوظة", demoNote:"هذا عرض تجريبي تفاعلي — البيانات وهمية والذكاء الاصطناعي محاكى محليًا.",
     goAdmin:"لوحة الإدارة", storeName:"HABIBI",
@@ -758,7 +758,7 @@ const T = {
     addedToCart:"Added to cart", removedFromWish:"Removed from wishlist", addedToWish:"Added to wishlist",
     specifications:"Specifications", relatedProducts:"Related Products",
     admin:"Admin Dashboard", aboutStore:"About HABIBI", aboutText:"HABIBI is your trusted online shopping destination in Lebanon.",
-    contact:"Contact", shipping:"Shipping", returns:"Returns", privacy:"Privacy Policy", terms:"Terms", faq:"FAQ",
+    contact:"Contact", supportNav:"Support", legalNav:"Legal", shipping:"Shipping", returns:"Returns", privacy:"Privacy Policy", terms:"Terms", faq:"FAQ",
     newsletter:"Newsletter", newsletterSub:"Subscribe for the latest offers", subscribe:"Subscribe",
     rights:"All rights reserved", demoNote:"This is an interactive demo — data is mock and AI responses are simulated locally.",
     goAdmin:"Admin Panel", storeName:"HABIBI",
@@ -882,11 +882,18 @@ const PRODUCTS = [
    variants:['Black','Red']},
 ];
 
-const REVIEWS = [
-  {name_ar:'رنا خليل', name_en:'Rana Khalil', rating:5, prod:2, ar:'جودة الصوت ممتازة وسريعة التوصيل، تجربة تسوق رائعة!', en:'Amazing sound quality and fast delivery, great shopping experience!', date:'2026-08-02'},
-  {name_ar:'كريم عيسى', name_en:'Karim Issa', rating:4, prod:1, ar:'آلة القهوة رائعة لكن الدليل كان بالإنكليزية فقط.', en:'The coffee machine is great but the manual was English-only.', date:'2026-07-28'},
-  {name_ar:'مايا فرح', name_en:'Maya Farah', rating:5, prod:6, ar:'حقيبة عملية جدًا وخفيفة، أنصح بها لكل طالب جامعي.', en:'Very practical and lightweight bag, I recommend it to every student.', date:'2026-08-11'},
+/* Loaded from the `reviews` table (admin-editable from each product's editor panel) —
+   this starter list is only the fallback shown before that fetch resolves. */
+let REVIEWS = [
+  {name_en:'Rana Khalil', rating:5, prod:2, en:'Amazing sound quality and fast delivery, great shopping experience!', date:'2026-08-02'},
+  {name_en:'Karim Issa', rating:4, prod:1, en:'The coffee machine is great but the manual was English-only.', date:'2026-07-28'},
+  {name_en:'Maya Farah', rating:5, prod:6, en:'Very practical and lightweight bag, I recommend it to every student.', date:'2026-08-11'},
 ];
+async function loadReviews(){
+  const { data, error } = await sb.from('reviews').select('*').order('review_date', {ascending:false});
+  if(error || !data) return;
+  REVIEWS = data.map(r=>({ id:r.id, name_en:r.customer_name, rating:r.rating, prod:r.product_id, en:r.review_text, date:r.review_date }));
+}
 
 /* GOV_FEES and COUPONS are admin-editable (Settings → Shipping Fees / Coupons) and rebuilt
    from state.settings.shippingFees/coupons by applySettingsDerived() once loaded; these are
@@ -949,6 +956,10 @@ let state = {
   adminChats: [],
   adminSelectedChat: null,
   adminChatThread: [],
+  expandedTrackers: new Set(),
+  adminProductSearch: '',
+  adminExpandedCatRow: null,
+  adminCustomerSearch: '',
   aiLogByProduct: {},
   coupon: null,
   couponInput: '',
@@ -995,6 +1006,16 @@ function pname(p){ return state.lang==='ar' ? p.name_ar : p.name_en; }
 function pdesc(p){ return state.lang==='ar' ? p.desc_ar : p.desc_en; }
 function catName(c){ return state.lang==='ar' ? c.ar : c.en; }
 function findProduct(id){ return PRODUCTS.find(p=>p.id===id); }
+function searchProducts(query){
+  const raw = (query||'').trim();
+  if(!raw) return [];
+  const q = raw.toLowerCase();
+  return PRODUCTS.filter(p=>
+    (p.name_en||'').toLowerCase().includes(q) || (p.name_ar||'').includes(raw) ||
+    (p.desc_en||'').toLowerCase().includes(q) || (p.desc_ar||'').includes(raw) ||
+    (p.sku||'').toLowerCase().includes(q)
+  );
+}
 /* A product can belong to several real categories at once (p.cats); "offers" isn't
    a real category at all — it's automatic, true whenever there's a genuine discount. */
 function productCats(p){ return (p.cats && p.cats.length) ? p.cats : (p.cat ? [p.cat] : []); }
@@ -1262,6 +1283,46 @@ async function submitAuth(){
     state.authBusy = false;
   }
 }
+async function submitForgotPassword(){
+  const isAr = state.lang==='ar';
+  const email = (state.loginForm.email||'').trim().toLowerCase();
+  if(!email){ showToast(isAr?'يرجى إدخال بريدك الإلكتروني':'Please enter your email'); return; }
+  if(state.authBusy) return;
+  state.authBusy = true; render();
+  try{
+    const redirectTo = window.location.href.split('#')[0].split('?')[0];
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    if(error){ showToast(error.message); return; }
+    showToast(isAr?'تحقق من بريدك الإلكتروني لرابط إعادة التعيين':'Check your email for a reset link');
+    state.authMode = 'signin';
+  } catch(e){
+    console.error('Password reset request failed:', e);
+    showToast(isAr?'تعذر الإرسال':'Could not send the reset link');
+  } finally {
+    state.authBusy = false; render();
+  }
+}
+async function submitRecoveryPassword(){
+  const isAr = state.lang==='ar';
+  const pw1 = document.getElementById('recovery-pw1').value;
+  const pw2 = document.getElementById('recovery-pw2').value;
+  if(pw1.length < 6){ showToast(isAr?'كلمة المرور يجب أن تكون 6 أحرف على الأقل':'Password must be at least 6 characters'); return; }
+  if(pw1 !== pw2){ showToast(isAr?'كلمتا المرور غير متطابقتين':'Passwords do not match'); return; }
+  if(state.authBusy) return;
+  state.authBusy = true; render();
+  try{
+    const { data, error } = await sb.auth.updateUser({ password: pw1 });
+    if(error){ showToast(error.message); return; }
+    showToast(isAr?'تم تحديث كلمة المرور!':'Password updated!');
+    const c = await findOrCreateCustomer({ email: data.user.email, method:'password' });
+    if(c){ completeLogin(c); return; }
+  } catch(e){
+    console.error('Password update failed:', e);
+    showToast(isAr?'تعذر تحديث كلمة المرور':'Could not update the password');
+  } finally {
+    state.authBusy = false; render();
+  }
+}
 function logout(){
   const msg = state.lang==='ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out of your account?';
   if(!confirm(msg)) return;
@@ -1406,6 +1467,15 @@ function goHome(){ state.view='home'; state.productId=null; state.listFilter=nul
 function filterByCat(id){ state.listFilter={type:'cat', id}; state.view='home'; window.scrollTo(0,0); render(); }
 function filterByFlag(key){ state.listFilter={type:'flag', key}; state.view='home'; window.scrollTo(0,0); render(); }
 function clearListFilter(){ state.listFilter=null; render(); }
+function submitSearch(query){
+  const q = (query||'').trim();
+  if(!q) return;
+  state.listFilter = {type:'search', query:q};
+  state.view = 'home';
+  window.scrollTo(0,0);
+  render();
+}
+function goWishlist(){ state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render(); }
 function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; window.scrollTo(0,0); render(); }
 function goCheckout(){
   if(state.cart.length===0) return;
@@ -1510,6 +1580,80 @@ async function goMyOrders(){
       render();
     }
   } catch(e){ console.error('Could not load orders:', e); }
+}
+function goAccount(){
+  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen='account'; }
+  else { state.view='account'; }
+  window.scrollTo(0,0); render();
+}
+async function saveAccountInfo(){
+  const isAr = state.lang==='ar';
+  const c = currentCustomer();
+  if(!c) return;
+  const name = document.getElementById('acct-name').value.trim();
+  const phone = document.getElementById('acct-phone').value.trim();
+  if(!name){ showToast(isAr?'يرجى إدخال الاسم':'Please enter a name'); return; }
+  c.name = name; c.phone = phone;
+  render();
+  try{
+    const { error } = await sb.from('customers').update({ name, phone }).eq('id', c.id);
+    if(error) throw error;
+    showToast(isAr?'تم الحفظ':'Saved');
+  } catch(e){
+    console.error('Account save failed:', e);
+    showToast(isAr?'تعذر الحفظ':'Could not save');
+  }
+}
+async function submitChangePassword(){
+  const isAr = state.lang==='ar';
+  const pw1 = document.getElementById('acct-new-pw').value;
+  const pw2 = document.getElementById('acct-new-pw2').value;
+  if(pw1.length < 6){ showToast(isAr?'كلمة المرور يجب أن تكون 6 أحرف على الأقل':'Password must be at least 6 characters'); return; }
+  if(pw1 !== pw2){ showToast(isAr?'كلمتا المرور غير متطابقتين':'Passwords do not match'); return; }
+  try{
+    const { error } = await sb.auth.updateUser({ password: pw1 });
+    if(error){ showToast(error.message); return; }
+    document.getElementById('acct-new-pw').value = '';
+    document.getElementById('acct-new-pw2').value = '';
+    showToast(isAr?'تم تغيير كلمة المرور':'Password changed');
+  } catch(e){
+    console.error('Password change failed:', e);
+    showToast(isAr?'تعذر تغيير كلمة المرور':'Could not change password');
+  }
+}
+function renderAccount(){
+  const isAr = state.lang==='ar';
+  const c = currentCustomer();
+  if(!c) return renderHome();
+  return `
+  <div class="page container" style="max-width:560px">
+    <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${t('account')}</div>
+    <h2 class="font-display" style="margin-bottom:18px">${t('account')}</h2>
+    <div class="panel" style="margin-bottom:18px">
+      <div class="form-row">
+        <div class="form-field"><label>${isAr?'الاسم':'Name'}</label><input id="acct-name" type="text" value="${c.name||''}"/></div>
+        <div class="form-field"><label>${isAr?'الهاتف':'Phone'}</label><input id="acct-phone" type="text" value="${c.phone||''}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field full"><label>${isAr?'البريد الإلكتروني':'Email'}</label><input type="text" value="${c.email||''}" disabled style="opacity:.65"/></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveAccountInfo()">${isAr?'💾 حفظ':'💾 Save'}</button>
+    </div>
+    <div class="panel" style="margin-bottom:18px">
+      <h3 style="margin-bottom:12px">${isAr?'العنوان المحفوظ':'Saved address'}</h3>
+      ${c.address ? `<p style="font-size:13.5px;color:var(--ink-soft)">${[c.building,c.floor,c.apartment,c.area,c.city,c.gov].filter(Boolean).join(', ')}${c.address?' — '+c.address:''}</p>` : `<p style="font-size:13.5px;color:var(--ink-soft)">${isAr?'سيتم حفظ عنوانك بعد أول طلب':"We'll save your address after your first order"}</p>`}
+    </div>
+    <div class="panel" style="margin-bottom:18px">
+      <h3 style="margin-bottom:12px">${isAr?'تغيير كلمة المرور':'Change password'}</h3>
+      <div class="form-row">
+        <div class="form-field"><label>${isAr?'كلمة مرور جديدة':'New password'}</label><input id="acct-new-pw" type="password"/></div>
+        <div class="form-field"><label>${isAr?'تأكيد كلمة المرور':'Confirm password'}</label><input id="acct-new-pw2" type="password"/></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="submitChangePassword()">${isAr?'تغيير كلمة المرور':'Change password'}</button>
+    </div>
+    ${isAdminUser(c)?`<a href="#" class="btn btn-ghost btn-block" style="margin-bottom:10px" onclick="goAdmin();return false;">★ ${isAr?'لوحة التحكم':'Admin panel'}</a>`:''}
+    <button class="btn btn-ghost btn-block" onclick="logout()">${isAr?'تسجيل الخروج':'Log out'}</button>
+  </div>`;
 }
 function goAdmin(){
   if(!isAdminUser(currentCustomer())){ showToast(state.lang==='ar'?'غير مصرح لك بالدخول':'Not authorized'); return; }
@@ -1622,15 +1766,15 @@ function renderHeader(){
         </div>
       </a>
       <div class="searchbar">
-        <svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input placeholder="Shu 3ayez...." />
+        <svg class="icon" style="width:16px;height:16px;cursor:pointer" viewBox="0 0 24 24" onclick="submitSearch(document.getElementById('site-search-input').value)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="site-search-input" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${(state.listFilter&&state.listFilter.type==='search')?state.listFilter.query:''}" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
       </div>
       <div class="topbar-icons">
-        <button class="icon-btn" onclick="logout()">
+        <button class="icon-btn" onclick="goAccount()">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
           <span>${currentCustomer() ? currentCustomer().name.split(' ')[0] : t('account')}</span>
         </button>
-        <button class="icon-btn" onclick="toggleWishlist(-1)" style="pointer-events:none">
+        <button class="icon-btn" onclick="goWishlist()">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
           <span>${state.wishlist.size}</span>
         </button>
@@ -1666,6 +1810,63 @@ function renderLogin(){
   const isSignup = state.authMode === 'signup';
   const pwShown = state.loginPwShown;
 
+  if(state.authMode==='forgot'){
+    const body = `
+    <div class="login-form-field">
+      <label>${t('email')}</label>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()"/>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitForgotPassword()">${isAr?'إرسال رابط إعادة التعيين':'Send reset link'}</button>
+    <div class="login-switch"><a href="#" onclick="setAuthMode('signin');return false;">${isAr?'← رجوع لتسجيل الدخول':'← Back to sign in'}</a></div>`;
+    return `
+    <div class="login-wrap"><div class="login-shell">
+      <div class="login-brand">
+        <div class="login-brand-top">
+          <div class="login-brand-logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><span class="login-brand-wordmark">${t('storeName')}</span></div>
+          <div class="login-brand-title font-display">${isAr?'كل شيء، بمحبة':'Everything, with love'}</div>
+        </div>
+      </div>
+      <div class="login-panel">
+        <div class="login-title font-display">${isAr?'نسيت كلمة المرور؟':'Forgot your password?'}</div>
+        <div class="login-sub">${isAr?'أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيينها':"Enter your email and we'll send you a reset link"}</div>
+        ${body}
+      </div>
+    </div></div>`;
+  }
+  if(state.authMode==='recovery'){
+    const body = `
+    <div class="login-form-field">
+      <label>${isAr?'كلمة مرور جديدة':'New password'}</label>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="recovery-pw1" type="password" autocomplete="new-password" placeholder="••••••••"/>
+      </div>
+    </div>
+    <div class="login-form-field">
+      <label>${isAr?'تأكيد كلمة المرور':'Confirm password'}</label>
+      <div class="login-input-wrap">
+        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="recovery-pw2" type="password" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitRecoveryPassword()"/>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitRecoveryPassword()">${isAr?'تحديث كلمة المرور':'Set new password'}</button>`;
+    return `
+    <div class="login-wrap"><div class="login-shell">
+      <div class="login-brand">
+        <div class="login-brand-top">
+          <div class="login-brand-logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><span class="login-brand-wordmark">${t('storeName')}</span></div>
+        </div>
+      </div>
+      <div class="login-panel">
+        <div class="login-title font-display">${isAr?'تعيين كلمة مرور جديدة':'Set a new password'}</div>
+        ${body}
+      </div>
+    </div></div>`;
+  }
+
   const body = `
     ${isSignup ? `
     <div class="login-form-field">
@@ -1693,6 +1894,7 @@ function renderLogin(){
             : `<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-6.5 0-10-8-10-8a18.6 18.6 0 0 1 4.22-5.06M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`}
         </button>
       </div>
+      ${!isSignup?`<div style="text-align:end;margin-top:6px"><a href="#" style="font-size:12px" onclick="setAuthMode('forgot');return false;">${isAr?'نسيت كلمة المرور؟':'Forgot password?'}</a></div>`:''}
     </div>
     <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
     <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<a href="#" onclick="setAuthMode('${isSignup?'signin':'signup'}');return false;">${isSignup ? t('signIn') : t('createAccount')}</a></div>
@@ -1773,14 +1975,24 @@ const LIST_FLAG_TESTS = { featured:p=>p.featured, best:p=>p.best, new:p=>p.new, 
 function renderFilteredList(){
   const f = state.listFilter;
   const isAr = state.lang==='ar';
-  let list, title;
+  let list, title, emptyMsg;
   if(f.type==='cat'){
     const c = CATS.find(x=>x.id===f.id);
     list = PRODUCTS.filter(p=>productInCat(p, f.id));
     title = c ? catName(c) : '';
+    emptyMsg = isAr?'لا توجد منتجات في هذه الفئة':'No products in this category';
+  } else if(f.type==='wishlist'){
+    list = PRODUCTS.filter(p=>state.wishlist.has(p.id));
+    title = t('wishlist');
+    emptyMsg = isAr?'قائمة المفضلة فارغة':'Your wishlist is empty';
+  } else if(f.type==='search'){
+    list = searchProducts(f.query);
+    title = isAr?`نتائج البحث عن "${f.query}"`:`Search results for "${f.query}"`;
+    emptyMsg = isAr?'لا توجد نتائج مطابقة':'No matching products';
   } else {
     list = PRODUCTS.filter(LIST_FLAG_TESTS[f.key] || (()=>false));
     title = t(LIST_FLAG_LABELS[f.key]);
+    emptyMsg = isAr?'لا توجد منتجات هنا':'No products here';
   }
   return `
   <div class="page container">
@@ -1789,7 +2001,7 @@ function renderFilteredList(){
       <div><h2 class="font-display">${title}</h2></div>
       <a href="#" class="view-all" onclick="clearListFilter();return false;">${isAr?'× إزالة الفلتر':'× Clear filter'}</a>
     </div>
-    ${list.length ? `<div class="prod-grid">${list.map(productCard).join('')}</div>` : `<p style="padding:40px 0;text-align:center;color:var(--ink-soft)">${isAr?'لا توجد منتجات في هذه الفئة':'No products in this category'}</p>`}
+    ${list.length ? `<div class="prod-grid">${list.map(productCard).join('')}</div>` : `<p style="padding:40px 0;text-align:center;color:var(--ink-soft)">${emptyMsg}</p>`}
   </div>`;
 }
 function renderHome(){
@@ -1874,10 +2086,10 @@ function renderHome(){
       ${REVIEWS.filter(r=>findProduct(r.prod)).map(r=>`
         <div class="review-card">
           <div class="review-top">
-            <span class="review-name">${state.lang==='ar'?r.name_ar:r.name_en}</span>
+            <span class="review-name">${r.name_en}</span>
             <div class="review-stars">${Array(r.rating).fill('<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>').join('')}</div>
           </div>
-          <p class="review-text">${state.lang==='ar'?r.ar:r.en}</p>
+          <p class="review-text">${r.en}</p>
           <div class="review-meta">${pname(findProduct(r.prod))} · ${r.date}</div>
         </div>`).join('')}
     </div>
@@ -2006,6 +2218,20 @@ function renderProductPage(){
         </div>
       </div>
     </div>
+
+    ${(()=>{ const prodReviews = REVIEWS.filter(r=>r.prod===p.id); return prodReviews.length>0?`
+    <div class="section-head" style="margin-top:36px"><div><h2 class="font-display">${t('reviews')}</h2></div></div>
+    <div class="review-grid">
+      ${prodReviews.map(r=>`
+        <div class="review-card">
+          <div class="review-top">
+            <span class="review-name">${r.name_en}</span>
+            <div class="review-stars">${Array(r.rating).fill('<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>').join('')}</div>
+          </div>
+          <p class="review-text">${r.en}</p>
+          <div class="review-meta">${r.date}</div>
+        </div>`).join('')}
+    </div>`:''; })()}
 
     ${related.length>0?`
     <div class="section-head" style="margin-top:36px"><div><h2 class="font-display">${t('relatedProducts')}</h2></div></div>
@@ -2164,6 +2390,7 @@ async function placeOrder(){
   syncCustomerCart();
   if(c){
     const addrFields = {
+      name: f.fullName||c.name, phone: f.phone||c.phone,
       gov: state.selectedGov, city: f.city||'', area: f.area||'', building: f.building||'',
       floor: f.floor||'', apartment: f.apartment||'', address: f.address||'', notes: f.notes||''
     };
@@ -2324,7 +2551,7 @@ function renderCheckout(){
           return `
           <div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--sand-dark)">
             <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:${color};position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
-              ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
+              ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
             </div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700">
@@ -2348,7 +2575,12 @@ function renderCheckout(){
   </div>`;
 }
 
-function renderItemTrack(it){
+function toggleTrackerExpand(key){
+  if(state.expandedTrackers.has(key)) state.expandedTrackers.delete(key);
+  else state.expandedTrackers.add(key);
+  render();
+}
+function renderItemTrack(it, key){
   const isAr = state.lang==='ar';
   const status = it.status || 'confirmed';
   if(status==='cancelled' || status==='returned'){
@@ -2359,19 +2591,23 @@ function renderItemTrack(it){
     </div>`;
   }
   const idx = TRACK_STATUSES.indexOf(status);
+  const expanded = state.expandedTrackers.has(key);
   return `
   <div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:2px">
       <div style="font-size:13px;font-weight:700">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${it.variant}) × ${it.qty}</span></div>
-      <div style="font-size:12px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][status]}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][status]}</div>
+        <a href="#" class="view-all" style="font-size:11px" onclick="toggleTrackerExpand('${key}');return false;">${expanded?(isAr?'إخفاء الخطوات':'Hide steps'):(isAr?'عرض كل الخطوات':'Show all steps')}</a>
+      </div>
     </div>
-    <div class="order-track">
+    ${expanded?`<div class="order-track">
       ${TRACK_STATUSES.map((s,i)=>`
         <div class="track-step ${i<idx?'done':''} ${i===idx?'current':''}">
           <div class="track-dot">${i<idx?'✓':(i+1)}</div>
           <div class="track-label">${ORDER_STATUS_LABELS[state.lang][s]}</div>
         </div>`).join('')}
-    </div>
+    </div>`:''}
   </div>`;
 }
 function renderOrderTrackCard(o){
@@ -2383,7 +2619,7 @@ function renderOrderTrackCard(o){
       <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
       <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
     </div>
-    ${o.items.map(renderItemTrack).join('')}
+    ${o.items.map((it,i)=>renderItemTrack(it, o.num+'-'+i)).join('')}
   </div>`;
 }
 function renderMyOrders(){
@@ -2412,11 +2648,32 @@ function renderConfirm(){
       <div class="order-num">${o.num}</div>
       <div style="font-size:13px;color:var(--ink-soft)">${fmt(o.total)} · ${o.gov} · ${o.date}</div>
       <div style="font-size:13px;color:var(--cedar);font-weight:700;margin-bottom:22px">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
-      <button class="btn btn-primary" onclick="goHome()">${t('backHome')}</button>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-cedar" onclick="goMyOrders()">${state.lang==='ar'?'تتبّع الطلب':'Track this order'}</button>
+        <button class="btn btn-primary" onclick="goHome()">${t('backHome')}</button>
+      </div>
     </div>
   </div>`;
 }
 
+async function submitNewsletter(){
+  const isAr = state.lang==='ar';
+  const input = document.getElementById('newsletter-email');
+  const email = (input.value||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    showToast(isAr?'يرجى إدخال بريد إلكتروني صالح':'Please enter a valid email');
+    return;
+  }
+  try{
+    const { error } = await sb.from('newsletter_subscribers').insert({ email });
+    if(error && error.code !== '23505') throw error; // 23505 = already subscribed, treat as success
+    input.value = '';
+    showToast(isAr?'تم الاشتراك!':'Subscribed!');
+  } catch(e){
+    console.error('Newsletter signup failed:', e);
+    showToast(isAr?'تعذر الاشتراك':'Could not subscribe');
+  }
+}
 /* ============ RENDER: FOOTER ============ */
 function renderFooter(){
   return `
@@ -2433,12 +2690,12 @@ function renderFooter(){
           ${state.settings.contactAddress?`<li><a href="#">${state.settings.contactAddress}</a></li>`:''}
           ${(state.settings.socialLinks||[]).map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener">${s.platform}</a></li>`).join('')}
         </ul></div>
-        <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
-        <div><h4>${t('contact')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
+        <div><h4>${t('supportNav')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
+        <div><h4>${t('legalNav')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
         <div>
           <h4>${t('newsletter')}</h4>
           <p>${t('newsletterSub')}</p>
-          <div class="newsletter"><input placeholder="you@email.com"/><button class="btn btn-primary btn-sm" onclick="showToast(state.lang==='ar'?'تم الاشتراك!':'Subscribed!')">${t('subscribe')}</button></div>
+          <div class="newsletter"><input id="newsletter-email" placeholder="you@email.com"/><button class="btn btn-primary btn-sm" onclick="submitNewsletter()">${t('subscribe')}</button></div>
         </div>
       </div>
       <div class="footer-bottom">
@@ -2592,6 +2849,23 @@ function saveProductDescription(id){
   p.desc_ar = descAr; p.desc_en = descEn;
   syncProductField(id, { desc_ar: descAr, desc_en: descEn });
   showToast(state.lang==='ar' ? 'تم حفظ الوصف' : 'Description saved');
+  render();
+}
+async function addReview(productId){
+  const isAr = state.lang==='ar';
+  const name = document.getElementById('new-review-name-'+productId).value.trim();
+  const rating = Number(document.getElementById('new-review-rating-'+productId).value);
+  const text = document.getElementById('new-review-text-'+productId).value.trim();
+  if(!name || !text){ showToast(isAr?'يرجى تعبئة الاسم والنص':'Please fill in the name and text'); return; }
+  const { data, error } = await sb.from('reviews').insert({ product_id:productId, customer_name:name, rating, review_text:text }).select().single();
+  if(error){ console.error('Add review failed:', error); showToast(isAr?'تعذر الإضافة':'Could not add'); return; }
+  REVIEWS.unshift({ id:data.id, name_en:data.customer_name, rating:data.rating, prod:data.product_id, en:data.review_text, date:data.review_date });
+  render();
+}
+async function deleteReview(id){
+  const { error } = await sb.from('reviews').delete().eq('id', id);
+  if(error){ console.error('Delete review failed:', error); return; }
+  REVIEWS = REVIEWS.filter(r=>r.id!==id);
   render();
 }
 function adminUpdateVariants(id, val){
@@ -2927,14 +3201,17 @@ function renderAdminCustomers(){
     </div>`;
   }
 
+  const q = (state.adminCustomerSearch||'').trim().toLowerCase();
+  const filteredCustomers = q ? customers.filter(c=>(c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.phone||'').toLowerCase().includes(q)) : customers;
   return `
   <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h3 style="margin:0">${isAr?'العملاء':'Customers'} (${customers.length})</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h3 style="margin:0">${isAr?'العملاء':'Customers'} (${filteredCustomers.length}${filteredCustomers.length!==customers.length?` / ${customers.length}`:''})</h3>
       <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
     </div>
-    ${customers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'}</p>` :
-    customers.map(c=>{
+    <input type="text" value="${state.adminCustomerSearch||''}" placeholder="${isAr?'ابحث بالاسم أو البريد أو الهاتف':'Search by name, email, or phone'}" oninput="state.adminCustomerSearch=this.value;render()" style="width:100%;max-width:320px;margin-bottom:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
+    ${filteredCustomers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${customers.length===0?(isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'):(isAr?'لا يوجد عملاء مطابقون':'No matching customers')}</p>` :
+    filteredCustomers.map(c=>{
       const cartCount = (c.cart||[]).reduce((s,l)=>s+l.qty,0);
       const orderCount = state.orders.filter(o=>o.customerId===c.id).length;
       return `
@@ -3003,7 +3280,7 @@ function renderProductEditorPanel(p){
     <div>
       <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px">${isAr?'صورة المنتج':'Product Photo'}</label>
       <div style="width:100%;aspect-ratio:1/1;border-radius:10px;background:${PALETTE[p.color % PALETTE.length]};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin-bottom:10px">
-        ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:40%;height:40%;color:#fff">${ICONS[p.icon]}</span>`}
+        ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:40%;height:40%;color:#fff">${ICONS[p.icon]}</span>`}
       </div>
       <label class="btn btn-cedar btn-sm btn-block" style="margin-bottom:8px;cursor:pointer">
         ${isAr?'📤 رفع صورة من جهازك':'📤 Upload from device'}
@@ -3025,6 +3302,22 @@ function renderProductEditorPanel(p){
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'خيارات الطلب (مفصولة بفواصل)':'Order options (comma-separated)'}</label>
         <input type="text" value="${(p.variants||[]).join(', ')}" placeholder="Black, White, Blue" dir="ltr" onchange="adminUpdateVariants(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
         <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'هذه هي الخيارات (مثل اللون أو المقاس) التي يمكن للعميل الاختيار من بينها عند الشراء.':'These are the choices (like color or size) a customer picks from when ordering this product.'}</p>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'التقييمات':'Reviews'}</label>
+        ${REVIEWS.filter(r=>r.prod===p.id).map(r=>`
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding:8px 0;border-bottom:1px solid var(--sand-dark)">
+            <div style="font-size:12px"><b>${r.name_en}</b> · ${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}<br><span style="color:var(--ink-soft)">${r.en}</span></div>
+            <button class="btn btn-ghost btn-sm" style="color:var(--brick);flex-shrink:0" onclick="deleteReview('${r.id}')">🗑️</button>
+          </div>`).join('') || `<p style="font-size:12px;color:var(--ink-soft)">${isAr?'لا توجد تقييمات':'No reviews yet'}</p>`}
+        <div class="form-row" style="margin-top:10px">
+          <div class="form-field"><label>${isAr?'اسم العميل':'Customer name'}</label><input id="new-review-name-${p.id}" type="text"/></div>
+          <div class="form-field" style="max-width:100px"><label>${isAr?'التقييم':'Rating'}</label>
+            <select id="new-review-rating-${p.id}">${[5,4,3,2,1].map(n=>`<option value="${n}">${n} ★</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="form-row"><div class="form-field full"><textarea id="new-review-text-${p.id}" rows="2" placeholder="${isAr?'نص التقييم':'Review text'}"></textarea></div></div>
+        <button class="btn btn-secondary btn-sm" onclick="addReview(${p.id})">+ ${isAr?'إضافة تقييم':'Add review'}</button>
       </div>
     </div>
   </div>`;
@@ -3086,23 +3379,28 @@ function renderAdmin(){
         </div>
       </div>`:''}
 
-      ${state.adminView==='products'?`
+      ${state.adminView==='products'?(function(){
+        const isAr = state.lang==='ar';
+        const q = (state.adminProductSearch||'').trim().toLowerCase();
+        const filtered = q ? PRODUCTS.filter(p=>(p.name_en||'').toLowerCase().includes(q) || (p.name_ar||'').includes(state.adminProductSearch.trim()) || (p.sku||'').toLowerCase().includes(q)) : PRODUCTS;
+        return `
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
-          <h3 style="margin:0">${state.lang==='ar'?'إدارة المنتجات':'Product Management'} (${PRODUCTS.length})</h3>
-          <button class="btn btn-primary btn-sm" onclick="${state.adminAddingProduct?'closeAddProduct()':'openAddProduct()'}">${state.adminAddingProduct?(state.lang==='ar'?'إغلاق ✕':'Close ✕'):(state.lang==='ar'?'➕ إضافة منتج جديد':'➕ Add New Product')}</button>
+          <h3 style="margin:0">${isAr?'إدارة المنتجات':'Product Management'} (${filtered.length}${filtered.length!==PRODUCTS.length?` / ${PRODUCTS.length}`:''})</h3>
+          <button class="btn btn-primary btn-sm" onclick="${state.adminAddingProduct?'closeAddProduct()':'openAddProduct()'}">${state.adminAddingProduct?(isAr?'إغلاق ✕':'Close ✕'):(isAr?'➕ إضافة منتج جديد':'➕ Add New Product')}</button>
         </div>
         <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px">🔒 ${t('supplierLinkPrivacy')}</p>
         ${state.adminAddingProduct ? renderAddProductForm() : ''}
+        <input type="text" value="${state.adminProductSearch||''}" placeholder="${isAr?'ابحث بالاسم أو SKU':'Search by name or SKU'}" oninput="state.adminProductSearch=this.value;render()" style="width:100%;max-width:320px;margin-bottom:12px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
         <div style="overflow-x:auto">
         <table class="admin-table">
           <thead><tr>
-            <th></th><th>${state.lang==='ar'?'المنتج':'Product'}</th><th>SKU</th><th>${state.lang==='ar'?'الفئة':'Category'}</th>
-            <th>${t('costLabel')}</th><th>${state.lang==='ar'?'السعر':'Price'}</th><th>${state.lang==='ar'?'السعر الأصلي':'Was (crossed-out price)'}</th><th>${t('profitLabel')}</th><th></th>
-            <th>${state.lang==='ar'?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th><th></th><th></th>
+            <th></th><th>${isAr?'المنتج':'Product'}</th><th>SKU</th><th>${isAr?'الفئة':'Category'}</th>
+            <th>${t('costLabel')}</th><th>${isAr?'السعر':'Price'}</th><th>${isAr?'السعر الأصلي':'Was (crossed-out price)'}</th><th>${t('profitLabel')}</th><th></th>
+            <th>${isAr?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th><th></th><th></th>
           </tr></thead>
           <tbody>
-          ${PRODUCTS.map(p=>{
+          ${filtered.map(p=>{
             const {profit, pct} = profitFor(p);
             const profitColor = profit>0 ? 'var(--cedar)' : (profit<0 ? 'var(--brick)' : 'var(--ink-soft)');
             const color = PALETTE[p.color % PALETTE.length];
@@ -3110,19 +3408,25 @@ function renderAdmin(){
             <tr>
               <td>
                 <div style="width:38px;height:38px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
-                  ${p.imageUrl?`<img src="${p.imageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
+                  ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
                 </div>
               </td>
               <td>${pname(p)}</td>
               <td><input type="text" class="font-mono" value="${p.sku}" onchange="adminUpdateSku(${p.id}, this.value)" style="width:100px;font-size:11.5px" title="${state.lang==='ar'?'يمكنك استبداله برقم تتبع المورد':'You can overwrite this with your supplier tracking code'}"/></td>
               <td>
-                <div style="display:flex;flex-direction:column;gap:2px;max-height:92px;overflow-y:auto;font-size:11px;min-width:120px">
+                ${state.adminExpandedCatRow===p.id ? `
+                <div style="display:flex;flex-direction:column;gap:2px;font-size:11px;min-width:130px">
                   ${CATS.filter(c=>c.id!=='offers').map(c=>`
                     <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap">
                       <input type="checkbox" ${productCats(p).includes(c.id)?'checked':''} onchange="adminToggleCategory(${p.id}, '${c.id}', this.checked)"/>
                       ${catName(c)}
                     </label>`).join('')}
-                </div>
+                  <a href="#" class="view-all" style="font-size:10.5px;margin-top:2px" onclick="state.adminExpandedCatRow=null;render();return false;">${isAr?'× إغلاق':'× Done'}</a>
+                </div>` : `
+                <div style="font-size:11.5px;max-width:140px;cursor:pointer" onclick="state.adminExpandedCatRow=${p.id};render()" title="${isAr?'اضغط للتعديل':'Click to edit'}">
+                  ${productCats(p).filter(id=>id!=='offers').map(id=>{const c=CATS.find(x=>x.id===id); return c?catName(c):id;}).join(', ') || '—'}
+                  <span style="color:var(--cedar);font-weight:700">✎</span>
+                </div>`}
                 ${p.was>p.price?`<div style="margin-top:4px;font-size:10px;font-weight:700;color:var(--brick)">🔥 ${state.lang==='ar'?'يظهر في العروض تلقائيًا':'Auto-shown in Offers'}</div>`:''}
               </td>
               <td><input type="number" step="0.1" value="${p.cost!==undefined?p.cost:''}" onchange="adminUpdateCost(${p.id}, this.value)" style="width:64px"/></td>
@@ -3156,7 +3460,7 @@ function renderAdmin(){
           </tbody>
         </table>
         </div>
-      </div>`:''}
+      </div>`; })():''}
 
       ${state.adminView==='customers'?renderAdminCustomers():''}
 
@@ -3254,7 +3558,7 @@ function renderAdmin(){
             </div>
             ${s.mediaUrl?`
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
+              ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" alt="" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
             </div>`:''}
             <input type="file" accept="${s.type==='video'?'video/*':'image/*'}" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${s.title||''}" onchange="updateBillboardSlide(${idx},'title',this.value)"/></div>
@@ -3636,7 +3940,13 @@ function mToggleTheme(){
   try{ localStorage.setItem('mstore-theme', state.mTheme); }catch(e){}
   render();
 }
-function mSearchTap(){ showToast('Search is coming soon'); }
+function mSearchTap(){ state.listFilter = {type:'search', query:''}; mGo('list'); }
+function mSearchInput(val){
+  state.listFilter = {type:'search', query:val};
+  render();
+  const inp = document.getElementById('m-search-input');
+  if(inp){ inp.focus(); const len=inp.value.length; inp.setSelectionRange(len,len); }
+}
 
 /* ---- product screen ---- */
 function mOpenProduct(id){
@@ -3794,22 +4104,30 @@ function mHome(){
 }
 function mList(){
   const f = state.listFilter;
-  let list = PRODUCTS, title = 'All products';
+  let list = PRODUCTS, title = 'All products', emptyMsg = 'No products here yet';
   if(f && f.type==='cat'){ const c = CATS.find(x=>x.id===f.id); list = PRODUCTS.filter(p=>productInCat(p, f.id)); title = c ? c.en : title; }
   else if(f && f.type==='flag'){
     const tests = { best:p=>p.best, new:p=>p.new, featured:p=>p.featured, offer:p=>p.was>p.price };
     const labels = { best:'Best sellers', new:'New arrivals', featured:'Featured', offer:'Special offers' };
     list = PRODUCTS.filter(tests[f.key] || (()=>false)); title = labels[f.key] || title;
+  } else if(f && f.type==='wishlist'){
+    list = PRODUCTS.filter(p=>state.wishlist.has(p.id)); title = 'Wishlist'; emptyMsg = 'Your wishlist is empty';
+  } else if(f && f.type==='search'){
+    list = searchProducts(f.query); title = 'Search'; emptyMsg = f.query ? 'No matching products' : 'Search for anything';
   }
   return `
   <div style="animation:fadeIn .25s ease">
     <div class="m-list-head">${mBackBtn('mBack()')}<div class="m-list-title">${title}</div></div>
+    ${f && f.type==='search' ? `
+    <div style="padding:0 20px 14px">
+      <input id="m-search-input" class="m-input" value="${f.query||''}" placeholder="Shu 3ayez...." oninput="mSearchInput(this.value)"/>
+    </div>` : `
     <div class="m-rail">
       <button class="m-chip ${!f?'active':''}" onclick="mClearFilter()">All</button>
       ${CATS.map(c=>`<button class="m-chip ${f&&f.type==='cat'&&f.id===c.id?'active':''}" onclick="mFilterByCat('${c.id}')">${c.en}</button>`).join('')}
-    </div>
+    </div>`}
     <div class="m-list">
-      ${list.length ? list.map(mListItem).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">No products here yet</div></div>`}
+      ${list.length ? list.map(mListItem).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">${emptyMsg}</div></div>`}
     </div>
   </div>`;
 }
@@ -3848,6 +4166,18 @@ function mProduct(){
         <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
         <button class="m-btn-primary" style="flex:1" ${p.stock===0?'disabled':''} onclick="mAddToCartFlow()">${p.stock===0?'Out of stock':'Add to cart'}</button>
       </div>
+      ${(()=>{ const prodReviews = REVIEWS.filter(r=>r.prod===p.id); return prodReviews.length>0?`
+      <div class="m-section-kicker" style="margin:22px 0 10px">Reviews</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${prodReviews.map(r=>`
+        <div style="padding:12px 14px;border:1px solid var(--line);border-radius:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font:700 13px/1.3 'Figtree',sans-serif">${r.name_en}</span>
+            <span style="color:var(--acc);font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+          </div>
+          <p style="font:400 13px/1.5 'Figtree',sans-serif;color:var(--muted)">${r.en}</p>
+        </div>`).join('')}
+      </div>`:''; })()}
     </div>
   </div>`;
 }
@@ -4025,6 +4355,10 @@ function mAccount(){
       <div><div style="font:700 15px/1.3 'Figtree',sans-serif">${name}</div><div style="font:400 12.5px/1.4 'Figtree',sans-serif;color:var(--muted)">${(c&&c.phone)||''}${c&&c.phone&&c&&c.email?' · ':''}${(c&&c.email)||''}</div></div>
     </div>
     <div class="m-panel">
+      <div class="m-panel-row" style="cursor:pointer" onclick="mGoWishlist()">
+        <div style="font:600 14px/1.3 'Figtree',sans-serif">Wishlist</div>
+        <div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${state.wishlist.size} ›</div>
+      </div>
       <div class="m-panel-row">
         <div><div style="font:600 14px/1.3 'Figtree',sans-serif">Dark mode</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">Easier on the eyes at night</div></div>
         <button class="m-switch" style="background:${state.mTheme==='dark'?'var(--acc)':'var(--surf)'};justify-content:${state.mTheme==='dark'?'flex-end':'flex-start'}" onclick="mToggleTheme()"><div class="m-switch-knob"></div></button>
@@ -4033,9 +4367,49 @@ function mAccount(){
       <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Governorate</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${(c&&c.gov)||state.selectedGov||'—'}</div></div>
       ${isAdminUser(c)?`<div class="m-panel-row" style="cursor:pointer" onclick="goAdmin()"><div style="font:600 14px/1.3 'Figtree',sans-serif;color:var(--accInk)">★ Admin panel</div><div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">›</div></div>`:''}
     </div>
+    <div class="m-section-kicker" style="margin:18px 0 10px">Edit profile</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <input class="m-input" id="m-acct-name" value="${(c&&c.name)||''}" placeholder="Full name">
+      <input class="m-input" id="m-acct-phone" value="${(c&&c.phone)||''}" placeholder="Phone number">
+      <button class="m-btn-primary" onclick="mSaveAccountInfo()">Save</button>
+    </div>
+    <div class="m-section-kicker" style="margin:18px 0 10px">Change password</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <input class="m-input" id="m-acct-new-pw" type="password" placeholder="New password">
+      <input class="m-input" id="m-acct-new-pw2" type="password" placeholder="Confirm password">
+      <button class="m-btn-outline" onclick="mSubmitChangePassword()">Change password</button>
+    </div>
     <button class="m-btn-outline" style="width:100%" onclick="logout()">Log out</button>
     <div style="font:400 12px/1.6 'Figtree',sans-serif;color:var(--muted);text-align:center;margin-top:14px">HABIBI · mobile</div>
   </div>`;
+}
+function mGoWishlist(){ state.listFilter={type:'wishlist'}; mGo('list'); }
+async function mSaveAccountInfo(){
+  const c = currentCustomer();
+  if(!c) return;
+  const name = document.getElementById('m-acct-name').value.trim();
+  const phone = document.getElementById('m-acct-phone').value.trim();
+  if(!name){ showToast('Please enter a name'); return; }
+  c.name = name; c.phone = phone;
+  render();
+  try{
+    const { error } = await sb.from('customers').update({ name, phone }).eq('id', c.id);
+    if(error) throw error;
+    showToast('Saved');
+  } catch(e){ console.error('Account save failed:', e); showToast('Could not save'); }
+}
+async function mSubmitChangePassword(){
+  const pw1 = document.getElementById('m-acct-new-pw').value;
+  const pw2 = document.getElementById('m-acct-new-pw2').value;
+  if(pw1.length < 6){ showToast('Password must be at least 6 characters'); return; }
+  if(pw1 !== pw2){ showToast('Passwords do not match'); return; }
+  try{
+    const { error } = await sb.auth.updateUser({ password: pw1 });
+    if(error){ showToast(error.message); return; }
+    document.getElementById('m-acct-new-pw').value = '';
+    document.getElementById('m-acct-new-pw2').value = '';
+    showToast('Password changed');
+  } catch(e){ console.error('Password change failed:', e); showToast('Could not change password'); }
 }
 
 function mChat(){
@@ -4153,6 +4527,7 @@ function render(){
     else if(state.view==='checkout') body = renderCheckout();
     else if(state.view==='confirm') body = renderConfirm();
     else if(state.view==='orders') body = renderMyOrders();
+    else if(state.view==='account') body = renderAccount();
     app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat() + renderShippingModal();
   }
 
@@ -4167,6 +4542,9 @@ function updateHeroFade(){
   const p = Math.min(1, window.scrollY / h);
   hero.style.opacity = String(1 - p);
   hero.style.transform = `translateY(${p*40}px)`;
+  /* Collapse the hero's own box in sync with the fade, or the invisible-but-still-full-height
+     section leaves a blank gap to scroll through before the next section appears. */
+  hero.style.marginBottom = `${-h*p}px`;
 }
 function updateMobileHeaderFade(){
   const header = document.getElementById('m-header-sec');
@@ -4216,8 +4594,15 @@ async function initApp(){
     console.error('Could not load product edits:', e);
   }
   try{
+    await loadReviews();
+  } catch(e){
+    console.error('Could not load reviews:', e);
+  }
+  const isRecoveryLink = window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+  try{
     const { data:{ session } } = await sb.auth.getSession();
     if(session){
+      if(isRecoveryLink){ state.authMode = 'recovery'; render(); return; }
       const c = await findOrCreateCustomer({ email: session.user.email, method:'password' });
       if(c){ completeLogin(c); return; }
     }
