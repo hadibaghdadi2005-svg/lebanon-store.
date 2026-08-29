@@ -1263,6 +1263,7 @@ function applyProductRows(data){
       if(row.stock!=null) p.stock = Number(row.stock);
       if(row.cost!=null) p.cost = Number(row.cost);
       if(row.supplier_url!=null) p.supplierUrl = row.supplier_url;
+      if(row.sku) p.sku = row.sku;
       if(row.cats && row.cats.length){ p.cats = row.cats; p.cat = row.cats[0]; const ci = CATS.find(c=>c.id===p.cat); if(ci) p.icon = ci.icon; }
       if(row.variants && row.variants.length) p.variants = row.variants;
       if(row.featured!=null) p.featured = row.featured;
@@ -2190,6 +2191,12 @@ function adminUpdateStock(id, val){
   findProduct(id).stock = stock;
   syncProductField(id, { stock });
 }
+function adminUpdateSku(id, val){
+  const p = findProduct(id);
+  const sku = val.trim() || p.sku; // never allow it to go blank
+  p.sku = sku; render();
+  syncProductField(id, { sku });
+}
 function adminUpdateCost(id, val){
   const cost = Number(val)||0;
   findProduct(id).cost = cost; render();
@@ -2654,7 +2661,7 @@ function renderAdmin(){
                 </div>
               </td>
               <td>${pname(p)}</td>
-              <td class="font-mono" style="font-size:11.5px">${p.sku}</td>
+              <td><input type="text" class="font-mono" value="${p.sku}" onchange="adminUpdateSku(${p.id}, this.value)" style="width:100px;font-size:11.5px" title="${state.lang==='ar'?'يمكنك استبداله برقم تتبع المورد':'You can overwrite this with your supplier tracking code'}"/></td>
               <td>
                 <div style="display:flex;flex-direction:column;gap:2px;max-height:92px;overflow-y:auto;font-size:11px;min-width:120px">
                   ${CATS.filter(c=>c.id!=='offers').map(c=>`
