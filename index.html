@@ -82,6 +82,8 @@ header.site{
 }
 .searchbar input{background:transparent;border:none;outline:none;color:var(--paper);width:100%;font-size:14px}
 .searchbar input::placeholder{color:rgba(255,255,255,.55)}
+.search-clear-btn{flex-shrink:0;width:18px;height:18px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.search-clear-btn:hover{background:rgba(255,255,255,.3)}
 .topbar-icons{display:flex;align-items:center;gap:16px;flex-shrink:0}
 .icon-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:rgba(255,255,255,.85)}
 .icon-btn .cart-count{
@@ -1486,6 +1488,13 @@ function submitSearch(query){
   window.scrollTo(0,0);
   render();
 }
+function clearSearch(){
+  state.searchDraft = '';
+  if(state.listFilter && state.listFilter.type==='search') state.listFilter = null;
+  state.view = 'home';
+  window.scrollTo(0,0);
+  render();
+}
 function goWishlist(){ state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render(); }
 function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; window.scrollTo(0,0); render(); }
 function goCheckout(){
@@ -1779,6 +1788,7 @@ function renderHeader(){
       <div class="searchbar">
         <svg class="icon" style="width:16px;height:16px;cursor:pointer" viewBox="0 0 24 24" onclick="submitSearch(document.getElementById('site-search-input').value)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input id="site-search-input" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${state.searchDraft||''}" oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
+        <button type="button" class="search-clear-btn" onclick="clearSearch()" aria-label="${state.lang==='ar'?'مسح البحث':'Clear search'}">✕</button>
       </div>
       <div class="topbar-icons">
         <button class="icon-btn" onclick="goAccount()">
@@ -3961,6 +3971,11 @@ function mSubmitSearchBox(){
   state.listFilter = {type:'search', query:val};
   render();
 }
+function mClearSearch(){
+  state.searchDraft = '';
+  state.listFilter = null;
+  mGoHome();
+}
 
 /* ---- product screen ---- */
 function mOpenProduct(id){
@@ -4133,9 +4148,10 @@ function mList(){
   <div style="animation:fadeIn .25s ease">
     <div class="m-list-head">${mBackBtn('mBack()')}<div class="m-list-title">${title}</div></div>
     ${f && f.type==='search' ? `
-    <div style="padding:0 20px 14px;display:flex;gap:8px">
+    <div style="padding:0 20px 14px;display:flex;gap:8px;align-items:center">
       <input id="m-search-input" class="m-input" value="${state.searchDraft||''}" placeholder="Shu 3ayez...." oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')mSubmitSearchBox()" style="flex:1"/>
-      <button class="m-btn-primary" style="padding:0 20px" onclick="mSubmitSearchBox()">Go</button>
+      <button onclick="mClearSearch()" aria-label="Clear search" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
+      <button class="m-btn-primary" style="padding:0 20px;flex-shrink:0" onclick="mSubmitSearchBox()">Go</button>
     </div>` : `
     <div class="m-rail">
       <button class="m-chip ${!f?'active':''}" onclick="mClearFilter()">All</button>
