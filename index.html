@@ -3085,7 +3085,7 @@ function renderBillboard(){
   const i = state.billboardIndex % slides.length;
   const s = slides[i];
   return `
-  <section class="billboard-full">
+  <section class="billboard-full" id="billboard-full-sec">
     <div class="billboard" ${s.type!=='video' && s.mediaUrl?`style="background-image:url('${s.mediaUrl}')"`:''}>
       ${s.type==='video' && s.mediaUrl?`<video class="billboard-video" src="${s.mediaUrl}" autoplay muted loop playsinline></video>`:''}
       <div class="billboard-inner">
@@ -4643,14 +4643,23 @@ window.addEventListener('resize', ()=>{
 window.addEventListener('scroll', updateHeroFade, {passive:true});
 let _billboardTimer = setInterval(()=>{
   const slides = state.settings.billboardSlides;
-  /* state.view stays 'home' throughout the whole mobile session (mGo() only ever changes
-     state.mScreen), so checking state.view alone re-rendered the entire app every 5s no matter
-     which mobile screen — search, checkout, account — the customer was actually on, wiping out
-     whatever input they had focused. Must also confirm the home screen is what's on screen. */
-  const onHomeScreen = isMobileViewport() ? state.mScreen==='home' : state.view==='home';
-  if(state.settings.billboardEnabled && slides && slides.length>1 && onHomeScreen){
+  if(!state.settings.billboardEnabled || !slides || slides.length<=1) return;
+  if(isMobileViewport()){
+    /* state.view stays 'home' throughout the whole mobile session (mGo() only ever changes
+       state.mScreen), so checking state.view alone re-rendered the entire app every 5s no
+       matter which mobile screen — search, checkout, account — was actually on screen. */
+    if(state.mScreen==='home'){
+      state.billboardIndex = (state.billboardIndex+1) % slides.length;
+      render();
+    }
+  } else if(state.view==='home'){
     state.billboardIndex = (state.billboardIndex+1) % slides.length;
-    render();
+    /* The desktop header (with the search bar) is a sibling of the billboard, not a parent of
+       it — patch just the billboard's own subtree instead of calling render(), which would
+       rebuild the whole page (header included) every 5s and steal focus from the search bar
+       or any other field on the home page even though neither has anything to do with it. */
+    const el = document.getElementById('billboard-full-sec');
+    if(el) el.outerHTML = renderBillboard();
   }
 }, 5000);
 initApp();
