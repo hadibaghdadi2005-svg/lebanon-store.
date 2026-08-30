@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="2" fill="#C4972A" opacity="0.18"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#0F3D2E"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+  <rect x="150" y="197" width="120" height="120" rx="26" fill="#C4972A"/>
+  <g transform="translate(180 227)" fill="none" stroke="#0F3D2E" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 6 9 18v42a6 6 0 0 0 6 6h42a6 6 0 0 0 6-6V18l-9-12Z"/>
+    <path d="M9 18h54"/>
+    <path d="M42 30a12 12 0 0 1-24 0"/>
+  </g>
+  <text x="150" y="400" font-family="Georgia, 'Times New Roman', serif" font-size="84" font-weight="700" fill="#FFFDF8">HABIBI</text>
+  <text x="150" y="450" font-family="Arial, sans-serif" font-size="28" fill="#E0B54A">Everything, with love</text>
+  <text x="150" y="500" font-family="Arial, sans-serif" font-size="20" fill="#B9C4BC">Shop with confidence — fast delivery across every region in Lebanon</text>
+</svg>
