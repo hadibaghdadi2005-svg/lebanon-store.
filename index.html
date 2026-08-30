@@ -4719,6 +4719,7 @@ window.addEventListener('resize', ()=>{
 });
 window.addEventListener('scroll', updateHeroFade, {passive:true});
 let _billboardTimer = setInterval(()=>{
+  if(!state.currentUserId) return; // billboard only shows once logged in — otherwise this fires on the login screen and closes the keyboard mid-type
   const slides = state.settings.billboardSlides;
   if(!state.settings.billboardEnabled || !slides || slides.length<=1) return;
   if(isMobileViewport()){
