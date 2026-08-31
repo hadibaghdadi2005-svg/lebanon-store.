@@ -29,7 +29,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const ADMIN_EMAIL_TO = "hadibaghdadi11@gmail.com";
+// The Resend shared test domain (onboarding@resend.dev) only delivers to the Resend
+// account's own verified email, which differs from ADMIN_EMAIL in index.html.
+const ADMIN_EMAIL_TO = "hadibaghdadi2005@gmail.com";
 const DASHBOARD_LINK = "https://hadibaghdadi2005-svg.github.io/lebanon-store./#admin-payments";
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
