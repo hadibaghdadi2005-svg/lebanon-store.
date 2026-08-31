@@ -3095,7 +3095,7 @@ function deleteProduct(id){
 }
 function openAddProduct(){ state.adminAddingProduct = true; state.adminEditingProduct = null; render(); }
 function closeAddProduct(){ state.adminAddingProduct = false; render(); }
-function submitNewProduct(){
+async function submitNewProduct(){
   const isAr = state.lang==='ar';
   const nameAr = document.getElementById('new-name-ar').value.trim();
   const nameEn = document.getElementById('new-name-en').value.trim();
@@ -3111,7 +3111,19 @@ function submitNewProduct(){
     showToast(isAr ? 'يرجى إدخال اسم المنتج بالعربي والإنكليزي' : 'Please enter a product name in both languages');
     return;
   }
-  const newId = Math.max(0, ...PRODUCTS.map(p=>p.id)) + 1;
+  /* The admin panel loads existing custom products from the DB asynchronously (goAdmin() doesn't
+     block on it), so PRODUCTS locally can be missing rows that already exist server-side. Basing
+     the new id purely on the local array risked colliding with one of those rows — the upsert
+     below would then silently merge the new product's fields into the existing one instead of
+     creating a separate row, making the older product look corrupted/"disappeared". Cross-check
+     the real max id in the DB right before picking one. */
+  const localMax = Math.max(0, ...PRODUCTS.map(p=>p.id));
+  let dbMax = 0;
+  try{
+    const { data } = await sb.from('products').select('id').order('id', {ascending:false}).limit(1);
+    if(data && data.length) dbMax = data[0].id;
+  } catch(e){ console.error('Could not verify next product id:', e); }
+  const newId = Math.max(localMax, dbMax) + 1;
   const primaryCat = cats[0] || null;
   const catInfo = CATS.find(c=>c.id===primaryCat);
   const sku = 'LB-NEW-' + newId;
@@ -3122,14 +3134,26 @@ function submitNewProduct(){
     cost, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, imageUrls:[], isCustom:true
   };
   PRODUCTS.push(newProduct);
-  syncProductField(newId, {
-    is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock,
-    desc_ar:descAr, desc_en:descEn, variants, deleted:false, new:true, featured:false, best:false
-  });
   state.adminAddingProduct = false;
-  showToast(isAr ? 'تمت إضافة المنتج! يمكنك الآن إضافة صورة له' : 'Product added! You can now add a photo to it');
   state.adminEditingProduct = newId;
   render();
+  /* Wait for the DB write to actually confirm before telling the admin it worked — syncProductField
+     used to fire-and-forget, so a failed insert (e.g. an RLS hiccup) still showed a success toast
+     and the "added" product would just be gone again on the next reload with no visible error. */
+  const { error } = await sb.from('products').upsert({
+    id:newId, is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock,
+    desc_ar:descAr, desc_en:descEn, variants, deleted:false, new:true, featured:false, best:false
+  }, { onConflict:'id' });
+  if(error){
+    console.error('Product creation failed to save:', error);
+    showToast(isAr ? 'تعذر حفظ المنتج في القاعدة، حاول مجددًا' : 'Could not save the product — please try again');
+    const idx = PRODUCTS.findIndex(p=>p.id===newId);
+    if(idx>=0) PRODUCTS.splice(idx,1);
+    if(state.adminEditingProduct===newId) state.adminEditingProduct = null;
+    render();
+    return;
+  }
+  showToast(isAr ? 'تمت إضافة المنتج! يمكنك الآن إضافة صورة له' : 'Product added! You can now add a photo to it');
 }
 function closeProductEditor(){ state.adminEditingProduct = null; render(); }
 function saveProductDescription(id){
@@ -5087,6 +5111,20 @@ let _billboardTimer = setInterval(()=>{
     if(el) el.outerHTML = renderBillboard();
   }
 }, 5000);
+/* Products only ever loaded once, on initApp() — a customer already browsing never saw anything
+   an admin added later without a full page reload. Poll quietly for new/removed products and only
+   re-render on an actual count change (not just a price/stock tweak on something already visible),
+   and only while sitting on the plain home view with no field focused, so this can't steal focus
+   or wipe an in-progress form the way past render()-in-a-timer bugs did (see billboard timer above). */
+let _productsRefreshTimer = setInterval(()=>{
+  if(!state.currentUserId || state.view!=='home') return;
+  const el = document.activeElement;
+  if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.isContentEditable)) return;
+  const before = PRODUCTS.length;
+  loadPublicProducts().then(()=>{
+    if(PRODUCTS.length !== before) render();
+  }).catch(e=>console.error('Product refresh failed:', e));
+}, 60000);
 initApp();
 </script>
 </body>
