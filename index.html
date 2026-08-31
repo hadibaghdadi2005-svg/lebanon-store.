@@ -340,7 +340,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .pay-option.active{border-color:var(--cedar);background:var(--sand)}
 
 /* ---------- LOGIN ---------- */
-.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:32px 20px;position:relative;overflow-y:auto}
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:32px 20px;position:relative;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-x:none}
 .login-wrap::before{content:'';position:absolute;inset-inline-end:-12%;top:-18%;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.22), transparent 70%);pointer-events:none}
 .login-wrap::after{content:'';position:absolute;inset-inline-start:-14%;bottom:-16%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle, rgba(194,84,45,.16), transparent 70%);pointer-events:none}
 .login-shell{position:relative;display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:900px;background:var(--paper);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)}
