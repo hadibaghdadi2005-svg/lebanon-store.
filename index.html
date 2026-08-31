@@ -720,7 +720,9 @@ function dbRowToOrder(row){
     _dbId: row.id, num: row.num, date: row.order_date, items: row.items || [],
     total: Number(row.total), gov: row.gov, customer: row.customer_name, phone: row.phone,
     status: row.status, deliveryMin: row.delivery_min, deliveryMax: row.delivery_max,
-    customerId: row.customer_id, customerName: row.customer_name
+    customerId: row.customer_id, customerName: row.customer_name,
+    paymentStatus: row.payment_status, paymentReference: row.payment_reference,
+    paymentProofPath: row.payment_proof_path, paymentSubmittedAt: row.payment_submitted_at
   };
 }
 
@@ -740,7 +742,7 @@ const T = {
     continueShopping:"متابعة التسوق", quantity:"الكمية", remove:"إزالة",
     fullName:"الاسم الكامل", phone:"رقم الهاتف", email:"البريد الإلكتروني", governorate:"المحافظة", city:"المدينة",
     area:"المنطقة", address:"العنوان الكامل", building:"البناء", floor:"الطابق", apartment:"الشقة", notes:"ملاحظات التوصيل",
-    payMethod:"طريقة الدفع", cod:"الدفع عند الاستلام", codDesc:"ادفع نقدًا عند وصول طلبك",
+    payMethod:"طريقة الدفع",
     placeOrder:"تأكيد الطلب", orderSummary:"ملخص الطلب", orderConfirmed:"تم استلام طلبك بنجاح!",
     orderConfirmedSub:"سنتواصل معك قريبًا لتأكيد التوصيل.", orderNumber:"رقم الطلب",
     backHome:"العودة للرئيسية", couponCode:"رمز الخصم", apply:"تطبيق", aiAssistant:"مساعد المنتج الذكي",
@@ -776,7 +778,7 @@ const T = {
     continueShopping:"Continue Shopping", quantity:"Qty", remove:"Remove",
     fullName:"Full name", phone:"Phone number", email:"Email", governorate:"Governorate", city:"City",
     area:"Area", address:"Full address", building:"Building", floor:"Floor", apartment:"Apartment", notes:"Delivery notes",
-    payMethod:"Payment method", cod:"Cash on Delivery", codDesc:"Pay in cash when your order arrives",
+    payMethod:"Payment method",
     placeOrder:"Place Order", orderSummary:"Order Summary", orderConfirmed:"Your order was placed!",
     orderConfirmedSub:"We'll contact you shortly to confirm delivery.", orderNumber:"Order number",
     backHome:"Back to home", couponCode:"Coupon code", apply:"Apply", aiAssistant:"AI Product Assistant",
@@ -1002,11 +1004,17 @@ let state = {
   coupon: null,
   couponInput: '',
   selectedGov: null,
+  paymentProofMode: 'reference', // 'reference' | 'screenshot'
+  paymentProofFile: null,
+  paymentProofReference: '',
+  paymentSubmitting: false,
+  adminPaymentProofUrls: {},
   orders: [], // {num, date, items:[...], total, gov, customer, phone, status, customerId, customerName}
   settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: true, billboardSlides: [
     {type:'image', mediaUrl:'', title:'Big Savings, Every Day', subtitle:'New drops added weekly — shop the collection', linkType:'none', linkValue:'', buttonLabel:''},
     {type:'image', mediaUrl:'', title:'Free Delivery Across Lebanon', subtitle:'On every order, every governorate', linkType:'none', linkValue:'', buttonLabel:''}
-  ], shippingFees: [], coupons: [], contactPhone: '', contactEmail: '', contactAddress: '', socialLinks: [] },
+  ], shippingFees: [], coupons: [], contactPhone: '', contactEmail: '', contactAddress: '', socialLinks: [],
+    wishAccountName: '', wishAccountNumber: '', wishInstructions: '' },
   billboardIndex: 0,
   adminView: 'overview',
   adminSideOpen: false,
@@ -2449,7 +2457,8 @@ async function placeOrder(){
     customer_id: c ? c.id : null,
     num, order_date: new Date().toISOString().slice(0,10), items,
     total: cartTotal(), gov: state.selectedGov, customer_name: f.fullName, phone: f.phone,
-    status: 'confirmed', delivery_min: state.settings.deliveryMin, delivery_max: state.settings.deliveryMax
+    status: 'confirmed', delivery_min: state.settings.deliveryMin, delivery_max: state.settings.deliveryMax,
+    payment_status: 'pending_verification'
   };
   showToast(state.lang==='ar' ? 'جارٍ إرسال الطلب...' : 'Placing your order...');
   let order;
@@ -2476,8 +2485,8 @@ async function placeOrder(){
     sb.from('customers').update(addrFields).eq('id', c.id)
       .then(({error})=>{ if(error) console.error('Address save failed:', error); });
   }
-  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen = 'confirm'; }
-  else { state.view = 'confirm'; }
+  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen = 'paymentInstructions'; }
+  else { state.view = 'paymentInstructions'; }
   window.scrollTo(0,0);
   render();
 }
@@ -2509,6 +2518,54 @@ async function updateItemSku(dbId, itemIndex, sku){
   } catch(e){
     console.error('Item SKU update failed:', e);
     showToast(state.lang==='ar' ? 'تعذر حفظ الرمز' : 'Could not save the code');
+  }
+}
+/* Screenshots live in the private payment-proofs bucket, so admin needs a signed URL per
+   order rather than a plain public URL — fetched once when entering the Payments tab. */
+async function loadPaymentProofUrls(){
+  const withProof = state.orders.filter(o=>o.paymentStatus==='pending_verification' && o.paymentProofPath && !state.adminPaymentProofUrls[o._dbId]);
+  for(const o of withProof){
+    try{
+      const { data, error } = await sb.storage.from('payment-proofs').createSignedUrl(o.paymentProofPath, 300);
+      if(error) throw error;
+      state.adminPaymentProofUrls[o._dbId] = data.signedUrl;
+      render();
+    } catch(e){
+      console.error('Could not load payment screenshot:', e);
+    }
+  }
+}
+async function verifyPayment(dbId){
+  const isAr = state.lang==='ar';
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o) return;
+  o.paymentStatus = 'verified';
+  render();
+  try{
+    const { error } = await sb.from('orders').update({ payment_status:'verified' }).eq('id', dbId);
+    if(error) throw error;
+    logAdminAction('verify_payment', { order_id: dbId, order_num: o.num });
+    showToast(isAr?'تم تأكيد الدفع':'Payment verified');
+  } catch(e){
+    console.error('Verify payment failed:', e);
+    showToast(isAr?'تعذر تأكيد الدفع':'Could not verify the payment');
+  }
+}
+async function rejectPayment(dbId){
+  const isAr = state.lang==='ar';
+  if(!confirm(isAr?'هل تريد رفض هذا الدفع؟ سيتم إلغاء الطلب.':'Reject this payment? The order will be cancelled.')) return;
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o) return;
+  o.paymentStatus = 'rejected';
+  render();
+  try{
+    const { error } = await sb.from('orders').update({ payment_status:'rejected' }).eq('id', dbId);
+    if(error) throw error;
+    logAdminAction('reject_payment', { order_id: dbId, order_num: o.num });
+    showToast(isAr?'تم رفض الدفع وإلغاء الطلب':'Payment rejected, order cancelled');
+  } catch(e){
+    console.error('Reject payment failed:', e);
+    showToast(isAr?'تعذر رفض الدفع':'Could not reject the payment');
   }
 }
 async function deleteOrder(dbId){
@@ -2610,7 +2667,7 @@ function renderCheckout(){
         <h3 style="margin-top:22px">${t('payMethod')}</h3>
         <div class="pay-option active">
           <svg class="icon" style="width:22px;height:22px;stroke:var(--cedar)" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/></svg>
-          <div><div style="font-weight:700;font-size:13.5px">${t('cod')}</div><div style="font-size:12px;color:var(--ink-soft)">${t('codDesc')}</div></div>
+          <div><div style="font-weight:700;font-size:13.5px">${state.lang==='ar'?'تحويل Wish':'Wish Transfer'}</div><div style="font-size:12px;color:var(--ink-soft)">${state.lang==='ar'?'ستظهر لك تفاصيل الحساب بعد إرسال الطلب':"You'll get the account details right after placing your order"}</div></div>
         </div>
       </div>
 
@@ -2653,6 +2710,96 @@ function renderCheckout(){
   </div>`;
 }
 
+/* ---------- WISH TRANSFER PAYMENT CONFIRMATION ---------- */
+function setPaymentProofMode(mode){ state.paymentProofMode = mode; state.paymentProofFile = null; render(); }
+function handleProofFileSelect(event){
+  const file = event.target.files && event.target.files[0];
+  state.paymentProofFile = file || null;
+  render();
+}
+/* Reads the selected screenshot as base64 and posts it (or a typed reference) to the
+   submit-payment-proof Edge Function, which verifies the caller owns the order, stores
+   the proof, and emails the admin — see supabase/functions/submit-payment-proof/index.ts. */
+async function submitPaymentProof(dbId){
+  const isAr = state.lang==='ar';
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o) return;
+  const body = { order_id: dbId };
+  if(state.paymentProofMode==='reference'){
+    if(!state.paymentProofReference.trim()){
+      showToast(isAr?'يرجى إدخال رقم العملية':'Please enter the transaction reference');
+      return;
+    }
+    body.reference = state.paymentProofReference.trim();
+  } else {
+    if(!state.paymentProofFile){
+      showToast(isAr?'يرجى اختيار صورة':'Please choose a screenshot');
+      return;
+    }
+    try{
+      const dataUrl = await new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(state.paymentProofFile);
+      });
+      body.screenshot_base64 = dataUrl.split(',')[1] || '';
+      body.screenshot_ext = (state.paymentProofFile.name.split('.').pop() || 'jpg').toLowerCase();
+    } catch(e){
+      console.error('Reading screenshot failed:', e);
+      showToast(isAr?'تعذرت قراءة الصورة':'Could not read the screenshot');
+      return;
+    }
+  }
+  state.paymentSubmitting = true;
+  render();
+  try{
+    const { data, error } = await sb.functions.invoke('submit-payment-proof', { body });
+    if(error) throw error;
+    if(data && data.error) throw new Error(data.error);
+    o.paymentSubmittedAt = new Date().toISOString();
+    if(body.reference) o.paymentReference = body.reference;
+    state.paymentProofFile = null;
+    state.paymentProofReference = '';
+    showToast(isAr?'تم إرسال إثبات الدفع، سنتحقق منه قريبًا':"Payment confirmation sent — we'll verify it shortly");
+    if(isMobileViewport()){ state.mScreen = 'confirm'; } else { state.view = 'confirm'; }
+  } catch(e){
+    console.error('Submit payment proof failed:', e);
+    showToast(isAr?'تعذر إرسال إثبات الدفع، حاول مرة أخرى':'Could not submit, please try again');
+  } finally{
+    state.paymentSubmitting = false;
+    render();
+  }
+}
+function renderPaymentInstructions(){
+  const isAr = state.lang==='ar';
+  const o = state.orders[state.orders.length-1];
+  if(!o) { goHome(); return ''; }
+  const s = state.settings;
+  return `
+  <div class="page container">
+    <div class="panel order-conf" style="max-width:560px;margin:0 auto;text-align:start">
+      <h2 class="font-display" style="margin-bottom:6px">${isAr?'أكمل الدفع عبر Wish':'Complete Payment via Wish'}</h2>
+      <p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:18px">${isAr?`حوّل مبلغ ${fmt(o.total)} إلى حساب Wish التالي، ثم أرسل إثبات التحويل أدناه لتأكيد طلبك ${o.num}.`:`Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${o.num}.`}</p>
+      <div style="background:var(--sand);border-radius:12px;padding:16px;margin-bottom:18px">
+        <div style="font-size:12px;color:var(--ink-soft);font-weight:700;margin-bottom:4px">${isAr?'اسم الحساب':'Account name'}</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:10px">${s.wishAccountName || (isAr?'—':'—')}</div>
+        <div style="font-size:12px;color:var(--ink-soft);font-weight:700;margin-bottom:4px">${isAr?'رقم الحساب':'Account number'}</div>
+        <div class="font-mono" style="font-size:15px;font-weight:700">${s.wishAccountNumber || '—'}</div>
+        ${s.wishInstructions?`<div style="font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.5">${s.wishInstructions}</div>`:''}
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn ${state.paymentProofMode==='reference'?'btn-primary':'btn-ghost'} btn-sm" onclick="setPaymentProofMode('reference')">${isAr?'رقم العملية':'Transaction reference'}</button>
+        <button class="btn ${state.paymentProofMode==='screenshot'?'btn-primary':'btn-ghost'} btn-sm" onclick="setPaymentProofMode('screenshot')">${isAr?'رفع صورة':'Upload screenshot'}</button>
+      </div>
+      ${state.paymentProofMode==='reference'
+        ? `<div class="form-field full" style="margin-bottom:16px"><label>${isAr?'رقم/مرجع العملية':'Transaction ID / reference'}</label><input type="text" value="${state.paymentProofReference||''}" oninput="state.paymentProofReference=this.value" placeholder="${isAr?'مثال: 123456789':'e.g. 123456789'}"/></div>`
+        : `<div class="form-field full" style="margin-bottom:16px"><label>${isAr?'صورة إثبات التحويل':'Transfer screenshot'}</label><input type="file" accept="image/*" onchange="handleProofFileSelect(event)"/>${state.paymentProofFile?`<div style="font-size:12px;color:var(--ink-soft);margin-top:4px">${state.paymentProofFile.name}</div>`:''}</div>`}
+      <button class="btn btn-primary btn-block" ${state.paymentSubmitting?'disabled':''} onclick="submitPaymentProof('${o._dbId}')">${state.paymentSubmitting?(isAr?'جارٍ الإرسال...':'Submitting...'):(isAr?'إرسال إثبات الدفع':'Submit Payment Confirmation')}</button>
+    </div>
+  </div>`;
+}
+
 function toggleTrackerExpand(key){
   if(state.expandedTrackers.has(key)) state.expandedTrackers.delete(key);
   else state.expandedTrackers.add(key);
@@ -2690,6 +2837,11 @@ function renderItemTrack(it, key){
 }
 function renderOrderTrackCard(o){
   const isAr = state.lang==='ar';
+  const paymentBanner = o.paymentStatus==='pending_verification'
+    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FCEFCB;color:#8c5a0a">${isAr?'بانتظار التحقق من الدفع':'Awaiting payment verification'}</span></div>`
+    : (o.paymentStatus==='rejected' || o.paymentStatus==='auto_cancelled')
+    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FBDACB;color:var(--brick)">${isAr?'لم يتم تأكيد الدفع — تم إلغاء الطلب':'Payment not confirmed — order cancelled'}</span></div>`
+    : '';
   return `
   <div class="order-card-mini">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -2697,7 +2849,7 @@ function renderOrderTrackCard(o){
       <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
       <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
     </div>
-    ${o.items.map((it,i)=>renderItemTrack(it, o.num+'-'+i)).join('')}
+    ${paymentBanner || o.items.map((it,i)=>renderItemTrack(it, o.num+'-'+i)).join('')}
   </div>`;
 }
 function renderMyOrders(){
@@ -2717,12 +2869,14 @@ function renderMyOrders(){
 function renderConfirm(){
   const o = state.orders[state.orders.length-1];
   if(!o) { goHome(); return ''; }
+  const isAr = state.lang==='ar';
+  const pendingPayment = o.paymentStatus==='pending_verification';
   return `
   <div class="page container">
     <div class="panel order-conf">
       <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
       <h2 class="font-display">${t('orderConfirmed')}</h2>
-      <p style="color:var(--ink-soft);margin-top:6px">${t('orderConfirmedSub')}</p>
+      <p style="color:var(--ink-soft);margin-top:6px">${pendingPayment?(isAr?'سنتحقق من دفعتك ونؤكد طلبك قريبًا.':"We'll verify your payment and confirm your order shortly."):t('orderConfirmedSub')}</p>
       <div class="order-num">${o.num}</div>
       <div style="font-size:13px;color:var(--ink-soft)">${fmt(o.total)} · ${o.gov} · ${o.date}</div>
       <div style="font-size:13px;color:var(--cedar);font-weight:700;margin-bottom:22px">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
@@ -3083,7 +3237,8 @@ function removeCoupon(idx){
 function updateContactField(field, val){
   state.settings[field] = val;
   render();
-  const dbField = {contactPhone:'contact_phone', contactEmail:'contact_email', contactAddress:'contact_address'}[field];
+  const dbField = {contactPhone:'contact_phone', contactEmail:'contact_email', contactAddress:'contact_address',
+    wishAccountName:'wish_account_name', wishAccountNumber:'wish_account_number', wishInstructions:'wish_instructions'}[field];
   sb.from('settings').update({[dbField]: val}).eq('id', 1).then(({error})=>{
     if(error) console.error('Contact info sync failed:', error);
     else logAdminAction('update_contact_info', { field, value: val });
@@ -3176,6 +3331,7 @@ function setAdminView(v){
   state.adminView=v; state.adminSideOpen=false; render();
   if(v==='activity') loadAuditLog();
   else if(v==='chats') loadAdminChats();
+  else if(v==='payments'){ refreshAdminData(); loadPaymentProofUrls(); }
   else refreshAdminData();
 }
 /* ============ AUDIT LOG (destructive/sensitive admin actions only) ============ */
@@ -3410,6 +3566,7 @@ function renderAdmin(){
   const salesData = last7DaysSales();
   const maxBar = Math.max(1, ...salesData.map(d=>d.v));
   const needsHumanCount = state.adminChats.filter(c=>c.status==='needs_human').length;
+  const pendingPaymentsCount = state.orders.filter(o=>o.paymentStatus==='pending_verification').length;
   return `
   <div class="admin-shell">
     <div class="admin-side-overlay ${state.adminSideOpen?'open':''}" onclick="toggleAdminSide(false)"></div>
@@ -3423,6 +3580,7 @@ function renderAdmin(){
         <a class="${state.adminView==='products'?'active':''}" href="#" onclick="setAdminView('products');return false;">${state.lang==='ar'?'المنتجات':'Products'}</a>
         <a class="${state.adminView==='customers'?'active':''}" href="#" onclick="setAdminView('customers');state.adminSelectedCustomer=null;return false;">${state.lang==='ar'?'العملاء':'Customers'}</a>
         <a class="${state.adminView==='orders'?'active':''}" href="#" onclick="setAdminView('orders');return false;">${state.lang==='ar'?'الطلبات':'Orders'}</a>
+        <a class="${state.adminView==='payments'?'active':''}" href="#" onclick="setAdminView('payments');return false;">${state.lang==='ar'?'الدفعات':'Payments'}${pendingPaymentsCount>0?`<span class="admin-nav-badge">${pendingPaymentsCount}</span>`:''}</a>
         <a class="${state.adminView==='settings'?'active':''}" href="#" onclick="setAdminView('settings');return false;">${t('adminSettings')}</a>
         <a class="${state.adminView==='activity'?'active':''}" href="#" onclick="setAdminView('activity');return false;">${state.lang==='ar'?'سجل النشاط':'Activity Log'}</a>
         <a class="${state.adminView==='chats'?'active':''}" href="#" onclick="setAdminView('chats');return false;">${state.lang==='ar'?'المحادثات':'Chats'}${needsHumanCount>0?`<span class="admin-nav-badge">${needsHumanCount}</span>`:''}</a>
@@ -3611,6 +3769,38 @@ function renderAdmin(){
           </div>`).join('')}
       </div>`; })():''}
 
+      ${state.adminView==='payments'?(function(){
+        const isAr = state.lang==='ar';
+        const pending = [...state.orders].reverse().filter(o=>o.paymentStatus==='pending_verification');
+        return `
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">${isAr?'التحقق من الدفعات':'Payment Verification'} (${pending.length})</h3>
+          <button class="btn btn-ghost btn-sm" onclick="setAdminView('payments')">🔄 ${isAr?'تحديث':'Refresh'}</button>
+        </div>
+        ${pending.length===0?`<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا توجد دفعات بانتظار التحقق.':'No payments waiting for verification.'}</p>`:
+        pending.map(o=>`
+          <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
+              <div>
+                <div class="font-mono" style="font-weight:700;font-size:14px">${o.num}</div>
+                <div style="font-size:12px;color:var(--ink-soft)">${o.customer} · ${o.phone} · ${o.date}</div>
+              </div>
+              <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
+            </div>
+            <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${o.paymentSubmittedAt?(isAr?'أُرسل بتاريخ ':'Submitted ')+new Date(o.paymentSubmittedAt).toLocaleString():(isAr?'لم يُرسل أي إثبات بعد — سيُلغى تلقائيًا خلال 24 ساعة من الطلب':'Nothing submitted yet — will auto-cancel 24h after the order was placed')}</div>
+            ${o.paymentReference?`<div style="font-size:13px;margin-bottom:10px"><b>${isAr?'رقم العملية:':'Reference:'}</b> <span class="font-mono">${o.paymentReference}</span></div>`:''}
+            ${o.paymentProofPath?(state.adminPaymentProofUrls[o._dbId]
+              ? `<img src="${state.adminPaymentProofUrls[o._dbId]}" alt="${isAr?'إثبات التحويل':'Payment screenshot'}" style="max-width:220px;border-radius:8px;border:1px solid var(--line);display:block;margin-bottom:10px"/>`
+              : `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${isAr?'جارٍ تحميل الصورة...':'Loading screenshot...'}</div>`)
+            :''}
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-cedar btn-sm" onclick="verifyPayment('${o._dbId}')">✅ ${isAr?'تم التحقق/دُفع':'Verified/Paid'}</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="rejectPayment('${o._dbId}')">❌ ${isAr?'رفض':'Reject'}</button>
+            </div>
+          </div>`).join('')}
+      </div>`; })():''}
+
       ${state.adminView==='settings'?`
       <div class="panel" style="max-width:480px">
         <h3>${t('adminSettings')}</h3>
@@ -3740,6 +3930,18 @@ function renderAdmin(){
           <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeSocialLink(${idx})">🗑️</button>
         </div>`).join('')}
         <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addSocialLink()">+ ${state.lang==='ar'?'إضافة رابط':'Add link'}</button>
+      </div>
+
+      <div class="panel" style="max-width:560px;margin-top:20px">
+        <h3 style="margin-bottom:6px">${state.lang==='ar'?'حساب Wish للدفع':'Wish payment account'}</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'?'يظهر هذا للعميل بعد إتمام الطلب لإجراء التحويل.':'Shown to the customer right after checkout so they can make the transfer.'}</p>
+        <div class="form-row">
+          <div class="form-field"><label>${state.lang==='ar'?'اسم الحساب':'Account name'}</label><input type="text" value="${state.settings.wishAccountName||''}" onchange="updateContactField('wishAccountName',this.value)"/></div>
+          <div class="form-field"><label>${state.lang==='ar'?'رقم الحساب':'Account number'}</label><input type="text" value="${state.settings.wishAccountNumber||''}" onchange="updateContactField('wishAccountNumber',this.value)"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field full"><label>${state.lang==='ar'?'تعليمات إضافية (اختياري)':'Extra instructions (optional)'}</label><textarea rows="2" onchange="updateContactField('wishInstructions',this.value)">${state.settings.wishInstructions||''}</textarea></div>
+        </div>
       </div>`:''}
 
       ${state.adminView==='chats'?(function(){
@@ -4333,7 +4535,7 @@ function mCheckout(){
     </div>
     <div class="m-cod">
       <div class="m-cod-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18v10H3zM3 11h18M7 15h3"></path></svg></div>
-      <div><div style="font:700 13.5px/1.3 'Figtree',sans-serif">Cash on delivery</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">Pay the courier when it arrives</div></div>
+      <div><div style="font:700 13.5px/1.3 'Figtree',sans-serif">Wish Transfer</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">You'll get the account details right after placing your order</div></div>
     </div>
     <div class="m-summary">
       <div class="m-summary-row"><span>${cartCount()} item${cartCount()===1?'':'s'}</span><span class="m-mono">${fmt(sub)}</span></div>
@@ -4345,39 +4547,68 @@ function mCheckout(){
       : `<div style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Caprasimo',serif;font-size:15px;text-align:center">Add name, phone &amp; governorate</div>`}
   </div>`;
 }
+function mPaymentInstructions(){
+  const o = state.orders[state.orders.length-1];
+  if(!o) { mGoHome(); return ''; }
+  const s = state.settings;
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
+    <div class="m-disp" style="font-size:21px;margin:6px 0 10px">Complete Payment via Wish</div>
+    <div style="font:400 13px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:16px">Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${o.num}.</div>
+    <div style="background:var(--surf);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="font:700 11px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:4px">Account name</div>
+      <div style="font:700 15px/1.3 'Figtree',sans-serif;margin-bottom:10px">${s.wishAccountName || '—'}</div>
+      <div style="font:700 11px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:4px">Account number</div>
+      <div class="m-mono" style="font-weight:700;font-size:15px">${s.wishAccountNumber || '—'}</div>
+      ${s.wishInstructions?`<div style="font:400 12px/1.5 'Figtree',sans-serif;color:var(--muted);margin-top:10px">${s.wishInstructions}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="m-gov-chip ${state.paymentProofMode==='reference'?'active':''}" style="flex:1;text-align:center" onclick="setPaymentProofMode('reference')">Reference</button>
+      <button class="m-gov-chip ${state.paymentProofMode==='screenshot'?'active':''}" style="flex:1;text-align:center" onclick="setPaymentProofMode('screenshot')">Screenshot</button>
+    </div>
+    ${state.paymentProofMode==='reference'
+      ? `<input class="m-input" style="margin-bottom:16px" value="${state.paymentProofReference||''}" oninput="state.paymentProofReference=this.value" placeholder="Transaction ID / reference">`
+      : `<div style="margin-bottom:16px"><input type="file" accept="image/*" onchange="handleProofFileSelect(event)">${state.paymentProofFile?`<div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted);margin-top:6px">${state.paymentProofFile.name}</div>`:''}</div>`}
+    <button class="m-btn-primary" style="width:100%" ${state.paymentSubmitting?'disabled':''} onclick="submitPaymentProof('${o._dbId}')">${state.paymentSubmitting?'Submitting...':'Submit Payment Confirmation'}</button>
+  </div>`;
+}
 function mConfirm(){
   const last = state.orders[state.orders.length-1];
-  const f = state.formData;
+  const pendingPayment = last && last.paymentStatus==='pending_verification';
   return `
   <div style="animation:riseIn .45s ease;padding:70px 26px;text-align:center">
     <div class="m-confirm-icon"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"></path></svg></div>
     <div class="m-disp" style="font-size:25px;line-height:1.2;margin-bottom:10px">Yalla, it's ordered!</div>
-    <div style="font:400 14px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">We'll ring you on ${f.phone||''} to confirm before it leaves the warehouse.</div>
+    <div style="font:400 14px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">${pendingPayment?"We'll verify your payment and confirm your order shortly.":"Your payment is confirmed and your order is on its way to being prepared."}</div>
     ${last?`<div class="m-confirm-num">${last.num}</div>`:''}
     ${last?`<button class="m-btn-primary" style="width:100%;margin-bottom:11px" onclick="mOpenOrder('${last._dbId}')">Track this order</button>`:''}
     <button class="m-btn-outline" style="width:100%" onclick="mGoHome()">Keep shopping</button>
   </div>`;
 }
+const PAYMENT_STATUS_LABELS = { pending_verification:'Awaiting payment verification', rejected:'Payment not confirmed', auto_cancelled:'Payment not confirmed' };
 function mOrders(){
   const mine = state.orders.filter(o=>o.customerId===state.currentUserId || !o.customerId).slice().reverse();
   const pillColors = {
-    delivered:['#dcefe0','#2b6b3f'], cancelled:['#fbdacb','#c2542d'], returned:['#fbdacb','#c2542d']
+    delivered:['#dcefe0','#2b6b3f'], cancelled:['#fbdacb','#c2542d'], returned:['#fbdacb','#c2542d'],
+    pending_verification:['#fcefcb','#8c5a0a'], rejected:['#fbdacb','#c2542d'], auto_cancelled:['#fbdacb','#c2542d']
   };
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
     <div class="m-disp" style="font-size:23px;margin:6px 0 16px">Your orders</div>
     <div style="display:flex;flex-direction:column;gap:12px">
       ${mine.length ? mine.map(o=>{
-        const status = (o.items[0] && o.items[0].status) || o.status || 'confirmed';
+        const paymentPending = o.paymentStatus && o.paymentStatus!=='verified';
+        const status = paymentPending ? o.paymentStatus : ((o.items[0] && o.items[0].status) || o.status || 'confirmed');
         const idx = TRACK_STATUSES.indexOf(status);
-        const pct = idx>=0 ? Math.round(((idx+1)/TRACK_STATUSES.length)*100) : 100;
+        const pct = paymentPending ? 0 : (idx>=0 ? Math.round(((idx+1)/TRACK_STATUSES.length)*100) : 100);
         const [bg,fg] = pillColors[status] || ['#ebddc5','#8c491a'];
+        const statusLabel = PAYMENT_STATUS_LABELS[status] || ORDER_STATUS_LABELS.en[status] || status;
         const itemSummary = o.items.length ? `${o.items[0].name_en}${o.items.length>1?` + ${o.items.length-1} more`:''}` : '';
         return `
         <div class="m-order-card" onclick="mOpenOrder('${o._dbId}')">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <span class="m-mono" style="font-weight:600;font-size:13px">${o.num}</span>
-            <span class="m-status-pill" style="background:${bg};color:${fg}">${(ORDER_STATUS_LABELS.en[status]||status)}</span>
+            <span class="m-status-pill" style="background:${bg};color:${fg}">${statusLabel}</span>
           </div>
           <div style="font:500 13px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:12px">${itemSummary}</div>
           <div class="m-progress-track"><div class="m-progress-fill" style="width:${pct}%"></div></div>
@@ -4393,7 +4624,8 @@ function mOrders(){
 function mTrack(){
   const o = state.orders.find(x=>x._dbId===state.mTrackDbId) || state.orders[state.orders.length-1];
   if(!o) return mOrders();
-  const status = (o.items[0] && o.items[0].status) || o.status || 'confirmed';
+  const paymentPending = o.paymentStatus && o.paymentStatus!=='verified';
+  const status = paymentPending ? o.paymentStatus : ((o.items[0] && o.items[0].status) || o.status || 'confirmed');
   const idx = Math.max(0, TRACK_STATUSES.indexOf(status));
   const steps = TRACK_STATUSES.map((s,i)=>{
     const done = i < idx, current = i === idx, upcoming = i > idx;
@@ -4415,10 +4647,10 @@ function mTrack(){
     </div>
     <div class="m-track-hero">
       <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-bottom:6px">Right now</div>
-      <div class="m-disp" style="font-size:22px;line-height:1.25;margin-bottom:8px">${ORDER_STATUS_LABELS.en[status]||status}</div>
-      <div style="font:400 13px/1.55 'Figtree',sans-serif;opacity:.85">Estimated delivery in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days from order date.</div>
+      <div class="m-disp" style="font-size:22px;line-height:1.25;margin-bottom:8px">${PAYMENT_STATUS_LABELS[status] || ORDER_STATUS_LABELS.en[status] || status}</div>
+      <div style="font:400 13px/1.55 'Figtree',sans-serif;opacity:.85">${paymentPending ? "We'll update this the moment your payment is checked." : `Estimated delivery in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days from order date.`}</div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--line);border-radius:26px;padding:8px 18px 14px">
+    ${paymentPending ? '' : `<div style="background:var(--card);border:1px solid var(--line);border-radius:26px;padding:8px 18px 14px">
       ${steps.map(s=>`
       <div class="m-track-step">
         <div class="m-track-dotcol">
@@ -4429,7 +4661,7 @@ function mTrack(){
           <div style="font:${s.font};color:${s.fg};line-height:1.3">${s.label}</div>
         </div>
       </div>`).join('')}
-    </div>
+    </div>`}
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="m-btn-outline" style="flex:1" onclick="goMyOrders()">All orders</button>
     </div>
@@ -4599,13 +4831,14 @@ function renderMobileApp(){
   else if(state.mScreen==='product') body = mProduct();
   else if(state.mScreen==='cart') body = mCart();
   else if(state.mScreen==='checkout') body = mCheckout();
+  else if(state.mScreen==='paymentInstructions') body = mPaymentInstructions();
   else if(state.mScreen==='confirm') body = mConfirm();
   else if(state.mScreen==='orders') body = mOrders();
   else if(state.mScreen==='track') body = mTrack();
   else if(state.mScreen==='chat') body = mChat();
   else if(state.mScreen==='account') body = mAccount();
   else body = mHome();
-  const showTabbar = state.mScreen!=='confirm';
+  const showTabbar = state.mScreen!=='confirm' && state.mScreen!=='paymentInstructions';
   return `<div class="mstore" data-theme="${state.mTheme}"><div class="m-scr">${body}</div>${showTabbar?mTabBar():''}${mSheet()}</div>`;
 }
 
@@ -4641,6 +4874,7 @@ function render(){
     if(state.view==='home') body = renderHome();
     else if(state.view==='product') body = renderProductPage();
     else if(state.view==='checkout') body = renderCheckout();
+    else if(state.view==='paymentInstructions') body = renderPaymentInstructions();
     else if(state.view==='confirm') body = renderConfirm();
     else if(state.view==='orders') body = renderMyOrders();
     else if(state.view==='account') body = renderAccount();
@@ -4694,6 +4928,9 @@ async function initApp(){
       state.settings.contactEmail = data.contact_email || '';
       state.settings.contactAddress = data.contact_address || '';
       if(data.social_links) state.settings.socialLinks = data.social_links;
+      state.settings.wishAccountName = data.wish_account_name || '';
+      state.settings.wishAccountNumber = data.wish_account_number || '';
+      state.settings.wishInstructions = data.wish_instructions || '';
     }
   } catch(e){
     console.error('Could not load settings:', e);
@@ -4720,7 +4957,14 @@ async function initApp(){
     if(session){
       if(isRecoveryLink){ state.authMode = 'recovery'; render(); return; }
       const c = await findOrCreateCustomer({ email: session.user.email, method:'password' });
-      if(c){ completeLogin(c); return; }
+      if(c){
+        completeLogin(c);
+        if(window.location.hash === '#admin-payments' && isAdminUser(c)){
+          state.view = 'admin'; state.adminView = 'payments';
+          refreshAdminData(); loadPaymentProofUrls(); render();
+        }
+        return;
+      }
     }
   } catch(e){
     console.error('Session restore failed:', e);
