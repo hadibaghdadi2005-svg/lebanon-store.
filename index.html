@@ -260,6 +260,12 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .modal-gallery{background:var(--cedar);display:flex;flex-direction:column}
 .gallery-main{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .gallery-main svg{width:38%;height:38%;stroke:rgba(255,255,255,.9);fill:none;stroke-width:1.2}
+/* Swipeable product photo gallery — native scroll-snap, no hand-rolled touch JS, shared by
+   the desktop .gallery-main and mobile .m-product-hero via renderPhotoGallery(). */
+.gallery-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.gallery-track::-webkit-scrollbar{display:none}
+.gallery-slide{flex:0 0 100%;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
+.gallery-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gallery-swatches{display:flex;gap:8px;padding:14px;justify-content:center}
 .swatch{width:44px;height:44px;border-radius:8px;border:2px solid rgba(255,255,255,.25);cursor:pointer}
 .swatch.active{border-color:var(--brass)}
@@ -1004,6 +1010,7 @@ let state = {
   coupon: null,
   couponInput: '',
   selectedGov: null,
+  galleryIndex: 0,
   paymentProofMode: 'reference', // 'reference' | 'screenshot'
   paymentProofFile: null,
   paymentProofReference: '',
@@ -1052,6 +1059,13 @@ function pname(p){ return state.lang==='ar' ? p.name_ar : p.name_en; }
 function pdesc(p){ return state.lang==='ar' ? p.desc_ar : p.desc_en; }
 function catName(c){ return state.lang==='ar' ? c.ar : c.en; }
 function findProduct(id){ return PRODUCTS.find(p=>p.id===id); }
+/* Multi-photo products store an ordered array in imageUrls; legacy/seed products only ever
+   have the single imageUrl. This is the one place that reconciles both so every gallery and
+   thumbnail reads a consistent list without needing imageUrls populated on every product. */
+function productPhotos(p){
+  if(p.imageUrls && p.imageUrls.length) return p.imageUrls;
+  return p.imageUrl ? [p.imageUrl] : [];
+}
 function searchProducts(query){
   const raw = (query||'').trim();
   if(!raw) return [];
@@ -1551,7 +1565,7 @@ function clearSearch(){
   render();
 }
 function goWishlist(){ state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render(); }
-function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; window.scrollTo(0,0); render(); }
+function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; state.galleryIndex=0; window.scrollTo(0,0); render(); }
 function goCheckout(){
   if(state.cart.length===0) return;
   state.view='checkout'; window.scrollTo(0,0); render();
@@ -1576,7 +1590,7 @@ function applyProductRows(data){
         best: !!row.best, featured: !!row.featured, new: row.new!=null?!!row.new:true,
         cost: row.cost!=null?Number(row.cost):0, marginPct:0, supplierUrl: row.supplier_url || '',
         specs:{ar:{}, en:{}}, variants: (row.variants && row.variants.length) ? row.variants : ['Standard'],
-        imageUrl: row.image_url || null, isCustom:true
+        imageUrl: row.image_url || null, imageUrls: row.image_urls || [], isCustom:true
       });
     } else {
       const p = findProduct(row.id);
@@ -1596,6 +1610,7 @@ function applyProductRows(data){
       if(row.desc_ar) p.desc_ar = row.desc_ar;
       if(row.desc_en) p.desc_en = row.desc_en;
       if(row.image_url) p.imageUrl = row.image_url;
+      if(row.image_urls) p.imageUrls = row.image_urls;
     }
   });
   toRemove.forEach(id=>{
@@ -2222,6 +2237,47 @@ async function submitProductQuestion(pid){
   }
 }
 
+/* Shared swipeable photo gallery for the desktop product page and mobile product screen.
+   idPrefix namespaces the track/dots element ids so both can exist in the DOM without
+   colliding (they never do, since mobile/desktop render exclusively, but keeps this safe). */
+function renderPhotoGallery(p, idPrefix, fallbackIconHtml){
+  const photos = productPhotos(p);
+  const color = PALETTE[p.color % PALETTE.length];
+  if(!photos.length){
+    return `<div class="gallery-track" style="background:${color}"><div class="gallery-slide">${fallbackIconHtml}</div></div>`;
+  }
+  return `
+  <div class="gallery-track" id="${idPrefix}-track" onscroll="updateGalleryDots('${idPrefix}')">
+    ${photos.map(url=>`<div class="gallery-slide" style="background:${color}"><img src="${url}" alt="${p.name_en}"></div>`).join('')}
+  </div>
+  ${photos.length>1?`
+  <div class="billboard-dots" id="${idPrefix}-dots">
+    ${photos.map((_,i)=>`<button class="billboard-dot ${i===0?'active':''}" onclick="scrollGalleryTo('${idPrefix}',${i})"></button>`).join('')}
+  </div>`:''}`;
+}
+/* Direct DOM patch only — no state mutation triggering render() — so scrolling the gallery
+   never fights an in-progress interaction (this app has a history of exactly that bug from
+   timers/scroll handlers calling a full render(), see CLAUDE.md items 19-20). */
+function updateGalleryDots(idPrefix){
+  const track = document.getElementById(idPrefix+'-track');
+  const dots = document.getElementById(idPrefix+'-dots');
+  if(!track || !dots) return;
+  const idx = Math.round(track.scrollLeft / track.clientWidth);
+  state.galleryIndex = idx;
+  [...dots.children].forEach((d,i)=>d.classList.toggle('active', i===idx));
+}
+function scrollGalleryTo(idPrefix, idx){
+  const track = document.getElementById(idPrefix+'-track');
+  if(!track) return;
+  track.scrollTo({ left: idx*track.clientWidth, behavior:'smooth' });
+}
+/* Re-applies the current photo index after a full render() rebuilds the DOM (e.g. picking a
+   variant swatch), since innerHTML replacement would otherwise silently snap back to photo 1. */
+function restoreGalleryScroll(idPrefix){
+  const track = document.getElementById(idPrefix+'-track');
+  if(!track || !state.galleryIndex) return;
+  track.scrollLeft = state.galleryIndex * track.clientWidth;
+}
 function renderProductPage(){
   const p = findProduct(state.productId);
   if(!p) return renderHome();
@@ -2239,7 +2295,7 @@ function renderProductPage(){
     <div class="panel" style="padding:0;overflow:hidden">
       <div class="modal-grid">
         <div class="modal-gallery">
-          <div class="gallery-main" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
+          <div class="gallery-main">${renderPhotoGallery(p, 'pg-desktop', ICONS[p.icon])}</div>
           <div class="gallery-swatches">
             ${p.variants.map((v,i)=>`<div class="swatch ${v===variant?'active':''}" style="background:${PALETTE[(p.color+i)%PALETTE.length]}" onclick="state.modalVariant='${v}';render()" title="${v}"></div>`).join('')}
           </div>
@@ -3063,7 +3119,7 @@ function submitNewProduct(){
     id:newId, cat:primaryCat, cats, icon: catInfo?catInfo.icon:'offers', color: PRODUCTS.length % PALETTE.length,
     name_ar:nameAr, name_en:nameEn, desc_ar:descAr, desc_en:descEn, sku,
     price, was:price, stock, rating:0, reviews:0, best:false, featured:false, new:true,
-    cost, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, isCustom:true
+    cost, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, imageUrls:[], isCustom:true
   };
   PRODUCTS.push(newProduct);
   syncProductField(newId, {
@@ -3111,19 +3167,35 @@ function adminUpdateVariants(id, val){
   render();
   syncProductField(id, { variants });
 }
-function adminSetImageUrl(id){
-  const url = document.getElementById('image-url-'+id).value.trim();
-  findProduct(id).imageUrl = url || null;
-  syncProductField(id, { image_url: url || null });
-  showToast(state.lang==='ar' ? 'تم حفظ الصورة' : 'Image saved');
+/* Lazily migrates a legacy single-photo product to the array form the first time its
+   photos are edited, so old products work the same as ones that started with a gallery. */
+function ensureProductPhotoArray(p){
+  if(!p.imageUrls || !p.imageUrls.length) p.imageUrls = p.imageUrl ? [p.imageUrl] : [];
+  return p.imageUrls;
+}
+function syncProductPhotos(p){
+  syncProductField(p.id, { image_urls: p.imageUrls, image_url: p.imageUrl });
+}
+function adminAddImageUrl(id){
+  const input = document.getElementById('image-url-'+id);
+  const url = input.value.trim();
+  if(!url) return;
+  const p = findProduct(id);
+  ensureProductPhotoArray(p).push(url);
+  p.imageUrl = p.imageUrls[0];
+  input.value = '';
+  syncProductPhotos(p);
+  showToast(state.lang==='ar' ? 'تم إضافة الصورة' : 'Photo added');
   render();
 }
-function adminRemoveImage(id){
-  findProduct(id).imageUrl = null;
-  syncProductField(id, { image_url: null });
+function removeProductPhoto(id, idx){
+  const p = findProduct(id);
+  ensureProductPhotoArray(p).splice(idx, 1);
+  p.imageUrl = p.imageUrls[0] || null;
+  syncProductPhotos(p);
   render();
 }
-async function handleImageUpload(event, id){
+async function handleProductPhotoUpload(event, id){
   const file = event.target.files[0];
   if(!file) return;
   if(!file.type.startsWith('image/')){
@@ -3137,9 +3209,10 @@ async function handleImageUpload(event, id){
     const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true });
     if(upErr) throw upErr;
     const { data } = sb.storage.from('product-images').getPublicUrl(path);
-    const url = data.publicUrl;
-    findProduct(id).imageUrl = url;
-    syncProductField(id, { image_url: url });
+    const p = findProduct(id);
+    ensureProductPhotoArray(p).push(data.publicUrl);
+    p.imageUrl = p.imageUrls[0];
+    syncProductPhotos(p);
     showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
     render();
   } catch(e){
@@ -3516,19 +3589,23 @@ function renderProductEditorPanel(p){
   return `
   <div style="padding:20px;display:grid;grid-template-columns:220px 1fr;gap:24px">
     <div>
-      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px">${isAr?'صورة المنتج':'Product Photo'}</label>
-      <div style="width:100%;aspect-ratio:1/1;border-radius:10px;background:${PALETTE[p.color % PALETTE.length]};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin-bottom:10px">
-        ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:40%;height:40%;color:#fff">${ICONS[p.icon]}</span>`}
+      <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px">${isAr?'صور المنتج':'Product Photos'}</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        ${productPhotos(p).map((url,idx)=>`
+        <div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)">
+          <img src="${url}" alt="${p.name_en}" style="width:100%;height:100%;object-fit:cover">
+          <button onclick="removeProductPhoto(${p.id}, ${idx})" title="${isAr?'إزالة':'Remove'}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer">✕</button>
+        </div>`).join('')}
+        <label style="width:64px;height:64px;border-radius:8px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:24px;flex-shrink:0">
+          +
+          <input type="file" accept="image/*" style="display:none" onchange="handleProductPhotoUpload(event, ${p.id})"/>
+        </label>
       </div>
-      <label class="btn btn-cedar btn-sm btn-block" style="margin-bottom:8px;cursor:pointer">
-        ${isAr?'📤 رفع صورة من جهازك':'📤 Upload from device'}
-        <input type="file" accept="image/*" style="display:none" onchange="handleImageUpload(event, ${p.id})"/>
-      </label>
-      <div style="display:flex;gap:5px;margin-bottom:6px">
-        <input id="image-url-${p.id}" type="text" value="${p.imageUrl||''}" placeholder="${isAr?'أو الصق رابط صورة':'or paste an image URL'}" style="flex:1;font-size:11px;padding:7px 9px;border:1px solid var(--line);border-radius:7px"/>
-        <button class="btn btn-ghost btn-sm" onclick="adminSetImageUrl(${p.id})">${isAr?'حفظ':'Save'}</button>
+      ${productPhotos(p).length===0?`<div style="width:100%;aspect-ratio:1/1;border-radius:10px;background:${PALETTE[p.color % PALETTE.length]};display:flex;align-items:center;justify-content:center;margin-bottom:10px"><span style="width:40%;height:40%;color:#fff">${ICONS[p.icon]}</span></div>`:''}
+      <div style="display:flex;gap:5px">
+        <input id="image-url-${p.id}" type="text" placeholder="${isAr?'أو الصق رابط صورة':'or paste an image URL'}" style="flex:1;font-size:11px;padding:7px 9px;border:1px solid var(--line);border-radius:7px"/>
+        <button class="btn btn-ghost btn-sm" onclick="adminAddImageUrl(${p.id})">${isAr?'إضافة':'Add'}</button>
       </div>
-      ${p.imageUrl?`<button class="btn btn-ghost btn-sm btn-block" onclick="adminRemoveImage(${p.id})">${isAr?'إزالة الصورة':'Remove photo'}</button>`:''}
     </div>
     <div>
       <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'الوصف (عربي)':'Description (Arabic)'}</label>
@@ -4242,7 +4319,7 @@ function mClearSearch(){
 
 /* ---- product screen ---- */
 function mOpenProduct(id){
-  state.productId = id; state.modalVariant = null; state.mQty = 1;
+  state.productId = id; state.modalVariant = null; state.mQty = 1; state.galleryIndex = 0;
   state.mPrev = state.mScreen; state.mScreen = 'product';
   window.scrollTo(0,0); render();
 }
@@ -4434,8 +4511,8 @@ function mProduct(){
   const wished = state.wishlist.has(p.id);
   return `
   <div style="animation:fadeIn .25s ease">
-    <div class="m-product-hero" style="background:${color}">
-      ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}">`:`<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`}
+    <div class="m-product-hero">
+      ${renderPhotoGallery(p, 'pg-mobile', `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`)}
       <div class="m-iconbtn" style="left:18px" onclick="mBack()"><svg viewBox="0 0 24 24"><path d="${M_BACK_D}"></path></svg></div>
       <button class="m-iconbtn" style="right:18px" onclick="toggleWishlist(${p.id})"><svg viewBox="0 0 24 24" style="stroke:#c2542d;fill:${wished?'#c2542d':'none'}"><path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20z"></path></svg></button>
     </div>
@@ -4863,6 +4940,7 @@ function render(){
     if(scr){ scr.onscroll = updateMobileHeaderFade; }
     if(!window._mHeaderFadeBound){ window.addEventListener('scroll', updateMobileHeaderFade, {passive:true}); window._mHeaderFadeBound = true; }
     updateMobileHeaderFade();
+    restoreGalleryScroll('pg-mobile');
     return;
   }
 
@@ -4884,6 +4962,7 @@ function render(){
   document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
   document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
   updateHeroFade();
+  restoreGalleryScroll('pg-desktop');
 }
 function updateHeroFade(){
   const hero = document.getElementById('hero-sec');
