@@ -2297,7 +2297,11 @@ function renderProductPage(){
         <div class="modal-gallery">
           <div class="gallery-main">${renderPhotoGallery(p, 'pg-desktop', ICONS[p.icon])}</div>
           <div class="gallery-swatches">
-            ${p.variants.map((v,i)=>`<div class="swatch ${v===variant?'active':''}" style="background:${PALETTE[(p.color+i)%PALETTE.length]}" onclick="state.modalVariant='${v}';render()" title="${v}"></div>`).join('')}
+            ${p.variants.map((v,i)=>{
+              const photo = productPhotos(p)[i];
+              const bg = photo ? `background-image:url('${photo}');background-size:cover;background-position:center` : `background:${PALETTE[(p.color+i)%PALETTE.length]}`;
+              return `<div class="swatch ${v===variant?'active':''}" style="${bg}" onclick="state.modalVariant='${v}';${photo?`state.galleryIndex=${i};`:''}render()" title="${v}"></div>`;
+            }).join('')}
           </div>
         </div>
         <div class="modal-info">
@@ -2325,7 +2329,10 @@ function renderProductPage(){
           <div class="variant-block">
             <label>${state.lang==='ar'?'الخيار':'Variant'}</label>
             <div class="variant-opts">
-              ${p.variants.map(v=>`<button class="variant-opt ${v===variant?'active':''}" onclick="state.modalVariant='${v}';render()">${v}</button>`).join('')}
+              ${p.variants.map((v,i)=>{
+                const photo = productPhotos(p)[i];
+                return `<button class="variant-opt ${v===variant?'active':''}" onclick="state.modalVariant='${v}';${photo?`state.galleryIndex=${i};`:''}render()">${v}</button>`;
+              }).join('')}
             </div>
           </div>
           <div class="modal-actions">
@@ -4347,7 +4354,7 @@ function mOpenProduct(id){
   state.mPrev = state.mScreen; state.mScreen = 'product';
   window.scrollTo(0,0); render();
 }
-function mPickVariant(v){ state.modalVariant = v; render(); }
+function mPickVariant(v, i){ state.modalVariant = v; if(i!=null) state.galleryIndex = i; render(); }
 function mIncQty(){ state.mQty = (state.mQty||1) + 1; render(); }
 function mDecQty(){ state.mQty = Math.max(1, (state.mQty||1) - 1); render(); }
 function mAddToCartFlow(){
@@ -4551,7 +4558,7 @@ function mProduct(){
       <div style="font:400 14px/1.65 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">${p.desc_en}</div>
       <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose an option</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
-        ${p.variants.map(v=>`<button class="m-variant-chip ${v===variant?'active':''}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}')">${v}</button>`).join('')}
+        ${p.variants.map((v,i)=>`<button class="m-variant-chip ${v===variant?'active':''}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}'${productPhotos(p)[i]?`, ${i}`:''})">${v}</button>`).join('')}
       </div>
       <div class="m-specs">
         ${specs.map(([k,v])=>`<div class="m-spec-row"><span style="color:var(--muted)">${k}</span><span style="color:var(--text);font-weight:600">${v}</span></div>`).join('')}
