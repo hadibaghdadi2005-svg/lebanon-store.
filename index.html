@@ -568,8 +568,12 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-shipfree{margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)}
 .m-billboard{margin:0 0 20px;position:relative;border-radius:0;overflow:hidden;background:var(--acc2Ink) center/cover no-repeat;min-height:150px;display:flex;align-items:flex-end;transition:opacity .1s linear,transform .1s linear;will-change:opacity,transform;transform-origin:top center}
 .m-billboard-clickable{cursor:pointer}
-.m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72))}
-.m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%}
+/* Video slides sit *under* the dark scrim, same stacking the desktop billboard uses. Without
+   explicit z-indexes the <video> paints after ::before and hides the gradient, leaving the white
+   title/subtitle sitting straight on the footage with nothing behind it to keep them legible. */
+.m-billboard>.billboard-video{z-index:0}
+.m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72));z-index:1}
+.m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%;z-index:2}
 .m-billboard-title{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;margin-bottom:4px}
 .m-billboard-sub{font:500 13px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.85);margin-bottom:10px}
 .m-billboard-cta{display:inline-block;font:700 12px/1 'Figtree',sans-serif;background:var(--acc);color:#2e1a0a;padding:9px 16px;border-radius:999px}
@@ -3418,9 +3422,18 @@ async function handleBillboardSlideUpload(event, idx){
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `billboard-${Date.now()}.${ext}`;
-    const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true });
+    const { error: upErr } = await sb.storage.from('product-images').upload(path, file, { upsert:true, contentType: file.type || undefined });
     if(upErr) throw upErr;
     const { data } = sb.storage.from('product-images').getPublicUrl(path);
+    /* Trust the file itself over whatever the Type dropdown happens to say. A slide left on
+       "Video" while a photo was uploaded rendered a <video> pointing at a .png, which browsers
+       can't play — the slide showed as an empty coloured panel with only its text on it. */
+    const actualType = (file.type||'').startsWith('video/') ? 'video'
+      : (file.type||'').startsWith('image/') ? 'image'
+      : null;
+    if(actualType && state.settings.billboardSlides[idx].type !== actualType){
+      updateBillboardSlide(idx, 'type', actualType);
+    }
     updateBillboardSlide(idx, 'mediaUrl', data.publicUrl);
     showToast(state.lang==='ar' ? 'تم رفع الملف!' : 'File uploaded!');
   } catch(e){
@@ -3960,7 +3973,8 @@ function renderAdmin(){
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" alt="" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
             </div>`:''}
-            <input type="file" accept="${s.type==='video'?'video/*':'image/*'}" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
+            <input type="file" accept="image/*,video/*" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
+            <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px">${state.lang==='ar'?'صورة أو فيديو MP4. يُضبط النوع تلقائيًا حسب الملف. الفيديو يعمل بلا صوت ويُعاد تلقائيًا — يُفضّل أقل من 5 ميغابايت وبنسبة عرض عريضة.':'Image or MP4 video — the Type above is set automatically from the file you pick. Video always plays muted and on loop; keep it under ~5&nbsp;MB and wide (about 1600×500) so it loads fast and isn\'t cropped.'}</p>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${s.title||''}" onchange="updateBillboardSlide(${idx},'title',this.value)"/></div>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${s.subtitle||''}" onchange="updateBillboardSlide(${idx},'subtitle',this.value)"/></div>
             <div class="form-row" style="margin-bottom:10px">
