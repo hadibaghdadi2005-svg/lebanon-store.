@@ -1589,6 +1589,7 @@ function applyProductRows(data){
         stock: row.stock!=null?Number(row.stock):0, rating:0, reviews:0,
         best: !!row.best, featured: !!row.featured, new: row.new!=null?!!row.new:true,
         cost: row.cost!=null?Number(row.cost):0, marginPct:0, supplierUrl: row.supplier_url || '',
+        weight: row.weight!=null?Number(row.weight):null,
         specs:{ar:{}, en:{}}, variants: (row.variants && row.variants.length) ? row.variants : ['Standard'],
         imageUrl: row.image_url || null, imageUrls: row.image_urls || [], isCustom:true
       });
@@ -1601,6 +1602,7 @@ function applyProductRows(data){
       if(row.stock!=null) p.stock = Number(row.stock);
       if(row.cost!=null) p.cost = Number(row.cost);
       if(row.supplier_url!=null) p.supplierUrl = row.supplier_url;
+      if(row.weight!=null) p.weight = Number(row.weight);
       if(row.sku) p.sku = row.sku;
       if(row.cats && row.cats.length){ p.cats = row.cats; p.cat = row.cats[0]; const ci = CATS.find(c=>c.id===p.cat); if(ci) p.icon = ci.icon; }
       if(row.variants && row.variants.length) p.variants = row.variants;
@@ -2325,6 +2327,11 @@ function renderProductPage(){
             <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
             ${t('estDelivery')}: ${state.settings.deliveryMin}-${state.settings.deliveryMax} ${t('days')}
           </div>
+          ${p.weight!=null?`
+          <div style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px">
+            <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4v1h1.5a1 1 0 0 1 .99.86l1.5 11A1 1 0 0 1 18 20H6a1 1 0 0 1-.99-1.14l1.5-11A1 1 0 0 1 7.5 7H9V6a4 4 0 0 1 4-4z" fill="none" stroke-width="1.6"/><path d="M8 7V6a4 4 0 0 1 8 0v1" fill="none" stroke-width="1.6"/></svg>
+            ${state.lang==='ar'?'الوزن التقريبي':'Estimated weight'}: ${p.weight} ${state.lang==='ar'?'كغ':'kg'}
+          </div>`:''}
           <p class="modal-desc">${pdesc(p)}</p>
           <div class="variant-block">
             <label>${state.lang==='ar'?'الخيار':'Variant'}</label>
@@ -3061,6 +3068,11 @@ function adminUpdateCost(id, val){
   findProduct(id).cost = cost; render();
   syncProductField(id, { cost });
 }
+function adminUpdateWeight(id, val){
+  const weight = val.trim() ? Number(val) : null;
+  findProduct(id).weight = weight; render();
+  syncProductField(id, { weight });
+}
 function adminUpdateSupplierUrl(id, val){
   const supplierUrl = val.trim();
   findProduct(id).supplierUrl = supplierUrl; render();
@@ -3110,6 +3122,8 @@ async function submitNewProduct(){
   const price = Number(document.getElementById('new-price').value) || 0;
   const cost = Number(document.getElementById('new-cost').value) || 0;
   const stock = Number(document.getElementById('new-stock').value) || 0;
+  const weightRaw = document.getElementById('new-weight').value.trim();
+  const weight = weightRaw ? Number(weightRaw) : null;
   const descAr = document.getElementById('new-desc-ar').value.trim();
   const descEn = document.getElementById('new-desc-en').value.trim();
   const variantsRaw = document.getElementById('new-variants').value.trim();
@@ -3138,7 +3152,7 @@ async function submitNewProduct(){
     id:newId, cat:primaryCat, cats, icon: catInfo?catInfo.icon:'offers', color: PRODUCTS.length % PALETTE.length,
     name_ar:nameAr, name_en:nameEn, desc_ar:descAr, desc_en:descEn, sku,
     price, was:price, stock, rating:0, reviews:0, best:false, featured:false, new:true,
-    cost, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, imageUrls:[], isCustom:true
+    cost, weight, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, imageUrls:[], isCustom:true
   };
   PRODUCTS.push(newProduct);
   state.adminAddingProduct = false;
@@ -3148,7 +3162,7 @@ async function submitNewProduct(){
      used to fire-and-forget, so a failed insert (e.g. an RLS hiccup) still showed a success toast
      and the "added" product would just be gone again on the next reload with no visible error. */
   const { error } = await sb.from('products').upsert({
-    id:newId, is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock,
+    id:newId, is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock, weight,
     desc_ar:descAr, desc_en:descEn, variants, deleted:false, new:true, featured:false, best:false
   }, { onConflict:'id' });
   if(error){
@@ -3603,6 +3617,7 @@ function renderAddProductForm(){
     </div>
     <div class="form-row">
       <div class="form-field"><label>${isAr?'المخزون':'Stock'}</label><input id="new-stock" type="number" value="0"/></div>
+      <div class="form-field"><label>${isAr?'الوزن التقريبي (كغ) — اختياري':'Estimated Weight (kg) — optional'}</label><input id="new-weight" type="number" step="0.01" placeholder="${isAr?'إن كان معروفًا':'if known'}"/></div>
     </div>
     <div class="form-row">
       <div class="form-field full"><label>${isAr?'الوصف (عربي)':'Description (Arabic)'}</label><textarea id="new-desc-ar" rows="2" dir="rtl"></textarea></div>
@@ -3745,7 +3760,7 @@ function renderAdmin(){
           <thead><tr>
             <th></th><th>${isAr?'المنتج':'Product'}</th><th>SKU</th><th>${isAr?'الفئة':'Category'}</th>
             <th>${t('costLabel')}</th><th>${isAr?'السعر':'Price'}</th><th>${isAr?'السعر الأصلي':'Was (crossed-out price)'}</th><th>${t('profitLabel')}</th><th></th>
-            <th>${isAr?'المخزون':'Stock'}</th><th>${t('supplierLink')}</th><th></th><th></th><th></th>
+            <th>${isAr?'المخزون':'Stock'}</th><th>${isAr?'الوزن (كغ)':'Weight (kg)'}</th><th>${t('supplierLink')}</th><th></th><th></th><th></th>
           </tr></thead>
           <tbody>
           ${filtered.map(p=>{
@@ -3783,6 +3798,7 @@ function renderAdmin(){
               <td class="font-mono" style="font-weight:700;color:${profitColor}">${fmt(profit)} <span style="font-size:10.5px;font-weight:600;color:var(--ink-soft)">(${pct}%)</span></td>
               <td><button class="btn btn-ghost btn-sm" onclick="adminSuggestPrice(${p.id})" title="${t('suggestPriceHint')}">${t('suggestPrice')}</button></td>
               <td><input type="number" value="${p.stock}" onchange="adminUpdateStock(${p.id}, this.value)" style="width:56px"/></td>
+              <td><input type="number" step="0.01" value="${p.weight!=null?p.weight:''}" placeholder="${isAr?'إن عُرف':'if known'}" onchange="adminUpdateWeight(${p.id}, this.value)" style="width:64px"/></td>
               <td>
                 <div style="display:flex;gap:5px;align-items:center">
                   <input type="text" value="${p.supplierUrl||''}" placeholder="https://chinahubpro.../item/..." onchange="adminUpdateSupplierUrl(${p.id}, this.value)" style="width:150px;font-size:11px"/>
@@ -4563,6 +4579,7 @@ function mProduct(){
       <div class="m-specs">
         ${specs.map(([k,v])=>`<div class="m-spec-row"><span style="color:var(--muted)">${k}</span><span style="color:var(--text);font-weight:600">${v}</span></div>`).join('')}
         <div class="m-spec-row"><span style="color:var(--muted)">Estimated delivery</span><span style="color:var(--text);font-weight:600">${state.settings.deliveryMin}–${state.settings.deliveryMax} days</span></div>
+        ${p.weight!=null?`<div class="m-spec-row"><span style="color:var(--muted)">Estimated weight</span><span style="color:var(--text);font-weight:600">${p.weight} kg</span></div>`:''}
       </div>
       <div style="display:flex;gap:11px;align-items:center">
         <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
