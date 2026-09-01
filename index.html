@@ -2116,6 +2116,26 @@ function renderHome(){
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
   const offers = PRODUCTS.filter(p=>p.was>p.price);
+  /* A shelf with nothing in it used to still render its heading and "View all" link with blank
+     space underneath, which reads as a broken page — most visible whenever nothing is marked
+     Featured/Best, or when no product has a `was` price to feed Offers. An empty shelf is now
+     dropped entirely instead. */
+  const shelf = (id, headHtml, flag, list) => list.length ? `
+  <section id="${id}" class="container">
+    <div class="section-head">
+      ${headHtml}
+      <a class="view-all" href="#" onclick="filterByFlag('${flag}');return false;">${t('viewAll')}</a>
+    </div>
+    <div class="prod-grid">${list.map(productCard).join('')}</div>
+  </section>` : '';
+  /* The hero's "Shop now" button scrolls to the first shelf that actually exists — it used to
+     hardcode #featured-sec, which now may not be on the page at all. */
+  const shopTarget = featured.length ? 'featured-sec'
+    : best.length ? 'best-sec'
+    : news.length ? 'new-sec'
+    : offers.length ? 'offers-sec'
+    : PRODUCTS.length ? 'all-sec'
+    : 'cats-sec';
   return `
   <section class="hero" id="hero-sec">
     <div class="container hero-inner">
@@ -2123,7 +2143,7 @@ function renderHome(){
       <h1 class="font-display">${t('heroTitle')}</h1>
       <p>${t('heroSub')}</p>
       <div class="hero-actions">
-        <button class="btn btn-primary" onclick="document.getElementById('featured-sec').scrollIntoView({behavior:'smooth'})">${t('shopNow')}</button>
+        <button class="btn btn-primary" onclick="document.getElementById('${shopTarget}').scrollIntoView({behavior:'smooth'})">${t('shopNow')}</button>
         <button class="btn btn-outline" onclick="document.getElementById('cats-sec').scrollIntoView({behavior:'smooth'})">${t('explore')}</button>
       </div>
     </div>
@@ -2142,37 +2162,18 @@ function renderHome(){
     </div>
   </section>
 
-  <section id="featured-sec" class="container">
-    <div class="section-head">
-      <div><h2 class="font-display">${t('featured')}</h2></div>
-      <a class="view-all" href="#" onclick="filterByFlag('featured');return false;">${t('viewAll')}</a>
-    </div>
-    <div class="prod-grid">${featured.map(productCard).join('')}</div>
-  </section>
+  ${shelf('featured-sec', `<div><h2 class="font-display">${t('featured')}</h2></div>`, 'featured', featured)}
 
-  <section class="container">
-    <div class="section-head">
-      <div><div class="eyebrow">🔥</div><h2 class="font-display">${t('bestSellers')}</h2></div>
-      <a class="view-all" href="#" onclick="filterByFlag('best');return false;">${t('viewAll')}</a>
-    </div>
-    <div class="prod-grid">${best.map(productCard).join('')}</div>
-  </section>
+  ${shelf('best-sec', `<div><div class="eyebrow">🔥</div><h2 class="font-display">${t('bestSellers')}</h2></div>`, 'best', best)}
 
-  <section class="container">
-    <div class="section-head">
-      <div><div class="eyebrow">✦</div><h2 class="font-display" style="background:linear-gradient(90deg, var(--cedar), var(--brass-light));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-flex;align-items:center;gap:10px">${t('newArrivals')}<span style="font-family:'Figtree',sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;background:var(--brass);color:#2e1a0a;padding:4px 10px;border-radius:999px">NEW</span></h2></div>
-      <a class="view-all" href="#" onclick="filterByFlag('new');return false;">${t('viewAll')}</a>
-    </div>
-    <div class="prod-grid">${news.map(productCard).join('')}</div>
-  </section>
+  ${shelf('new-sec', `<div><div class="eyebrow">✦</div><h2 class="font-display" style="background:linear-gradient(90deg, var(--cedar), var(--brass-light));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-flex;align-items:center;gap:10px">${t('newArrivals')}<span style="font-family:'Figtree',sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;background:var(--brass);color:#2e1a0a;padding:4px 10px;border-radius:999px">NEW</span></h2></div>`, 'new', news)}
 
-  <section class="container">
-    <div class="section-head">
-      <div><div class="eyebrow">%</div><h2 class="font-display">${t('offers')}</h2></div>
-      <a class="view-all" href="#" onclick="filterByFlag('offer');return false;">${t('viewAll')}</a>
-    </div>
-    <div class="prod-grid">${offers.map(productCard).join('')}</div>
-  </section>
+  ${shelf('offers-sec', `<div><div class="eyebrow">%</div><h2 class="font-display">${t('offers')}</h2></div>`, 'offer', offers)}
+  ${!featured.length && !best.length && !news.length && !offers.length && PRODUCTS.length ? `
+  <section id="all-sec" class="container">
+    <div class="section-head"><div><h2 class="font-display">${state.lang==='ar'?'كل المنتجات':'All Products'}</h2></div></div>
+    <div class="prod-grid">${PRODUCTS.map(productCard).join('')}</div>
+  </section>` : ''}
 
   <div class="zellige-divider"></div>
 
@@ -4507,8 +4508,9 @@ function mHome(){
     <div class="m-rail">
       ${CATS.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
     </div>
+    ${featured.length ? `
     <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
-    <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>
+    <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>` : ''}
     ${best.length ? `
     <div style="padding:0 0 22px">
       <div class="m-section-head"><div><div class="m-section-kicker">Bought again and again</div><div class="m-section-title">Best sellers</div></div><button class="m-seeall" onclick="mFilterByFlag('best')">See all</button></div>
