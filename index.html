@@ -702,6 +702,28 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-sheet-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .m-sheet-thumb svg{width:30px;height:30px;fill:none;stroke:rgba(255,255,255,.85);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 
+/* ---- Static policy pages (Shipping / Returns / FAQ / Privacy / Terms) ---- */
+.policy-page{max-width:760px}
+.policy-body{font-size:15px;line-height:1.72;color:var(--ink-soft)}
+.policy-body h3{font-size:16.5px;color:var(--ink);margin:26px 0 8px;font-weight:800}
+.policy-body h3:first-child{margin-top:0}
+.policy-body p{margin:0 0 12px}
+.policy-body strong{color:var(--ink)}
+.policy-body a{color:var(--cedar);border-bottom:1.5px solid var(--brass);font-weight:600}
+.policy-meta{font-size:12.5px;color:var(--ink-soft);opacity:.75;margin-bottom:20px !important}
+.policy-table{width:100%;border-collapse:collapse;margin:6px 0 16px;font-size:14px}
+.policy-table th,.policy-table td{text-align:start;padding:9px 12px;border-bottom:1px solid var(--line)}
+.policy-table th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft)}
+.policy-table td:last-child{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.m-policy{color:var(--muted);font-family:'Figtree',sans-serif;font-size:14.5px;line-height:1.7}
+.m-policy h3{font-size:15.5px;color:var(--text);margin:22px 0 7px;font-weight:800}
+.m-policy h3:first-child{margin-top:0}
+.m-policy strong{color:var(--text)}
+.m-policy a{color:var(--accInk);font-weight:700}
+.m-policy .policy-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.m-policy .policy-table th,.m-policy .policy-table td{border-bottom:1px solid var(--line);padding:8px 4px;text-align:start}
+.m-policy .policy-meta{color:var(--muted);opacity:.75}
+
 /* ---- Promo popup (home page, once per visitor, closable immediately) ----
    Deliberately a compact centred card rather than a full-screen interstitial, and the close
    button is active from the moment it appears — a forced wait is the pattern shoppers associate
@@ -3023,6 +3045,128 @@ async function doNewsletterSignup(inputId){
 }
 function submitNewsletter(){ return doNewsletterSignup('newsletter-email'); }
 function mSubmitNewsletter(){ return doNewsletterSignup('m-newsletter-email'); }
+/* ============ STATIC PAGES (Shipping / Returns / FAQ / Privacy / Terms) ============
+   These were dead `href="#"` links in the footer and inert rows on the phone's Account tab.
+   The copy is generated from the store's own live settings — the real per-governorate fees,
+   the real delivery window, the real Wish payment flow — so it can't drift out of sync with
+   what checkout actually does. */
+function goPage(id){ state.view='page'; state.pageId=id; state.listFilter=null; window.scrollTo(0,0); render(); }
+function mGoPage(id){ state.mScreen='page'; state.pageId=id; window.scrollTo(0,0); render(); }
+
+function policyContent(id){
+  const min = state.settings.deliveryMin, max = state.settings.deliveryMax;
+  const fees = (state.settings.shippingFees||[]);
+  const feeRows = fees.length
+    ? `<table class="policy-table"><thead><tr><th>Governorate</th><th>Delivery fee</th></tr></thead><tbody>${
+        fees.map(f=>`<tr><td>${f.name_en}</td><td>${fmt(Number(f.fee)||0)}</td></tr>`).join('')}</tbody></table>`
+    : '<p>Delivery fees are shown at checkout before you confirm.</p>';
+  const wish = state.settings.wishAccountName || state.settings.wishAccountNumber
+    ? `${state.settings.wishAccountName||''}${state.settings.wishAccountNumber?` — ${state.settings.wishAccountNumber}`:''}`
+    : 'the account shown on your order confirmation screen';
+
+  const pages = {
+    shipping: { title:'Shipping', body:`
+      <h3>Where we deliver</h3>
+      <p>We deliver to every governorate in Lebanon. The fee is a flat rate based on your governorate and is shown in your cart and again at checkout before you confirm anything.</p>
+      ${feeRows}
+      <p>Orders over ${fmt(FREE_DELIVERY_MIN)} ship free automatically — no code needed.</p>
+      <h3>How long it takes</h3>
+      <p>Estimated delivery is <strong>${min}–${max} days</strong> from the day your payment is verified. Items are shipped from our supplier, which is why the window is longer than a local courier.</p>
+      <p>Your order only enters this window once payment is confirmed — see <a href="#" onclick="goPage('faq');return false;">the FAQ</a> for how payment verification works.</p>
+      <h3>Tracking</h3>
+      <p>Every order has a live tracking view under <strong>My Orders</strong>. It updates by itself as your order moves through each stage — you don't need to refresh or contact us for a status.</p>` },
+
+    returns: { title:'Returns', body:`
+      <h3>Damaged, faulty or wrong items</h3>
+      <p>If an item arrives damaged, faulty, or isn't what you ordered, contact us <strong>within 7 days of delivery</strong> through the chat on this site. Send a photo of the item and we'll arrange a replacement or a full refund, including any delivery fee you paid.</p>
+      <h3>Changed your mind</h3>
+      <p>If you simply changed your mind, contact us within 7 days of delivery. The item must be unused and in its original packaging. Return shipping in this case is paid by you, and the original delivery fee isn't refunded.</p>
+      <h3>Items we can't take back</h3>
+      <p>For hygiene reasons we can't accept returns on earphones, personal-care and beauty items once opened, unless they're faulty.</p>
+      <h3>Refunds</h3>
+      <p>Refunds are sent back by Wish transfer to the number you paid from, normally within 3 working days of us receiving the item back or confirming the fault.</p>
+      <h3>Cancelling before it ships</h3>
+      <p>You can cancel any order that hasn't shipped yet by messaging us in the chat. If your payment was already verified, it's refunded in full.</p>` },
+
+    faq: { title:'Frequently Asked Questions', body:`
+      <h3>How do I pay?</h3>
+      <p>Payment is by <strong>Wish transfer</strong>. When you place an order you'll see our Wish account details (${wish}). Transfer the total, then either enter the transaction reference or upload a screenshot of the transfer on that same screen.</p>
+      <h3>Do you take cash on delivery?</h3>
+      <p>No. All orders are paid by Wish transfer before they ship.</p>
+      <h3>When is my payment confirmed?</h3>
+      <p>We check every transfer by hand, usually within a few hours. Until then your order shows <em>Awaiting payment verification</em>. As soon as it's confirmed, your tracking switches to the normal delivery stages automatically.</p>
+      <h3>What if I don't send the payment?</h3>
+      <p>An order with no payment proof submitted is cancelled automatically <strong>24 hours</strong> after it was placed. Nothing is charged and you can simply order again.</p>
+      <h3>What if my payment is rejected?</h3>
+      <p>If we can't match your transfer, your order shows <em>Payment not confirmed</em>. Message us in the chat with your reference and we'll sort it out.</p>
+      <h3>How long is delivery?</h3>
+      <p>${min}–${max} days from payment verification. See <a href="#" onclick="goPage('shipping');return false;">Shipping</a>.</p>
+      <h3>Can I change or cancel my order?</h3>
+      <p>Yes, any time before it ships — message us in the chat. See <a href="#" onclick="goPage('returns');return false;">Returns</a>.</p>
+      <h3>How do I contact you?</h3>
+      <p>Use the chat on this site. It reaches us directly and keeps your whole conversation attached to your account, so you don't have to repeat yourself.</p>` },
+
+    privacy: { title:'Privacy Policy', body:`
+      <p class="policy-meta">Last updated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+      <h3>What we collect</h3>
+      <p>When you create an account and order, we store your name, email address, phone number, delivery address, your order history, and the payment reference or transfer screenshot you submit.</p>
+      <h3>Why we collect it</h3>
+      <p>Only to run your order: to verify your payment, deliver your items, show you your order tracking, and answer you in support chat. Nothing else.</p>
+      <h3>Who can see it</h3>
+      <p>Your account and orders are visible to you and to the store owner. Other customers cannot see your details. We do not sell, rent or share your data with advertisers or any third party for marketing.</p>
+      <h3>Where it's stored</h3>
+      <p>On Supabase, our hosting provider. Payment screenshots are kept in private storage that only the store owner can open. Your password is handled by the authentication provider and is never visible to us.</p>
+      <h3>How long we keep it</h3>
+      <p>For as long as your account is open, plus whatever we need to keep for our own records. Ask us in the chat to delete your account and we'll remove your personal details.</p>
+      <h3>Your choices</h3>
+      <p>You can edit your name, phone and password any time under <strong>Account</strong>. Newsletter signup is optional and you can ask us to remove you at any point.</p>
+      <h3>Cookies</h3>
+      <p>We don't use advertising or tracking cookies. Your browser stores only what's needed to keep you signed in and remember small preferences like dark mode.</p>` },
+
+    terms: { title:'Terms of Service', body:`
+      <p class="policy-meta">Last updated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</p>
+      <h3>Using this store</h3>
+      <p>By placing an order with HABIBI you accept these terms. You need an account to order, and you're responsible for keeping your password private and your delivery details accurate.</p>
+      <h3>Orders and prices</h3>
+      <p>All prices are in US dollars and include any applicable charges shown at checkout. Placing an order is an offer to buy; the order is accepted once we verify your payment. If an item turns out to be unavailable after you've paid, we'll refund you in full.</p>
+      <p>We try to keep product descriptions, photos and stock accurate, but small differences in colour or packaging can occur. Obvious pricing errors don't oblige us to sell at the wrong price — we'll contact you and refund in full if you'd rather not continue.</p>
+      <h3>Payment</h3>
+      <p>Orders are paid by Wish transfer before shipping. Orders left without payment proof for 24 hours are cancelled automatically.</p>
+      <h3>Delivery</h3>
+      <p>Delivery estimates (${min}–${max} days) are estimates, not guarantees. Delays caused by customs, couriers or events outside our control aren't something we can be held liable for, though we'll always help you chase an order.</p>
+      <h3>Returns</h3>
+      <p>Your return and refund rights are set out on the <a href="#" onclick="goPage('returns');return false;">Returns</a> page and form part of these terms.</p>
+      <h3>Acceptable use</h3>
+      <p>Don't use this store to commit fraud, submit false payment proof, or interfere with the site's operation. We may suspend an account that does.</p>
+      <h3>Changes</h3>
+      <p>We may update these terms; the version published here at the time you order is the one that applies to that order.</p>
+      <h3>Governing law</h3>
+      <p>These terms are governed by the laws of Lebanon.</p>` }
+  };
+  return pages[id] || pages.faq;
+}
+
+function renderPolicyPage(){
+  const p = policyContent(state.pageId);
+  return `
+  <div class="page container policy-page">
+    <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${p.title}</div>
+    <h1 class="font-display" style="font-size:30px;margin:6px 0 20px">${p.title}</h1>
+    <div class="policy-body">${p.body}</div>
+    <p style="margin-top:30px"><a href="#" class="view-all" onclick="goHome();return false;">← ${t('backHome')}</a></p>
+  </div>`;
+}
+function mPolicyPage(){
+  const p = policyContent(state.pageId);
+  return `
+  <div style="animation:fadeIn .25s ease;padding:8px 20px 30px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      ${mBackBtn('mGo(\'account\')')}
+      <div class="m-disp" style="font-size:22px;line-height:1.2">${p.title}</div>
+    </div>
+    <div class="policy-body m-policy">${p.body}</div>
+  </div>`;
+}
 /* ============ RENDER: FOOTER ============ */
 function renderFooter(){
   return `
@@ -3036,11 +3180,18 @@ function renderFooter(){
         <div><h4>${t('contact')}</h4><ul>
           ${state.settings.contactPhone?`<li><a href="tel:${state.settings.contactPhone.replace(/\s+/g,'')}">${state.settings.contactPhone}</a></li>`:''}
           ${state.settings.contactEmail?`<li><a href="mailto:${state.settings.contactEmail}">${state.settings.contactEmail}</a></li>`:''}
-          ${state.settings.contactAddress?`<li><a href="#">${state.settings.contactAddress}</a></li>`:''}
+          ${state.settings.contactAddress?`<li>${state.settings.contactAddress}</li>`:''}
           ${(state.settings.socialLinks||[]).map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener">${s.platform}</a></li>`).join('')}
         </ul></div>
-        <div><h4>${t('supportNav')}</h4><ul><li><a href="#">${t('shipping')}</a></li><li><a href="#">${t('returns')}</a></li><li><a href="#">${t('faq')}</a></li></ul></div>
-        <div><h4>${t('legalNav')}</h4><ul><li><a href="#">${t('privacy')}</a></li><li><a href="#">${t('terms')}</a></li></ul></div>
+        <div><h4>${t('supportNav')}</h4><ul>
+          <li><a href="#" onclick="goPage('shipping');return false;">${t('shipping')}</a></li>
+          <li><a href="#" onclick="goPage('returns');return false;">${t('returns')}</a></li>
+          <li><a href="#" onclick="goPage('faq');return false;">${t('faq')}</a></li>
+        </ul></div>
+        <div><h4>${t('legalNav')}</h4><ul>
+          <li><a href="#" onclick="goPage('privacy');return false;">${t('privacy')}</a></li>
+          <li><a href="#" onclick="goPage('terms');return false;">${t('terms')}</a></li>
+        </ul></div>
         <div>
           <h4>${t('newsletter')}</h4>
           <p>${t('newsletterSub')}</p>
@@ -4807,6 +4958,9 @@ function mProduct(){
         ${specs.map(([k,v])=>`<div class="m-spec-row"><span style="color:var(--muted)">${k}</span><span style="color:var(--text);font-weight:600">${v}</span></div>`).join('')}
         <div class="m-spec-row"><span style="color:var(--muted)">Estimated delivery</span><span style="color:var(--text);font-weight:600">${state.settings.deliveryMin}–${state.settings.deliveryMax} days</span></div>
         ${p.weight!=null?`<div class="m-spec-row"><span style="color:var(--muted)">Estimated weight</span><span style="color:var(--text);font-weight:600">${p.weight} kg</span></div>`:''}
+        <!-- Desktop has always shown stock here; the phone left it out entirely, losing the
+             low-stock nudge on the layout most customers actually use. -->
+        <div class="m-spec-row"><span style="color:var(--muted)">Availability</span><span style="font-weight:600;color:${p.stock===0?'#C0392B':(p.stock<=5?'#B8891F':'var(--text)')}">${p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock')}</span></div>
       </div>
       <div style="display:flex;gap:11px;align-items:center">
         <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
@@ -5057,14 +5211,14 @@ function mAccount(){
     </div>
     <div class="m-section-kicker" style="margin:18px 0 10px">Support</div>
     <div class="m-panel">
-      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Shipping</div><div style="color:var(--muted)">›</div></div>
-      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Returns</div><div style="color:var(--muted)">›</div></div>
-      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">FAQ</div><div style="color:var(--muted)">›</div></div>
+      <div class="m-panel-row" role="button" tabindex="0" onclick="mGoPage('shipping')"><div style="font:600 14px/1.3 'Figtree',sans-serif">Shipping</div><div style="color:var(--muted)">›</div></div>
+      <div class="m-panel-row" role="button" tabindex="0" onclick="mGoPage('returns')"><div style="font:600 14px/1.3 'Figtree',sans-serif">Returns</div><div style="color:var(--muted)">›</div></div>
+      <div class="m-panel-row" role="button" tabindex="0" onclick="mGoPage('faq')"><div style="font:600 14px/1.3 'Figtree',sans-serif">FAQ</div><div style="color:var(--muted)">›</div></div>
     </div>
     <div class="m-section-kicker" style="margin:18px 0 10px">Legal</div>
     <div class="m-panel">
-      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Privacy Policy</div><div style="color:var(--muted)">›</div></div>
-      <div class="m-panel-row"><div style="font:600 14px/1.3 'Figtree',sans-serif">Terms</div><div style="color:var(--muted)">›</div></div>
+      <div class="m-panel-row" role="button" tabindex="0" onclick="mGoPage('privacy')"><div style="font:600 14px/1.3 'Figtree',sans-serif">Privacy Policy</div><div style="color:var(--muted)">›</div></div>
+      <div class="m-panel-row" role="button" tabindex="0" onclick="mGoPage('terms')"><div style="font:600 14px/1.3 'Figtree',sans-serif">Terms</div><div style="color:var(--muted)">›</div></div>
     </div>
     ${(state.settings.contactAddress || state.settings.contactPhone || state.settings.contactEmail || (state.settings.socialLinks||[]).length)?`
     <div class="m-section-kicker" style="margin:18px 0 10px">Contact</div>
@@ -5189,6 +5343,7 @@ function renderMobileApp(){
   else if(state.mScreen==='track') body = mTrack();
   else if(state.mScreen==='chat') body = mChat();
   else if(state.mScreen==='account') body = mAccount();
+  else if(state.mScreen==='page') body = mPolicyPage();
   else body = mHome();
   const showTabbar = state.mScreen!=='confirm' && state.mScreen!=='paymentInstructions';
   return `<div class="mstore" data-theme="${state.mTheme}"><div class="m-scr">${body}</div>${showTabbar?mTabBar():''}${mSheet()}</div>`;
@@ -5231,6 +5386,7 @@ function render(){
     else if(state.view==='confirm') body = renderConfirm();
     else if(state.view==='orders') body = renderMyOrders();
     else if(state.view==='account') body = renderAccount();
+    else if(state.view==='page') body = renderPolicyPage();
     app.innerHTML = impersonateBanner() + renderHeader() + body + renderFooter() + renderDrawer() + renderChat() + renderShippingModal();
   }
 
