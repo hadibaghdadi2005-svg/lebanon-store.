@@ -1574,9 +1574,9 @@ function goCheckout(){
 function applyProductRows(data){
   const toRemove = [];
   data.forEach(row=>{
-    if(row.is_custom){
+    const existing = row.is_custom ? PRODUCTS.find(p=>p.id===row.id) : findProduct(row.id);
+    if(row.is_custom && !existing){
       if(row.deleted) return; // never existed on this device — skip entirely
-      if(PRODUCTS.find(p=>p.id===row.id)) return; // already added (shouldn't normally happen on a fresh load)
       const cats = (row.cats && row.cats.length) ? row.cats : (row.cat ? [row.cat] : []);
       const catInfo = CATS.find(c=>c.id===cats[0]);
       PRODUCTS.push({
@@ -1594,7 +1594,10 @@ function applyProductRows(data){
         imageUrl: row.image_url || null, imageUrls: row.image_urls || [], isCustom:true
       });
     } else {
-      const p = findProduct(row.id);
+      /* Also handles is_custom rows already loaded locally (e.g. from an earlier public-only
+         fetch that had no cost/supplier_url/weight) — without this branch, a later admin fetch
+         with the real values would be silently skipped and those fields would look "reset". */
+      const p = existing;
       if(!p) return;
       if(row.deleted){ toRemove.push(row.id); return; }
       if(row.price!=null) p.price = Number(row.price);
