@@ -266,9 +266,6 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .gallery-track::-webkit-scrollbar{display:none}
 .gallery-slide{flex:0 0 100%;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
 .gallery-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.gallery-swatches{display:flex;gap:8px;padding:14px;justify-content:center}
-.swatch{width:44px;height:44px;border-radius:8px;border:2px solid rgba(255,255,255,.25);cursor:pointer}
-.swatch.active{border-color:var(--brass)}
 .modal-info{padding:26px 26px 30px;display:flex;flex-direction:column;gap:12px}
 .modal-info h2{font-size:21px;line-height:1.3}
 .modal-stars-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
@@ -276,11 +273,17 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .modal-price-row .price-now{font-size:24px}
 .discount-tag{background:#FBDACB;color:var(--brick);font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:6px}
 .modal-desc{font-size:13.5px;color:var(--ink-soft);line-height:1.7}
-.variant-block label{font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px}
-.variant-opts{display:flex;gap:8px;flex-wrap:wrap}
-.variant-opt{padding:6px 14px;border-radius:8px;border:1.4px solid var(--line);font-size:12.5px;font-weight:600;background:var(--paper)}
-.variant-opt.active{border-color:var(--cedar);background:var(--cedar);color:#fff}
-.size-hint{font-size:11.5px;color:var(--cedar);font-weight:600;margin-top:7px}
+.variant-block label{font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:8px}
+.variant-block label b{color:var(--ink);font-weight:800}
+.variant-opts{display:flex;gap:9px;flex-wrap:wrap}
+/* Color: a round swatch (photo or flat color) — deliberately a different shape from size chips
+   so the two option types can never again read as one jumbled list (see CLAUDE.md item 39). */
+.opt-swatch{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);cursor:pointer;background-size:cover;background-position:center;flex:none;padding:0}
+.opt-swatch.active{border-color:var(--cedar);box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--cedar)}
+/* Size: a compact square chip, unmistakably not a color swatch */
+.opt-chip{min-width:40px;padding:8px 12px;border-radius:8px;border:1.4px solid var(--line);font-size:12.5px;font-weight:700;background:var(--paper);text-align:center}
+.opt-chip.active{border-color:var(--cedar);background:var(--cedar);color:#fff}
+.size-hint{font-size:11.5px;color:var(--cedar);font-weight:600;margin-top:8px}
 .modal-actions{display:flex;gap:10px;align-items:center}
 .spec-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
 .spec-table td{padding:7px 0;border-bottom:1px solid var(--sand-dark)}
@@ -631,6 +634,10 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-product-body{margin-top:-24px;border-radius:28px 28px 0 0;background:var(--bg);padding:22px 20px 26px;position:relative}
 .m-variant-chip{cursor:pointer;border-radius:999px;padding:10px 18px;font:600 13px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--text)}
 .m-variant-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a}
+/* Color swatch — round, photo or flat color, deliberately a different shape from the size
+   chip above so the two option types read as separate on sight (CLAUDE.md item 39). */
+.m-color-swatch{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);cursor:pointer;background-size:cover;background-position:center;flex:none;padding:0}
+.m-color-swatch.active{border-color:var(--acc);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--acc)}
 .m-size-hint{font:600 12px/1.4 'Figtree',sans-serif;color:var(--acc2Ink);margin:-12px 0 18px}
 .m-specs{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 16px;margin-bottom:18px}
 .m-spec-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font:500 13px/1.4 'Figtree',sans-serif}
@@ -2424,13 +2431,6 @@ function renderProductPage(){
       <div class="modal-grid">
         <div class="modal-gallery">
           <div class="gallery-main">${renderPhotoGallery(p, 'pg-desktop', ICONS[p.icon])}</div>
-          <div class="gallery-swatches">
-            ${p.variants.map((v,i)=>{
-              const photo = productPhotos(p)[i];
-              const bg = photo ? `background-image:url('${photo}');background-size:cover;background-position:center` : `background:${PALETTE[(p.color+i)%PALETTE.length]}`;
-              return `<div class="swatch ${v===variant?'active':''}" style="${bg}" onclick="state.modalVariant='${v}';${photo?`state.galleryIndex=${i};`:''}render()" title="${v}"></div>`;
-            }).join('')}
-          </div>
         </div>
         <div class="modal-info">
           <div class="prod-badges">
@@ -2459,20 +2459,22 @@ function renderProductPage(){
             ${state.lang==='ar'?'الوزن التقريبي':'Estimated weight'}: ${p.weight} ${state.lang==='ar'?'كغ':'kg'}
           </div>`:''}
           <p class="modal-desc">${pdesc(p)}</p>
+          ${p.variants.length>1?`
           <div class="variant-block">
-            <label>${state.lang==='ar'?'الخيار':'Variant'}</label>
+            <label>${state.lang==='ar'?'اللون':'Color'}: <b>${variant}</b></label>
             <div class="variant-opts">
               ${p.variants.map((v,i)=>{
                 const photo = productPhotos(p)[i];
-                return `<button class="variant-opt ${v===variant?'active':''}" onclick="state.modalVariant='${v}';${photo?`state.galleryIndex=${i};`:''}render()">${v}</button>`;
+                const bg = photo ? `background-image:url('${photo}')` : `background:${PALETTE[(p.color+i)%PALETTE.length]}`;
+                return `<button class="opt-swatch ${v===variant?'active':''}" style="${bg}" title="${v}" aria-label="${v}" onclick="state.modalVariant='${v}';${photo?`state.galleryIndex=${i};`:''}render()"></button>`;
               }).join('')}
             </div>
-          </div>
+          </div>`:''}
           ${sizes.length?`
           <div class="variant-block">
             <label>${state.lang==='ar'?'المقاس':'Size'}</label>
             <div class="variant-opts">
-              ${sizes.map(sz=>`<button class="variant-opt ${sz===selSize?'active':''}" onclick="pickSize(${JSON.stringify(sz).replace(/"/g,'&quot;')})">${sz}</button>`).join('')}
+              ${sizes.map(sz=>`<button class="opt-chip ${sz===selSize?'active':''}" onclick="pickSize(${JSON.stringify(sz).replace(/"/g,'&quot;')})">${sz}</button>`).join('')}
             </div>
             ${!selSize?`<p class="size-hint">${state.lang==='ar'?'اختر المقاس للمتابعة':'Choose your size to continue'}</p>`:''}
           </div>`:''}
@@ -4013,8 +4015,9 @@ function renderAddProductForm(){
         </div>
         <p style="font-size:11px;color:var(--ink-soft)">${isAr?'"عروض" تظهر تلقائيًا عند إدخال سعر أصلي أعلى من السعر الحالي.':'"Offers" is automatic — it shows up whenever you set a "Was" price higher than the current price.'}</p>
       </div>
-      <div class="form-field"><label>${isAr?'الخيارات (مفصولة بفاصلة)':'Variants (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/></div>
+      <div class="form-field"><label>${isAr?'الألوان (مفصولة بفاصلة)':'Colors (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/></div>
       <div class="form-field"><label>${isAr?'المقاسات (مفصولة بفاصلة) — اختياري':'Sizes (comma separated) — optional'}</label><input id="new-sizes" type="text" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}"/></div>
+      <p style="font-size:11px;color:var(--ink-soft);grid-column:1/-1;margin:-6px 0 0">${isAr?'لا تضع المقاسات في حقل الألوان — استخدم حقل المقاسات أدناه.':'Don’t put sizes in the Colors field — use the Sizes field for those.'}</p>
     </div>
     <div class="form-row">
       <div class="form-field"><label>${t('costLabel')}</label><input id="new-cost" type="number" step="0.1" value="0"/></div>
@@ -4065,9 +4068,9 @@ function renderProductEditorPanel(p){
       <textarea id="desc-en-${p.id}" rows="3" dir="ltr" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit;margin-bottom:12px">${p.desc_en||''}</textarea>
       <button class="btn btn-primary btn-sm" onclick="saveProductDescription(${p.id})">${isAr?'💾 حفظ الوصف':'💾 Save Description'}</button>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-        <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'خيارات الطلب (مفصولة بفواصل)':'Order options (comma-separated)'}</label>
+        <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'الألوان (مفصولة بفواصل)':'Colors (comma-separated)'}</label>
         <input type="text" value="${(p.variants||[]).join(', ')}" placeholder="Black, White, Blue" dir="ltr" onchange="adminUpdateVariants(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
-        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'هذه هي الخيارات (مثل اللون) التي يمكن للعميل الاختيار من بينها عند الشراء.':'These are the choices (usually colour) a customer picks from when ordering this product.'}</p>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'الألوان التي يختار العميل من بينها. لا تضع المقاسات هنا — استخدم حقل المقاسات أدناه.':'The colours a customer picks from. Don’t put sizes here — use the Sizes field below.'}</p>
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin:14px 0 6px">${isAr?'المقاسات (مفصولة بفواصل)':'Sizes (comma-separated)'}</label>
         <input type="text" value="${productSizes(p).join(', ')}" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}" dir="ltr" onchange="adminUpdateSizes(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
         <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'اتركه فارغًا للمنتجات بلا مقاسات. عند تعبئته يجب على العميل اختيار مقاس قبل الإضافة إلى السلة.':'Leave empty for products with no sizes. When filled in, the customer must pick a size before they can add this to their basket.'}</p>
@@ -5029,10 +5032,15 @@ function mProduct(){
         ${p.reviews>0?`<span style="margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)">★ ${p.rating.toFixed(1)} (${p.reviews})</span>`:''}
       </div>
       <div style="font:400 14px/1.65 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">${p.desc_en}</div>
-      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose an option</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
-        ${p.variants.map((v,i)=>`<button class="m-variant-chip ${v===variant?'active':''}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}'${productPhotos(p)[i]?`, ${i}`:''})">${v}</button>`).join('')}
-      </div>
+      ${p.variants.length>1?`
+      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Color: <b style="color:var(--text)">${variant}</b></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+        ${p.variants.map((v,i)=>{
+          const photo = productPhotos(p)[i];
+          const bg = photo ? `background-image:url('${photo}')` : `background:${PALETTE[(p.color+i)%PALETTE.length]}`;
+          return `<button class="m-color-swatch ${v===variant?'active':''}" style="${bg}" title="${v}" aria-label="${v}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}'${photo?`, ${i}`:''})"></button>`;
+        }).join('')}
+      </div>`:''}
       ${sizes.length?`
       <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose a size</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
