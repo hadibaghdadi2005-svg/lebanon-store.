@@ -280,6 +280,7 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .variant-opts{display:flex;gap:8px;flex-wrap:wrap}
 .variant-opt{padding:6px 14px;border-radius:8px;border:1.4px solid var(--line);font-size:12.5px;font-weight:600;background:var(--paper)}
 .variant-opt.active{border-color:var(--cedar);background:var(--cedar);color:#fff}
+.size-hint{font-size:11.5px;color:var(--cedar);font-weight:600;margin-top:7px}
 .modal-actions{display:flex;gap:10px;align-items:center}
 .spec-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
 .spec-table td{padding:7px 0;border-bottom:1px solid var(--sand-dark)}
@@ -630,6 +631,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-product-body{margin-top:-24px;border-radius:28px 28px 0 0;background:var(--bg);padding:22px 20px 26px;position:relative}
 .m-variant-chip{cursor:pointer;border-radius:999px;padding:10px 18px;font:600 13px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--text)}
 .m-variant-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a}
+.m-size-hint{font:600 12px/1.4 'Figtree',sans-serif;color:var(--acc2Ink);margin:-12px 0 18px}
 .m-specs{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:6px 16px;margin-bottom:18px}
 .m-spec-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font:500 13px/1.4 'Figtree',sans-serif}
 .m-spec-row:last-child{border-bottom:0}
@@ -1052,6 +1054,7 @@ let state = {
   mobileMenuOpen: false,
   modalOpen: false,
   modalVariant: null,
+  modalSize: null,          // chosen size, when the product has any (never auto-filled)
   chatOpen: false,
   chatLog: [],
   chatConversation: null, // {id, status, updated_at} for the current customer's support conversation
@@ -1479,27 +1482,75 @@ function logout(){
   render();
 }
 
-/* ============ CART LOGIC ============ */
-function addToCart(id, variant, qty){
+/* ============ PRODUCT OPTIONS ============
+   A product has up to two independent option dimensions: `variants` (the original list, used for
+   colour) and `sizes` (added for clothing and footwear, where colour alone isn't enough to say
+   what the customer actually wants). Sizes are optional and most products have none, so every
+   read goes through productSizes() and the whole size UI is skipped when it comes back empty.
+   Unlike a variant, a size is never auto-picked: shipping a shoe in a size the customer never
+   chose is a return, so an unset size blocks the add instead of silently defaulting to the first. */
+function productSizes(p){ return (p && Array.isArray(p.sizes) && p.sizes.length) ? p.sizes : []; }
+function needsSize(p){ return productSizes(p).length > 0; }
+/* "Black · 42" — the human label for a chosen combination, used in the cart, the checkout
+   summary, the order confirmation and every order/tracking view. Also handles orders placed
+   before sizes existed, whose items simply have no size field. */
+function optionLabel(o){ return [o && o.variant, o && o.size].filter(Boolean).join(' · '); }
+
+/* ============ CART LOGIC ============
+   Cart lines are keyed on product + variant + size, so Black/42 and Black/43 are two lines.
+   Mutations address a line by its index in state.cart rather than by re-matching those three
+   values back out of an HTML attribute — with free-text option names that string round-trip
+   was a quoting bug waiting to happen. */
+function sameCartLine(l, id, variant, size){
+  return l.id===id && l.variant===variant && (l.size||null)===(size||null);
+}
+function addToCart(id, variant, qty, size){
+  const p = findProduct(id);
+  if(!p) return false;
   qty = qty || 1;
-  variant = variant || (findProduct(id).variants[0]);
-  const existing = state.cart.find(l=>l.id===id && l.variant===variant);
+  variant = variant || p.variants[0];
+  const sizes = productSizes(p);
+  if(sizes.length && !size){
+    showToast(state.lang==='ar' ? 'يرجى اختيار المقاس أولًا' : 'Please choose a size first');
+    return false;
+  }
+  size = sizes.length ? size : null;
+  const existing = state.cart.find(l=>sameCartLine(l, id, variant, size));
   if(existing){ existing.qty += qty; }
-  else { state.cart.push({id, variant, qty}); }
+  else { state.cart.push({id, variant, size, qty}); }
   syncCustomerCart();
   showToast(t('addedToCart'));
   render();
+  return true;
 }
-function removeFromCart(id, variant){
-  state.cart = state.cart.filter(l=>!(l.id===id && l.variant===variant));
+/* Adds whatever the customer currently has selected on the product page (both layouts). */
+function addSelectedToCart(id, qty){
+  const p = findProduct(id);
+  if(!p) return false;
+  return addToCart(id, state.modalVariant || p.variants[0], qty || 1, state.modalSize || null);
+}
+/* The card's one-tap add can't ask for a size, so a sized product opens instead of guessing. */
+function quickAdd(id){
+  const p = findProduct(id);
+  if(!p) return;
+  if(needsSize(p)){
+    openProduct(id);
+    showToast(state.lang==='ar' ? 'اختر المقاس أولًا' : 'Choose a size first');
+    return;
+  }
+  addToCart(id, p.variants[0], 1);
+}
+function removeCartLine(i){
+  if(i<0 || i>=state.cart.length) return;
+  state.cart.splice(i,1);
   syncCustomerCart();
   render();
 }
-function changeQty(id, variant, delta){
-  const line = state.cart.find(l=>l.id===id && l.variant===variant);
+function changeCartQty(i, delta){
+  const line = state.cart[i];
   if(!line) return;
   line.qty += delta;
-  if(line.qty<=0) removeFromCart(id, variant);
+  if(line.qty<=0) removeCartLine(i);
   else { syncCustomerCart(); render(); }
 }
 function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
@@ -1574,6 +1625,8 @@ SKU: ${p.sku}
 Description: ${pdesc(p)}
 Price: $${p.price}${p.was>p.price?` (was $${p.was})`:''}
 Stock: ${p.stock} units
+Available options: ${(p.variants||[]).join(', ') || 'none'}
+Available sizes: ${productSizes(p).join(', ') || 'this product has no size options'}
 Rating: ${p.reviews>0?`${p.rating}/5 (${p.reviews} reviews)`:'no reviews yet'}
 Specifications: ${specStr}`;
 }
@@ -1628,7 +1681,7 @@ function clearSearch(){
   render();
 }
 function goWishlist(){ state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render(); }
-function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; state.galleryIndex=0; window.scrollTo(0,0); render(); }
+function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; state.modalSize=null; state.galleryIndex=0; window.scrollTo(0,0); render(); }
 function goCheckout(){
   if(state.cart.length===0) return;
   state.view='checkout'; window.scrollTo(0,0); render();
@@ -1654,6 +1707,7 @@ function applyProductRows(data){
         cost: row.cost!=null?Number(row.cost):0, marginPct:0, supplierUrl: row.supplier_url || '',
         weight: row.weight!=null?Number(row.weight):null,
         specs:{ar:{}, en:{}}, variants: (row.variants && row.variants.length) ? row.variants : ['Standard'],
+        sizes: (row.sizes && row.sizes.length) ? row.sizes : [],
         imageUrl: row.image_url || null, imageUrls: row.image_urls || [], isCustom:true
       });
     } else {
@@ -1672,6 +1726,9 @@ function applyProductRows(data){
       if(row.sku) p.sku = row.sku;
       if(row.cats && row.cats.length){ p.cats = row.cats; p.cat = row.cats[0]; const ci = CATS.find(c=>c.id===p.cat); if(ci) p.icon = ci.icon; }
       if(row.variants && row.variants.length) p.variants = row.variants;
+      /* Assigned even when empty: clearing a product's sizes in the admin panel has to reach
+         the customer, not merely fail to overwrite the old list. */
+      if(row.sizes !== undefined) p.sizes = row.sizes || [];
       if(row.featured!=null) p.featured = row.featured;
       if(row.best!=null) p.best = row.best;
       if(row.new!=null) p.new = row.new;
@@ -2127,7 +2184,7 @@ function productCard(p){
         <span class="price-now">${fmt(p.price)}</span>
         ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span>`:''}
       </div>
-      <button class="add-cart-btn" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();addToCart(${p.id}, '${p.variants[0]}', 1)">
+      <button class="add-cart-btn" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})">
         <svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
         ${p.stock===0?t('outOfStock'):t('addCart')}
       </button>
@@ -2352,6 +2409,8 @@ function renderProductPage(){
   if(!p) return renderHome();
   const color = PALETTE[p.color % PALETTE.length];
   const variant = state.modalVariant || p.variants[0];
+  const sizes = productSizes(p);
+  const selSize = state.modalSize;
   const specs = specsFor(p);
   const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
   const related = PRODUCTS.filter(x=>x.id!==p.id && productCats(x).some(c=>productCats(p).includes(c))).slice(0,4);
@@ -2409,9 +2468,17 @@ function renderProductPage(){
               }).join('')}
             </div>
           </div>
+          ${sizes.length?`
+          <div class="variant-block">
+            <label>${state.lang==='ar'?'المقاس':'Size'}</label>
+            <div class="variant-opts">
+              ${sizes.map(sz=>`<button class="variant-opt ${sz===selSize?'active':''}" onclick="pickSize(${JSON.stringify(sz).replace(/"/g,'&quot;')})">${sz}</button>`).join('')}
+            </div>
+            ${!selSize?`<p class="size-hint">${state.lang==='ar'?'اختر المقاس للمتابعة':'Choose your size to continue'}</p>`:''}
+          </div>`:''}
           <div class="modal-actions">
-            <button class="btn btn-cedar" ${p.stock===0?'disabled':''} onclick="addToCart(${p.id}, '${variant}', 1)">${t('addCart')}</button>
-            <button class="btn btn-primary" ${p.stock===0?'disabled':''} onclick="addToCart(${p.id}, '${variant}', 1);goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
+            <button class="btn btn-cedar" ${p.stock===0?'disabled':''} onclick="addSelectedToCart(${p.id}, 1)">${t('addCart')}</button>
+            <button class="btn btn-primary" ${p.stock===0?'disabled':''} onclick="if(addSelectedToCart(${p.id}, 1))goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
             <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
               <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
             </button>
@@ -2480,7 +2547,7 @@ function renderDrawer(){
           <div style="font-weight:700;margin-bottom:4px">${t('emptyCart')}</div>
           <div style="font-size:13px">${t('emptyCartSub')}</div>
         </div>`:
-        lines.map(l=>{
+        lines.map((l,i)=>{
           const p = findProduct(l.id);
           if(!p) return '';
           const color = PALETTE[p.color % PALETTE.length];
@@ -2489,12 +2556,12 @@ function renderDrawer(){
             <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
             <div class="cart-info">
               <div class="name">${pname(p)}</div>
-              <div class="variant">${l.variant}</div>
+              <div class="variant">${optionLabel(l)}</div>
               <div class="qty-row">
-                <button class="qty-btn" onclick="changeQty(${p.id},'${l.variant}',-1)">−</button>
+                <button class="qty-btn" onclick="changeCartQty(${i},-1)">−</button>
                 <span class="qty-val">${l.qty}</span>
-                <button class="qty-btn" onclick="changeQty(${p.id},'${l.variant}',1)">+</button>
-                <button class="remove-btn" onclick="removeFromCart(${p.id},'${l.variant}')">${t('remove')}</button>
+                <button class="qty-btn" onclick="changeCartQty(${i},1)">+</button>
+                <button class="remove-btn" onclick="removeCartLine(${i})">${t('remove')}</button>
               </div>
             </div>
             <div class="line-total">${fmt(p.price*l.qty)}</div>
@@ -2587,7 +2654,7 @@ async function placeOrder(){
   const num = 'LB-' + new Date().getFullYear() + '-' + String(Math.floor(100000+Math.random()*899999)).slice(0,6);
   const items = state.cart.filter(l=>findProduct(l.id)).map(l=>{
     const p = findProduct(l.id);
-    return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, qty:l.qty, price:p.price, sku:p.sku, status:'confirmed' };
+    return { id:p.id, name_ar:p.name_ar, name_en:p.name_en, variant:l.variant, size:l.size||null, qty:l.qty, price:p.price, sku:p.sku, status:'confirmed' };
   });
   const c = currentCustomer();
   const orderRow = {
@@ -2827,7 +2894,7 @@ function renderCheckout(){
             </div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700">
-                <span>${pname(p)} (${l.variant}) × ${l.qty}</span><span class="font-mono" style="flex-shrink:0">${fmt(p.price*l.qty)}</span>
+                <span>${pname(p)} (${optionLabel(l)}) × ${l.qty}</span><span class="font-mono" style="flex-shrink:0">${fmt(p.price*l.qty)}</span>
               </div>
               <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4">${shortDesc}</div>
             </div>
@@ -2948,7 +3015,7 @@ function renderItemTrack(it, key){
   if(status==='cancelled' || status==='returned'){
     return `
     <div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${it.variant}) × ${it.qty}</span></div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${optionLabel(it)}) × ${it.qty}</span></div>
       <span class="status-pill" style="background:#FBDACB;color:var(--brick)">${ORDER_STATUS_LABELS[state.lang][status]}</span>
     </div>`;
   }
@@ -2957,7 +3024,7 @@ function renderItemTrack(it, key){
   return `
   <div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:2px">
-      <div style="font-size:13px;font-weight:700">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${it.variant}) × ${it.qty}</span></div>
+      <div style="font-size:13px;font-weight:700">${isAr?it.name_ar:it.name_en} <span style="color:var(--ink-soft);font-weight:500">(${optionLabel(it)}) × ${it.qty}</span></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--cedar);font-weight:700">${ORDER_STATUS_LABELS[state.lang][status]}</div>
         <a href="#" class="view-all" style="font-size:11px" onclick="toggleTrackerExpand('${key}');return false;">${expanded?(isAr?'إخفاء الخطوات':'Hide steps'):(isAr?'عرض كل الخطوات':'Show all steps')}</a>
@@ -3324,6 +3391,11 @@ async function submitNewProduct(){
   const descEn = document.getElementById('new-desc-en').value.trim();
   const variantsRaw = document.getElementById('new-variants').value.trim();
   const variants = variantsRaw ? variantsRaw.split(',').map(v=>v.trim()).filter(Boolean) : ['Standard'];
+  /* Sizes stay empty unless the admin types some — an empty list is what tells the whole app
+     this product has no size choice, so it must not fall back to a placeholder the way
+     variants does. */
+  const sizesRaw = document.getElementById('new-sizes').value.trim();
+  const sizes = sizesRaw ? sizesRaw.split(',').map(v=>v.trim()).filter(Boolean) : [];
   if(!nameAr || !nameEn){
     showToast(isAr ? 'يرجى إدخال اسم المنتج بالعربي والإنكليزي' : 'Please enter a product name in both languages');
     return;
@@ -3348,7 +3420,7 @@ async function submitNewProduct(){
     id:newId, cat:primaryCat, cats, icon: catInfo?catInfo.icon:'offers', color: PRODUCTS.length % PALETTE.length,
     name_ar:nameAr, name_en:nameEn, desc_ar:descAr, desc_en:descEn, sku,
     price, was:price, stock, rating:0, reviews:0, best:false, featured:false, new:true,
-    cost, weight, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, imageUrl:null, imageUrls:[], isCustom:true
+    cost, weight, marginPct:0, supplierUrl:'', specs:{ar:{}, en:{}}, variants, sizes, imageUrl:null, imageUrls:[], isCustom:true
   };
   PRODUCTS.push(newProduct);
   state.adminAddingProduct = false;
@@ -3359,7 +3431,7 @@ async function submitNewProduct(){
      and the "added" product would just be gone again on the next reload with no visible error. */
   const { error } = await sb.from('products').upsert({
     id:newId, is_custom:true, name_ar:nameAr, name_en:nameEn, cat:primaryCat, cats, sku, price, cost, stock, weight,
-    desc_ar:descAr, desc_en:descEn, variants, deleted:false, new:true, featured:false, best:false
+    desc_ar:descAr, desc_en:descEn, variants, sizes, deleted:false, new:true, featured:false, best:false
   }, { onConflict:'id' });
   if(error){
     console.error('Product creation failed to save:', error);
@@ -3400,6 +3472,12 @@ async function deleteReview(id){
   REVIEWS = REVIEWS.filter(r=>r.id!==id);
   recomputeProductRatings();
   render();
+}
+function adminUpdateSizes(id, val){
+  const sizes = val.split(',').map(v=>v.trim()).filter(Boolean);
+  findProduct(id).sizes = sizes;
+  render();
+  syncProductField(id, { sizes });
 }
 function adminUpdateVariants(id, val){
   let variants = val.split(',').map(v=>v.trim()).filter(Boolean);
@@ -3807,7 +3885,7 @@ function renderAdminItemStatusTable(o){
       ${o.items.map((it,i)=>`
         <tr>
           <td>${isAr?it.name_ar:it.name_en}</td>
-          <td>${it.variant}</td>
+          <td>${optionLabel(it)}</td>
           <td>${it.qty}</td>
           <td><input type="text" class="font-mono" value="${it.sku||''}" onchange="updateItemSku('${o._dbId}', ${i}, this.value)" style="width:100px;font-size:11px"/></td>
           <td>
@@ -3860,7 +3938,7 @@ function renderAdminCustomers(){
       <h3>${isAr?'سلة العميل الحالية':"Customer's current cart"} (${cart.length})</h3>
       ${cart.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'السلة فارغة':'Cart is empty'}</p>` :
         `<table class="admin-table"><thead><tr><th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th><th>${isAr?'السعر':'Price'}</th></tr></thead>
-        <tbody>${cart.map(l=>{ const p=findProduct(l.id); return p ? `<tr><td>${pname(p)}</td><td>${l.variant}</td><td>${l.qty}</td><td class="font-mono">${fmt(p.price*l.qty)}</td></tr>` : ''; }).join('')}</tbody></table>
+        <tbody>${cart.map(l=>{ const p=findProduct(l.id); return p ? `<tr><td>${pname(p)}</td><td>${optionLabel(l)}</td><td>${l.qty}</td><td class="font-mono">${fmt(p.price*l.qty)}</td></tr>` : ''; }).join('')}</tbody></table>
         <div style="text-align:end;margin-top:10px;font-weight:700" class="font-mono">${isAr?'المجموع':'Total'}: ${fmt(cartTotal)}</div>`}
     </div>
 
@@ -3936,6 +4014,7 @@ function renderAddProductForm(){
         <p style="font-size:11px;color:var(--ink-soft)">${isAr?'"عروض" تظهر تلقائيًا عند إدخال سعر أصلي أعلى من السعر الحالي.':'"Offers" is automatic — it shows up whenever you set a "Was" price higher than the current price.'}</p>
       </div>
       <div class="form-field"><label>${isAr?'الخيارات (مفصولة بفاصلة)':'Variants (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/></div>
+      <div class="form-field"><label>${isAr?'المقاسات (مفصولة بفاصلة) — اختياري':'Sizes (comma separated) — optional'}</label><input id="new-sizes" type="text" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}"/></div>
     </div>
     <div class="form-row">
       <div class="form-field"><label>${t('costLabel')}</label><input id="new-cost" type="number" step="0.1" value="0"/></div>
@@ -3988,7 +4067,10 @@ function renderProductEditorPanel(p){
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'خيارات الطلب (مفصولة بفواصل)':'Order options (comma-separated)'}</label>
         <input type="text" value="${(p.variants||[]).join(', ')}" placeholder="Black, White, Blue" dir="ltr" onchange="adminUpdateVariants(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
-        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'هذه هي الخيارات (مثل اللون أو المقاس) التي يمكن للعميل الاختيار من بينها عند الشراء.':'These are the choices (like color or size) a customer picks from when ordering this product.'}</p>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'هذه هي الخيارات (مثل اللون) التي يمكن للعميل الاختيار من بينها عند الشراء.':'These are the choices (usually colour) a customer picks from when ordering this product.'}</p>
+        <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin:14px 0 6px">${isAr?'المقاسات (مفصولة بفواصل)':'Sizes (comma-separated)'}</label>
+        <input type="text" value="${productSizes(p).join(', ')}" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}" dir="ltr" onchange="adminUpdateSizes(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'اتركه فارغًا للمنتجات بلا مقاسات. عند تعبئته يجب على العميل اختيار مقاس قبل الإضافة إلى السلة.':'Leave empty for products with no sizes. When filled in, the customer must pick a size before they can add this to their basket.'}</p>
       </div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'التقييمات':'Reviews'}</label>
@@ -4202,7 +4284,7 @@ function renderAdmin(){
                 ${o.items.map((it,i)=>`
                   <tr>
                     <td>${state.lang==='ar'?it.name_ar:it.name_en}</td>
-                    <td>${it.variant}</td>
+                    <td>${optionLabel(it)}</td>
                     <td>${it.qty}</td>
                     <td><input type="text" class="font-mono" value="${it.sku||''}" onchange="updateItemSku('${o._dbId}', ${i}, this.value)" style="width:100px;font-size:11px"/></td>
                     <td class="font-mono">${fmt(it.price)}</td>
@@ -4737,18 +4819,19 @@ function mClearSearch(){
 
 /* ---- product screen ---- */
 function mOpenProduct(id){
-  state.productId = id; state.modalVariant = null; state.mQty = 1; state.galleryIndex = 0;
+  state.productId = id; state.modalVariant = null; state.modalSize = null; state.mQty = 1; state.galleryIndex = 0;
   state.mPrev = state.mScreen; state.mScreen = 'product';
   window.scrollTo(0,0); render();
 }
 function mPickVariant(v, i){ state.modalVariant = v; if(i!=null) state.galleryIndex = i; render(); }
+function pickSize(s){ state.modalSize = s; render(); }
 function mIncQty(){ state.mQty = (state.mQty||1) + 1; render(); }
 function mDecQty(){ state.mQty = Math.max(1, (state.mQty||1) - 1); render(); }
 function mAddToCartFlow(){
   const p = findProduct(state.productId);
   if(!p) return;
   state.mSheetProduct = p.id;
-  addToCart(p.id, state.modalVariant || p.variants[0], state.mQty || 1);
+  addSelectedToCart(p.id, state.mQty || 1);
 }
 function mCloseSheet(){ state.mSheetProduct = null; render(); }
 function mGoCartFromSheet(){ state.mSheetProduct = null; mGo('cart'); }
@@ -4926,6 +5009,8 @@ function mProduct(){
   if(!p) return mList();
   const color = PALETTE[p.color % PALETTE.length];
   const variant = state.modalVariant || p.variants[0];
+  const sizes = productSizes(p);
+  const selSize = state.modalSize;
   const specs = Object.entries((p.specs && p.specs.en) || {});
   const wished = state.wishlist.has(p.id);
   return `
@@ -4948,6 +5033,12 @@ function mProduct(){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
         ${p.variants.map((v,i)=>`<button class="m-variant-chip ${v===variant?'active':''}" onclick="mPickVariant('${v.replace(/'/g,"\\'")}'${productPhotos(p)[i]?`, ${i}`:''})">${v}</button>`).join('')}
       </div>
+      ${sizes.length?`
+      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose a size</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+        ${sizes.map(sz=>`<button class="m-variant-chip ${sz===selSize?'active':''}" onclick="pickSize(${JSON.stringify(sz).replace(/"/g,'&quot;')})">${sz}</button>`).join('')}
+      </div>
+      ${!selSize?`<div class="m-size-hint">Pick your size to add this to the basket.</div>`:''}`:''}
       <div class="m-specs">
         ${specs.map(([k,v])=>`<div class="m-spec-row"><span style="color:var(--muted)">${k}</span><span style="color:var(--text);font-weight:600">${v}</span></div>`).join('')}
         <div class="m-spec-row"><span style="color:var(--muted)">Estimated delivery</span><span style="color:var(--text);font-weight:600">${state.settings.deliveryMin}–${state.settings.deliveryMax} days</span></div>
@@ -4976,7 +5067,7 @@ function mProduct(){
   </div>`;
 }
 function mCart(){
-  const lines = state.cart.map(l=>{
+  const lines = state.cart.map((l,i)=>{
     const p = findProduct(l.id);
     if(!p) return '';
     const color = PALETTE[p.color % PALETTE.length];
@@ -4985,11 +5076,11 @@ function mCart(){
       <div class="m-cart-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
       <div style="flex:1;min-width:0">
         <div class="m-card-name">${p.name_en}</div>
-        <div class="m-card-meta" style="margin-bottom:8px">${l.variant}</div>
+        <div class="m-card-meta" style="margin-bottom:8px">${optionLabel(l)}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="changeQty(${p.id},'${l.variant.replace(/'/g,"\\'")}',-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
+          <button onclick="changeCartQty(${i},-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
           <span class="m-mono" style="font-weight:600;font-size:13px;min-width:14px;text-align:center">${l.qty}</span>
-          <button onclick="changeQty(${p.id},'${l.variant.replace(/'/g,"\\'")}',1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">+</button>
+          <button onclick="changeCartQty(${i},1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">+</button>
           <span class="m-mono" style="margin-left:auto;font-weight:600;color:var(--accInk)">${fmt(p.price*l.qty)}</span>
         </div>
       </div>
