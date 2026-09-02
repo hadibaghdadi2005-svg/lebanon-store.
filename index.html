@@ -758,6 +758,96 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .promo-cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .promo-dismiss{display:block;margin:12px auto 0;background:none;border:none;color:rgba(251,248,240,.5);
   font:600 12px/1 'Figtree',sans-serif;cursor:pointer;text-decoration:underline}
+/* ================= SOUK WARM (photo-led layout) =================
+   The old hero was a flat cedar panel with the billboard stacked underneath it — two competing
+   "top of page" blocks, neither showing merchandise. They are now one photographic hero: the
+   admin's billboard slide (or, failing that, the newest product's own photo) fills it, with the
+   headline sitting on a gradient over the image. */
+.hero-photo{position:relative;min-height:460px;display:flex;align-items:flex-end;overflow:hidden;background:var(--cedar);color:var(--paper)}
+.hero-photo{background-size:cover;background-position:center} /* still shown while a video loads */
+.hero-photo .container{width:100%} /* a flex child shrink-wraps otherwise, centring the copy */
+.hero-photo-media{position:absolute;inset:0}
+.hero-photo-media img,.hero-photo-media video{width:100%;height:100%;object-fit:cover}
+.hero-photo::after{content:'';position:absolute;inset:0;z-index:1;
+  background:linear-gradient(90deg,rgba(9,38,29,.93) 0%,rgba(9,38,29,.74) 42%,rgba(9,38,29,.18) 100%)}
+.hero-photo .container{position:relative;z-index:2;padding-top:56px;padding-bottom:52px}
+.hero-photo .hero-inner{max-width:600px}
+.hero-photo h1{font-size:clamp(34px,4.6vw,52px);line-height:1.02;letter-spacing:-.025em;margin-bottom:16px;color:var(--paper)}
+.hero-photo h1 em{font-style:italic;color:var(--brass-light)}
+.hero-photo p{font-size:16px;line-height:1.6;color:rgba(255,255,255,.84);max-width:44ch;margin-bottom:26px}
+.hero-photo .eyebrow{color:var(--brass-light)}
+.hero-dots{position:absolute;bottom:20px;inset-inline-end:26px;z-index:3;display:flex;gap:8px}
+
+/* Three facts, directly under the hero. This is the highest-value block on the page for a shop
+   that asks to be paid before it ships. */
+.trust-strip{background:var(--cedar-light);color:rgba(255,255,255,.92);display:grid;grid-template-columns:repeat(3,1fr)}
+.trust-strip div{padding:18px 22px;border-inline-end:1px solid rgba(255,255,255,.12)}
+.trust-strip div:last-child{border:none}
+.trust-strip b{display:block;font-size:13.5px;font-weight:700;margin-bottom:4px}
+.trust-strip span{font-size:12px;color:rgba(255,255,255,.62);line-height:1.45}
+
+/* Roomier sections — the old 52px rhythm made a short catalogue look crowded and cheap. */
+section{padding:64px 0}
+.section-head{margin-bottom:28px}
+.section-head h2{font-size:30px;letter-spacing:-.02em}
+
+/* Cards: bigger photography, price as the focal point, add-to-cart as a pill beside it. */
+.prod-grid{gap:24px}
+.prod-card{border-radius:20px}
+.prod-img{aspect-ratio:4/3;background:#fff}
+.prod-body{padding:16px 17px 18px;gap:8px}
+.prod-name{font-size:15px;min-height:40px}
+.prod-price-row{align-items:center;justify-content:space-between;margin-top:auto;gap:10px}
+.price-now{font-family:'Fraunces',serif;font-weight:700;font-size:22px;letter-spacing:-.01em}
+.add-cart-btn{margin-top:0;width:auto;border-radius:999px;padding:11px 18px;font-size:12.5px;white-space:nowrap;flex:none}
+.prod-card .prod-badges .badge{border-radius:999px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+
+/* Product page: the loose delivery/weight/stock lines become one quiet spec panel. */
+.spec-card{background:var(--sand);border:1px solid var(--line);border-radius:14px;padding:2px 15px;margin:4px 0}
+.spec-card .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+.spec-card .row:last-child{border-bottom:none}
+.spec-card .row .k{color:var(--ink-soft);display:flex;align-items:center;gap:7px}
+.spec-card .row .k svg{width:14px;height:14px;stroke:var(--ink-soft);fill:none;stroke-width:1.7}
+.spec-card .row .v{font-weight:700}
+.modal-info h2{font-size:26px;letter-spacing:-.02em;line-height:1.15}
+.modal-price-row .price-now{font-size:30px}
+
+/* ---- phone ---- */
+.m-hero{position:relative;height:392px;overflow:hidden;background:var(--acc2Ink);display:flex;align-items:flex-end}
+.m-hero>img,.m-hero>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.m-hero::before{content:'';position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(14,32,25,.12) 0%,rgba(14,32,25,.42) 44%,rgba(14,32,25,.95) 100%)}
+.m-hero-inner{position:relative;z-index:2;padding:0 20px 22px;width:100%;color:#fff}
+.m-hero-ey{font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin-bottom:11px}
+.m-hero-title{font-family:'Caprasimo',serif;font-size:32px;line-height:1.04;margin-bottom:10px}
+.m-hero-sub{font:500 13px/1.55 'Figtree',sans-serif;color:rgba(255,255,255,.82);margin-bottom:17px;max-width:30ch}
+.m-hero-cta{display:inline-block;background:var(--acc);color:#2e1a0a;font:800 13px/1 'Figtree',sans-serif;padding:14px 22px;border-radius:999px}
+.m-hero-dots{position:absolute;bottom:14px;inset-inline-end:18px;z-index:3;display:flex;gap:6px}
+.m-hero-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.45);border:0;padding:0}
+.m-hero-dot.active{width:18px;background:#fff}
+.m-trust{display:flex;background:var(--acc2Ink);color:rgba(255,255,255,.92)}
+.m-trust div{flex:1;padding:12px 8px;text-align:center;border-inline-end:1px solid rgba(255,255,255,.12)}
+.m-trust div:last-child{border:none}
+.m-trust b{display:block;font:700 10.5px/1.3 'Figtree',sans-serif;margin-bottom:3px}
+.m-trust span{font:500 9px/1.3 'Figtree',sans-serif;color:rgba(255,255,255,.62)}
+/* One product per row, with a 4:3 photo — three items stop reading as a half-empty shelf. */
+.m-grid.m-grid-wide{grid-template-columns:1fr;gap:16px}
+.m-grid-wide .m-card-img{aspect-ratio:4/3}
+.m-grid-wide .m-card-body{padding:14px 15px 16px;gap:7px}
+.m-grid-wide .m-card-name{font-size:15px;line-height:1.35}
+.m-grid-wide .m-card-price{align-items:center;justify-content:space-between}
+.m-grid-wide .m-price{font-size:20px}
+.m-card-add{background:var(--accInk);color:#fff;border:0;border-radius:999px;padding:11px 17px;font:700 12px/1 'Figtree',sans-serif;cursor:pointer;white-space:nowrap}
+/* Sticky buy bar on the phone product screen, so the price and the button are always reachable */
+/* Pinned above the tab bar. Its exact left/width/bottom are set by syncMobileBuybarOffset() from
+   the tab bar's own measured box — sticky can't do this job here, because .m-scr's scroll port
+   extends past the window that .m-tabbar is fixed to. */
+.m-buybar{position:fixed;left:0;right:0;bottom:60px;z-index:12;background:var(--card);
+  border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(20,17,14,.1);
+  padding:11px 20px;display:flex;gap:11px;align-items:center}
+.m-buybar .m-btn-primary{flex:1;padding:15px}
+.m-product-body{padding-bottom:96px} /* room for the pinned buy bar */
+
 /* ---------- MOTION PASS (site-wide animation additions) ---------- */
 :root{ --ease-out: cubic-bezier(.16,1,.3,1); --err:#B0402A; }
 
@@ -779,7 +869,7 @@ body.first-load .hero-actions{opacity:0;animation:riseIn .6s var(--ease-out) .4s
 @keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
 /* Billboard: fades in on first paint, and again each time the carousel swaps to a new slide */
-body.first-load .billboard,.billboard.bb-swap{animation:bbIn .7s var(--ease-out) both}
+body.first-load .hero-photo,.hero-photo.bb-swap{animation:bbIn .7s var(--ease-out) both}
 @keyframes bbIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:scale(1)}}
 
 /* Scroll reveal for homepage shelves */
@@ -2334,14 +2424,16 @@ function productCard(p){
         ${p.rating} (${p.reviews}) &nbsp;·&nbsp; `:''}<span class="${stockClass}">${stockLabel}</span>
       </div>
       <div class="prod-price-row">
-        <span class="price-now">${fmt(p.price)}</span>
-        ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span>`:''}
+        <span>
+          <span class="price-now">${fmt(p.price)}</span>
+          ${p.was>p.price?`<span class="price-was" style="margin-inline-start:7px">${fmt(p.was)}</span>`:''}
+        </span>
+        <button class="add-cart-btn ${justAdded?'added':''}" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})">
+          ${justAdded
+            ? `<svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${state.lang==='ar'?'تمت الإضافة':'Added'}`
+            : `<svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>${p.stock===0?t('outOfStock'):t('addCart')}`}
+        </button>
       </div>
-      <button class="add-cart-btn ${justAdded?'added':''}" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})">
-        ${justAdded
-          ? `<svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${state.lang==='ar'?'تمت الإضافة':'Added'}`
-          : `<svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>${p.stock===0?t('outOfStock'):t('addCart')}`}
-      </button>
     </div>
   </div>`;
 }
@@ -2410,31 +2502,28 @@ function renderHome(){
     : offers.length ? 'offers-sec'
     : PRODUCTS.length ? 'all-sec'
     : 'cats-sec';
+  /* Only categories that actually contain something. Ten tiles where nine open an empty page
+     advertise what the shop hasn't got, on the most valuable space it has. */
+  const liveCats = CATS.filter(c=>PRODUCTS.some(p=>productInCat(p, c.id)));
   return `
-  <section class="hero" id="hero-sec">
-    <div class="container hero-inner">
-      <div class="eyebrow">${state.lang==='ar'?'سوق لبنان الإلكتروني':'Lebanon\'s Online Souk'}</div>
-      <h1 class="font-display">${t('heroTitle')}</h1>
-      <p>${t('heroSub')}</p>
-      <div class="hero-actions">
-        <button class="btn btn-primary" onclick="document.getElementById('${shopTarget}').scrollIntoView({behavior:'smooth'})">${t('shopNow')}</button>
-        <button class="btn btn-outline" onclick="document.getElementById('cats-sec').scrollIntoView({behavior:'smooth'})">${t('explore')}</button>
-      </div>
-    </div>
-  </section>
-  <div class="zellige-divider"></div>
-  ${state.settings.billboardEnabled && state.settings.billboardSlides && state.settings.billboardSlides.length ? renderBillboard() : ''}
+  ${renderHeroPhoto(shopTarget)}
+  <div class="trust-strip">
+    <div><b>${state.lang==='ar'?'صور حقيقية للمنتج':'Real photos of the exact item'}</b><span>${state.lang==='ar'?'لا صور مأخوذة من الإنترنت':'No stock imagery, ever'}</span></div>
+    <div><b>${state.lang==='ar'?'نتأكد من الدفع قبل الشحن':'Payment verified before we ship'}</b><span>${state.lang==='ar'?'تحويل Wish، نراجعه يدويًا':'Wish transfer, checked by hand'}</span></div>
+    <div><b>${state.lang==='ar'?'توصيل لكل المحافظات':'Delivery to every governorate'}</b><span>${state.lang==='ar'?`رسوم ثابتة · مجاني فوق $${FREE_DELIVERY_MIN}`:`Flat fee · free over $${FREE_DELIVERY_MIN}`}</span></div>
+  </div>
 
+  ${liveCats.length>1?`
   <section id="cats-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('categories')}</h2></div></div>
     <div class="cat-grid">
-      ${CATS.map(c=>`
+      ${liveCats.map(c=>`
         <button class="cat-card" onclick="filterByCat('${c.id}')" style="border:1px solid var(--line)">
           <div class="cat-icon">${ICONS[c.icon]}</div>
           <span>${catName(c)}</span>
         </button>`).join('')}
     </div>
-  </section>
+  </section>`:''}
 
   ${shelf('featured-sec', `<div><h2 class="font-display">${t('featured')}</h2></div>`, 'featured', featured)}
 
@@ -2593,19 +2682,26 @@ function renderProductPage(){
             <span class="price-now">${fmt(p.price)}</span>
             ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span><span class="discount-tag">-${discount}%</span>`:''}
           </div>
-          <div class="${p.stock===0?'stock-out':(p.stock<=5?'stock-low':'stock-ok')}" style="font-size:13px;font-weight:700">
-            ${p.stock===0?t('outOfStock'):(p.stock<=5?`${t('lowStock')} · ${p.stock} ${state.lang==='ar'?'متبقي':'left'}`:t('inStock'))}
-          </div>
-          <div style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px">
-            <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
-            ${t('estDelivery')}: ${state.settings.deliveryMin}-${state.settings.deliveryMax} ${t('days')}
-          </div>
-          ${p.weight!=null?`
-          <div style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:6px">
-            <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4v1h1.5a1 1 0 0 1 .99.86l1.5 11A1 1 0 0 1 18 20H6a1 1 0 0 1-.99-1.14l1.5-11A1 1 0 0 1 7.5 7H9V6a4 4 0 0 1 4-4z" fill="none" stroke-width="1.6"/><path d="M8 7V6a4 4 0 0 1 8 0v1" fill="none" stroke-width="1.6"/></svg>
-            ${state.lang==='ar'?'الوزن التقريبي':'Estimated weight'}: ${p.weight} ${state.lang==='ar'?'كغ':'kg'}
-          </div>`:''}
           <p class="modal-desc">${pdesc(p)}</p>
+          <div class="spec-card">
+            <div class="row">
+              <span class="k"><svg viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>${t('estDelivery')}</span>
+              <span class="v">${state.settings.deliveryMin}–${state.settings.deliveryMax} ${t('days')}</span>
+            </div>
+            ${p.weight!=null?`
+            <div class="row">
+              <span class="k"><svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4v1h1.5a1 1 0 0 1 .99.86l1.5 11A1 1 0 0 1 18 20H6a1 1 0 0 1-.99-1.14l1.5-11A1 1 0 0 1 7.5 7H9V6a4 4 0 0 1 4-4z"/></svg>${state.lang==='ar'?'الوزن التقريبي':'Estimated weight'}</span>
+              <span class="v">${p.weight} ${state.lang==='ar'?'كغ':'kg'}</span>
+            </div>`:''}
+            <div class="row">
+              <span class="k"><svg viewBox="0 0 24 24"><path d="M6 7h12l-1.2 12H7.2z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>${state.lang==='ar'?'التوفر':'Availability'}</span>
+              <span class="v ${p.stock===0?'stock-out':(p.stock<=5?'stock-low':'stock-ok')}">${p.stock===0?t('outOfStock'):(p.stock<=5?`${t('lowStock')} · ${p.stock} ${state.lang==='ar'?'متبقي':'left'}`:t('inStock'))}</span>
+            </div>
+            <div class="row">
+              <span class="k"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>${state.lang==='ar'?'الدفع':'Payment'}</span>
+              <span class="v">${state.lang==='ar'?'Wish · نتحقق قبل الشحن':'Wish · verified before we ship'}</span>
+            </div>
+          </div>
           ${p.variants.length>1?`
           <div class="variant-block">
             <label>${state.lang==='ar'?'اللون':'Color'}: <b>${variant}</b></label>
@@ -4026,25 +4122,67 @@ function maybeShowPromo(){
   const btn = root.querySelector('.promo-close');
   if(btn) btn.focus();
 }
-function renderBillboard(){
-  const slides = state.settings.billboardSlides;
-  const i = state.billboardIndex % slides.length;
-  const s = slides[i];
+/* The hero and the billboard used to be two stacked blocks fighting for the top of the page —
+   a flat cedar panel of text, then a photo carousel underneath. They are now one photographic
+   hero: the admin's own billboard slide fills it when there is one (so campaign control is
+   unchanged, dots and all), and otherwise it falls back to the newest product's own photo so a
+   shop with no campaign set still leads with merchandise rather than a blank colour. */
+function heroMedia(){
+  const slides = (state.settings.billboardEnabled && state.settings.billboardSlides) || [];
+  const withMedia = slides.filter(s=>s && s.mediaUrl);
+  if(withMedia.length){
+    const s = slides[state.billboardIndex % slides.length];
+    if(s && s.mediaUrl) return { slide:s, slides, url:s.mediaUrl, isVideo:s.type==='video' };
+  }
+  const newest = [...PRODUCTS].sort((a,b)=>b.id-a.id).find(p=>productPhotos(p).length);
+  return { slide:null, slides:[], url: newest ? productPhotos(newest)[0] : '', isVideo:false };
+}
+/* A video slide paints nothing until enough of the file has arrived — on a phone connection that
+   is seconds of flat green where the shop window should be. This still sits behind it meanwhile. */
+function heroStill(){
+  const slides = (state.settings.billboardEnabled && state.settings.billboardSlides) || [];
+  const stillSlide = slides.find(s=>s && s.mediaUrl && s.type!=='video');
+  if(stillSlide) return stillSlide.mediaUrl;
+  const newest = [...PRODUCTS].sort((a,b)=>b.id-a.id).find(p=>productPhotos(p).length);
+  return newest ? productPhotos(newest)[0] : '';
+}
+function renderHeroPhoto(){
+  const isAr = state.lang==='ar';
+  const m = heroMedia();
+  const s = m.slide;
+  const shopTarget = PRODUCTS.some(p=>p.featured) ? 'featured-sec'
+    : PRODUCTS.some(p=>p.best) ? 'best-sec'
+    : PRODUCTS.some(p=>p.new) ? 'new-sec'
+    : PRODUCTS.some(p=>p.was>p.price) ? 'offers-sec'
+    : PRODUCTS.length ? 'all-sec' : 'cats-sec';
+  const scrollTo = `document.getElementById('${shopTarget}')&&document.getElementById('${shopTarget}').scrollIntoView({behavior:'smooth'})`;
+  const title = (s && s.title) ? s.title : t('heroTitle');
+  const sub = (s && s.subtitle) ? s.subtitle : t('heroSub');
+  const hasLink = s && s.linkType && s.linkType!=='none' && s.linkValue;
+  const primary = hasLink
+    ? `<button class="btn btn-primary" onclick="${s.linkType==='category'?`filterByCat('${s.linkValue}')`:`window.open('${s.linkValue}','_blank')`}">${s.buttonLabel || t('shopNow')} →</button>`
+    : `<button class="btn btn-primary" onclick="${scrollTo}">${t('shopNow')} →</button>`;
+  const still = m.isVideo ? heroStill() : '';
   return `
-  <section class="billboard-full" id="billboard-full-sec">
-    <div class="billboard" ${s.type!=='video' && s.mediaUrl?`style="background-image:url('${s.mediaUrl}')"`:''}>
-      ${s.type==='video' && s.mediaUrl?`<video class="billboard-video" src="${s.mediaUrl}" autoplay muted loop playsinline></video>`:''}
-      <div class="billboard-inner">
-        ${s.title?`<h2 class="font-display">${s.title}</h2>`:''}
-        ${s.subtitle?`<p>${s.subtitle}</p>`:''}
-        ${s.linkType && s.linkType!=='none' && s.linkValue?`
-        <button class="btn btn-primary" onclick="${s.linkType==='category'?`filterByCat('${s.linkValue}')`:`window.open('${s.linkValue}','_blank')`}">${s.buttonLabel || (state.lang==='ar'?'تسوق الآن':'Shop now')}</button>`:''}
+  <section class="hero-photo" id="hero-sec" ${still?`style="background-image:url('${still}')"`:''}>
+    ${m.url?`<div class="hero-photo-media">${m.isVideo
+      ? `<video src="${m.url}" autoplay muted loop playsinline preload="metadata"></video>`
+      : `<img src="${m.url}" alt="">`}</div>`:''}
+    <div class="container">
+      <div class="hero-inner">
+        <div class="eyebrow">${isAr?'سوق لبنان الإلكتروني':'Lebanon\'s Online Souk'}</div>
+        <h1 class="font-display">${title}</h1>
+        <p>${sub}</p>
+        <div class="hero-actions">
+          ${primary}
+          <button class="btn btn-outline" onclick="${scrollTo}">${t('explore')}</button>
+        </div>
       </div>
-      ${slides.length>1?`
-      <div class="billboard-dots">
-        ${slides.map((_,idx)=>`<button class="billboard-dot ${idx===i?'active':''}" onclick="goBillboardSlide(${idx})"></button>`).join('')}
-      </div>`:''}
     </div>
+    ${m.slides.length>1?`
+    <div class="billboard-dots hero-dots">
+      ${m.slides.map((_,idx)=>`<button class="billboard-dot ${idx===(state.billboardIndex % m.slides.length)?'active':''}" onclick="goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
+    </div>`:''}
   </section>`;
 }
 function setAdminView(v){
@@ -5087,8 +5225,11 @@ function mCard(p){
     </div>
     <div class="m-card-body">
       <div class="m-card-name">${p.name_en}</div>
-      <div class="m-card-meta">${p.reviews>0?`★ ${p.rating.toFixed(1)} · ${p.reviews} reviews`:'No reviews yet'}</div>
-      <div class="m-card-price"><span class="m-price m-mono">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono">${fmt(p.was)}</span>`:''}</div>
+      <div class="m-card-meta">${p.reviews>0?`★ ${p.rating.toFixed(1)} · ${p.reviews} reviews`:(p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock'))}</div>
+      <div class="m-card-price">
+        <span><span class="m-price m-mono">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono" style="margin-inline-start:6px">${fmt(p.was)}</span>`:''}</span>
+        <button class="m-card-add" ${p.stock===0?'disabled style="opacity:.45"':''} onclick="event.stopPropagation();quickAdd(${p.id})">${state.justAddedId===p.id?'✓ Added':'Add'}</button>
+      </div>
     </div>
   </div>`;
 }
@@ -5126,11 +5267,14 @@ function mHome(){
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
   const deal = featured[0];
-  const bbSlides = state.settings.billboardSlides || [];
-  const bbShow = state.settings.billboardEnabled && bbSlides.length>0;
-  const bbSlide = bbShow ? bbSlides[state.billboardIndex % bbSlides.length] : null;
-  const bbHasLink = bbSlide && bbSlide.linkType && bbSlide.linkType!=='none' && !!bbSlide.linkValue;
-  const bbClick = bbHasLink ? (bbSlide.linkType==='category' ? `mFilterByCat('${bbSlide.linkValue}')` : `window.open('${bbSlide.linkValue}','_blank')`) : '';
+  /* Same photographic hero as desktop, from the same source (admin billboard slide, else the
+     newest product's own photo) — the phone used to open on a 150px letterbox strip. */
+  const hero = heroMedia();
+  const heroSlide = hero.slide;
+  const bbHasLink = heroSlide && heroSlide.linkType && heroSlide.linkType!=='none' && !!heroSlide.linkValue;
+  const bbClick = bbHasLink ? (heroSlide.linkType==='category' ? `mFilterByCat('${heroSlide.linkValue}')` : `window.open('${heroSlide.linkValue}','_blank')`) : '';
+  /* Only categories that actually have something in them (see renderHome). */
+  const liveCats = CATS.filter(c=>PRODUCTS.some(p=>productInCat(p, c.id)));
   return `
   <div style="animation:fadeIn .3s ease">
     <div class="m-header" id="m-header-sec">
@@ -5141,14 +5285,26 @@ function mHome(){
       </div>
       ${mThemeToggleBtn()}
     </div>
-    ${bbShow ? `
-    <div class="m-billboard ${bbHasLink?'m-billboard-clickable':''}" id="m-billboard-sec" ${bbHasLink?`onclick="${bbClick}"`:''} ${bbSlide.type!=='video' && bbSlide.mediaUrl?`style="background-image:url('${bbSlide.mediaUrl}')"`:''}>
-      ${bbSlide.type==='video' && bbSlide.mediaUrl?`<video class="billboard-video" src="${bbSlide.mediaUrl}" autoplay muted loop playsinline></video>`:''}
-      <div class="m-billboard-inner">
-        ${bbSlide.title?`<div class="m-billboard-title">${bbSlide.title}</div>`:''}
-        ${bbSlide.subtitle?`<div class="m-billboard-sub">${bbSlide.subtitle}</div>`:''}
-        ${bbHasLink?`<div class="m-billboard-cta">${bbSlide.buttonLabel || 'Shop now'}</div>`:''}
+    ${hero.url ? `
+    <div class="m-hero" id="m-billboard-sec" ${hero.isVideo && heroStill()?`style="background-image:url('${heroStill()}');background-size:cover;background-position:center"`:''}>
+      ${hero.isVideo
+        ? `<video src="${hero.url}" autoplay muted loop playsinline preload="metadata"></video>`
+        : `<img src="${hero.url}" alt="">`}
+      <div class="m-hero-inner">
+        <div class="m-hero-ey">${heroSlide && heroSlide.title ? 'Featured' : 'New in'}</div>
+        <div class="m-hero-title">${heroSlide && heroSlide.title ? heroSlide.title : 'Everything,<br>with love.'}</div>
+        <div class="m-hero-sub">${heroSlide && heroSlide.subtitle ? heroSlide.subtitle : `Chosen by hand, delivered anywhere in Lebanon in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days.`}</div>
+        <button class="m-hero-cta" onclick="${bbHasLink ? bbClick : 'mGoShopAll()'}">${heroSlide && heroSlide.buttonLabel ? heroSlide.buttonLabel : 'Shop the edit'} →</button>
       </div>
+      ${hero.slides.length>1?`
+      <div class="m-hero-dots">
+        ${hero.slides.map((_,idx)=>`<button class="m-hero-dot ${idx===(state.billboardIndex % hero.slides.length)?'active':''}" onclick="event.stopPropagation();goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
+      </div>`:''}
+    </div>
+    <div class="m-trust">
+      <div><b>Real photos</b><span>Of the exact item</span></div>
+      <div><b>Verified pay</b><span>Before we ship</span></div>
+      <div><b>All Lebanon</b><span>Flat fee by area</span></div>
     </div>` : ''}
     <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${deal ? `
@@ -5166,13 +5322,14 @@ function mHome(){
         </div>
       </div>
     </div>` : ''}
+    ${liveCats.length>1?`
     <div class="m-rail">
-      ${CATS.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
-    </div>
+      ${liveCats.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
+    </div>`:''}
     ${featured.length ? `
     <div class="m-reveal" id="m-picked-sec">
       <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
-      <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>
+      <div class="m-grid m-grid-wide">${featured.slice(0,6).map(mCard).join('')}</div>
     </div>` : ''}
     ${best.length ? `
     <div class="m-reveal" id="m-best-sec" style="padding:0 0 22px">
@@ -5182,7 +5339,7 @@ function mHome(){
     ${news.length ? `
     <div class="m-reveal" id="m-new-sec" style="padding:0 0 22px">
       <div class="m-section-head"><div><div class="m-section-kicker">Just landed</div><div class="m-section-title">New arrivals</div></div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
-      <div class="m-rail" style="padding:6px 20px 4px">${news.slice(0,5).map(mRailCard).join('')}</div>
+      <div class="m-grid m-grid-wide">${news.slice(0,6).map(mCard).join('')}</div>
     </div>` : ''}
   </div>`;
 }
@@ -5265,10 +5422,6 @@ function mProduct(){
              low-stock nudge on the layout most customers actually use. -->
         <div class="m-spec-row"><span style="color:var(--muted)">Availability</span><span style="font-weight:600;color:${p.stock===0?'#C0392B':(p.stock<=5?'#B8891F':'var(--text)')}">${p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock')}</span></div>
       </div>
-      <div style="display:flex;gap:11px;align-items:center">
-        <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono m-qty-val ${state.mQtyBump?'bump':''}" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
-        <button class="m-btn-primary" style="flex:1" ${p.stock===0?'disabled':''} onclick="mAddToCartFlow()">${p.stock===0?'Out of stock':'Add to cart'}</button>
-      </div>
       ${(()=>{ const prodReviews = REVIEWS.filter(r=>r.prod===p.id); return prodReviews.length>0?`
       <div class="m-section-kicker" style="margin:22px 0 10px">Reviews</div>
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -5281,6 +5434,12 @@ function mProduct(){
           <p style="font:400 13px/1.5 'Figtree',sans-serif;color:var(--muted)">${r.en}</p>
         </div>`).join('')}
       </div>`:''; })()}
+      <!-- Sticky at the foot of the screen: on a phone the price and the buy button should never
+           be more than a thumb away, however far down the description someone has read. -->
+      <div class="m-buybar">
+        <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono m-qty-val ${state.mQtyBump?'bump':''}" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
+        <button class="m-btn-primary" ${p.stock===0?'disabled':''} onclick="mAddToCartFlow()">${p.stock===0?'Out of stock':`Add to cart · ${fmt(p.price*(state.mQty||1))}`}</button>
+      </div>
     </div>
   </div>`;
 }
@@ -5680,6 +5839,7 @@ function render(){
     updateMobileHeaderFade();
     restoreGalleryScroll('pg-mobile');
     initMobileScrollReveal();
+    syncMobileBuybarOffset();
     state.qtyBumpLine = null;
     state.mQtyBump = false;
     return;
@@ -5703,7 +5863,6 @@ function render(){
 
   document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
   document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
-  updateHeroFade();
   updateHeaderShrink();
   markFirstHomePaint();
   initScrollReveal();
@@ -5781,23 +5940,27 @@ function initMobileScrollReveal(){
     _mRevealObserver.observe(el);
   });
 }
-/* Tightens the sticky header once the page is scrolled at all — same direct-DOM-patch approach
-   as updateHeroFade() below, so a scroll never triggers a re-render. */
+/* Tightens the sticky header once the page is scrolled at all — a direct DOM patch, so a scroll
+   never triggers a re-render. (The old updateHeroFade(), which faded the flat cedar hero out on
+   scroll and collapsed its height to avoid leaving a dead zone, is gone: the hero is now a
+   photograph worth keeping on screen, and fading a photo out on the first scroll looked broken.) */
 function updateHeaderShrink(){
   const h = document.getElementById('siteHeader');
   if(!h) return;
   h.classList.toggle('shrink', window.scrollY > 40);
 }
-function updateHeroFade(){
-  const hero = document.getElementById('hero-sec');
-  if(!hero) return;
-  const h = hero.offsetHeight || 400;
-  const p = Math.min(1, window.scrollY / h);
-  hero.style.opacity = String(1 - p);
-  hero.style.transform = `translateY(${p*40}px)`;
-  /* Collapse the hero's own box in sync with the fade, or the invisible-but-still-full-height
-     section leaves a blank gap to scroll through before the next section appears. */
-  hero.style.marginBottom = `${-h*p}px`;
+/* Lines the pinned buy bar up with the tab bar above which it sits. Measured rather than assumed:
+   the tab bar's height depends on the device's safe-area inset, and the phone shell is centred
+   with its own max-width on wide screens, so the bar has to match its box exactly. */
+function syncMobileBuybarOffset(){
+  const bar = document.querySelector('.m-buybar');
+  const tabbar = document.querySelector('.m-tabbar');
+  if(!bar || !tabbar) return;
+  const tb = tabbar.getBoundingClientRect();
+  bar.style.left = tb.left + 'px';
+  bar.style.right = 'auto';
+  bar.style.width = tb.width + 'px';
+  bar.style.bottom = Math.max(0, Math.round(window.innerHeight - tb.top)) + 'px';
 }
 function updateMobileHeaderFade(){
   const header = document.getElementById('m-header-sec');
@@ -5890,7 +6053,6 @@ window.addEventListener('resize', ()=>{
     if(state.currentUserId) render();
   }, 150);
 });
-window.addEventListener('scroll', updateHeroFade, {passive:true});
 window.addEventListener('scroll', updateHeaderShrink, {passive:true});
 let _billboardTimer = setInterval(()=>{
   if(!state.currentUserId) return; // billboard only shows once logged in — otherwise this fires on the login screen and closes the keyboard mid-type
@@ -5910,10 +6072,10 @@ let _billboardTimer = setInterval(()=>{
        it — patch just the billboard's own subtree instead of calling render(), which would
        rebuild the whole page (header included) every 5s and steal focus from the search bar
        or any other field on the home page even though neither has anything to do with it. */
-    const el = document.getElementById('billboard-full-sec');
+    const el = document.getElementById('hero-sec');
     if(el){
-      el.outerHTML = renderBillboard();
-      const swapped = document.querySelector('#billboard-full-sec .billboard');
+      el.outerHTML = renderHeroPhoto();
+      const swapped = document.getElementById('hero-sec');
       if(swapped) swapped.classList.add('bb-swap'); // fade the new slide in rather than hard-cutting
     }
   }
