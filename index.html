@@ -829,6 +829,42 @@ body.first-load .billboard,.billboard.bb-swap{animation:bbIn .7s var(--ease-out)
 .co-step.done .dot{background:#2E8B57;color:#fff}
 .co-step-sep{flex:0 0 28px;height:1.5px;background:var(--line)}
 
+/* ---- Phone UI ----
+   A phone has no hover, so press feedback is what tells someone a tile is interactive: every
+   tappable surface shrinks slightly while held. Kept to a 0.97 scale so it reads as "pressed"
+   rather than as the card moving. */
+.m-card,.m-rail-card,.m-list-item,.m-feature,.m-chip,.m-cat-chip,.m-gov-chip,.m-variant-chip,
+.m-color-swatch,.m-btn-primary,.m-btn-outline,.m-search,.m-seeall,.m-qty button,.m-iconbtn{
+  transition:transform .16s var(--ease-out), border-color .2s ease, background .2s ease;
+}
+.m-card:active,.m-rail-card:active,.m-list-item:active,.m-feature:active,.m-search:active{transform:scale(.975)}
+.m-chip:active,.m-cat-chip:active,.m-gov-chip:active,.m-variant-chip:active,.m-seeall:active,
+.m-btn-primary:active,.m-btn-outline:active,.m-qty button:active,.m-iconbtn:active{transform:scale(.93)}
+.m-btn-primary:disabled:active{transform:none}
+
+/* Phone home: rails and shelves rise in as they scroll into the phone's own scroll container */
+.m-reveal{opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease-out), transform .5s var(--ease-out)}
+.m-reveal.in{opacity:1;transform:translateY(0)}
+
+/* Phone basket: a line being removed slides out and collapses, same as the desktop drawer */
+.m-cart-line{transition:opacity .3s var(--ease-out), transform .3s var(--ease-out), max-height .3s var(--ease-out), padding .3s var(--ease-out), margin .3s var(--ease-out);max-height:180px;overflow:hidden}
+.m-cart-line.removing{opacity:0;transform:translateX(24px);max-height:0;padding-top:0;padding-bottom:0;margin:0;border-color:transparent}
+
+/* Quantity: the number bumps so a tap registers before you've read the new value */
+.m-qty-val.bump,.qty-val.bump{animation:qtyBump .3s var(--ease-out)}
+@keyframes qtyBump{0%,100%{transform:scale(1)}45%{transform:scale(1.35)}}
+
+/* Phone checkout: same per-field error treatment as desktop, on the pill-shaped inputs */
+.m-input{transition:border-color .2s ease, box-shadow .2s ease}
+.m-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(196,151,42,.18)}
+.m-input.field-error{border-color:var(--err);animation:fieldShake .35s}
+.m-field-err{display:block;font:600 11.5px/1.3 'Figtree',sans-serif;color:var(--err);margin:-4px 0 0 18px}
+.m-gov-wrap.field-error .m-gov-chip{border-color:var(--err)}
+
+/* Phone tab bar: the active tab's icon lifts slightly instead of only changing colour */
+.m-tab svg{transition:transform .2s var(--ease-out)}
+.m-tab.active svg{transform:translateY(-2px) scale(1.06)}
+
 /* Checkout: Place Order shows it's actually working */
 .ship-ack-btn.loading{opacity:.8;pointer-events:none}
 .ship-ack-btn.loading::after{content:'';display:inline-block;width:13px;height:13px;margin-inline-start:8px;border-radius:50%;border:2px solid rgba(34,22,4,.35);border-top-color:#221604;vertical-align:middle;animation:spin .7s linear infinite}
@@ -836,11 +872,15 @@ body.first-load .billboard,.billboard.bb-swap{animation:bbIn .7s var(--ease-out)
 
 @media (prefers-reduced-motion:reduce){
   .promo-backdrop,.promo-card{animation:none}
-  .hero .eyebrow,.hero h1,.hero p,.hero-actions,.billboard,.reveal,.opt-swatch.active,.cart-count.bump,
+  .hero .eyebrow,.hero h1,.hero p,.hero-actions,.billboard,.reveal,.opt-swatch.active,.m-color-swatch.active,
+  .cart-count.bump,.m-qty-val.bump,.qty-val.bump,.m-reveal,.m-input.field-error,
   .add-cart-btn.added::after,.ship-ack-btn.loading::after{animation:none !important}
-  .reveal{opacity:1;transform:none}
+  .reveal,.m-reveal{opacity:1;transform:none}
   .hero .eyebrow,.hero h1,.hero p,.hero-actions{opacity:1;transform:none}
-  .prod-card,.cart-line,.form-field input,.form-field select,.form-field textarea,header.site .topbar{transition:none}
+  .prod-card,.cart-line,.m-cart-line,.form-field input,.form-field select,.form-field textarea,
+  header.site .topbar,.m-card,.m-rail-card,.m-list-item,.m-feature,.m-btn-primary,.m-tab svg{transition:none}
+  .m-card:active,.m-rail-card:active,.m-list-item:active,.m-feature:active,.m-search:active,
+  .m-chip:active,.m-cat-chip:active,.m-gov-chip:active,.m-variant-chip:active,.m-btn-primary:active{transform:none}
 }
 </style>
 </head>
@@ -1145,6 +1185,8 @@ let state = {
   modalSize: null,          // chosen size, when the product has any (never auto-filled)
   justAddedId: null,        // product id whose add-to-cart button is mid-confirmation animation
   checkoutErrors: {},       // required-field names left empty on the last checkout attempt
+  qtyBumpLine: null,        // cart line index whose quantity just changed (one-shot bump)
+  mQtyBump: false,          // same, for the phone product screen's own quantity stepper
   chatOpen: false,
   chatLog: [],
   chatConversation: null, // {id, status, updated_at} for the current customer's support conversation
@@ -1645,7 +1687,7 @@ function removeCartLine(i){
   /* Let the line slide out and collapse before the state change rebuilds the drawer — an
      instant vanish reads as a glitch rather than as a confirmation. Direct DOM patch only,
      no render() until the animation is done. */
-  const line = document.querySelector('.cart-line[data-line="'+i+'"]');
+  const line = document.querySelector('.cart-line[data-line="'+i+'"], .m-cart-line[data-line="'+i+'"]');
   if(!line){ drop(); return; }
   line.classList.add('removing');
   setTimeout(drop, 300);
@@ -1655,7 +1697,7 @@ function changeCartQty(i, delta){
   if(!line) return;
   line.qty += delta;
   if(line.qty<=0) removeCartLine(i);
-  else { syncCustomerCart(); render(); }
+  else { state.qtyBumpLine = i; syncCustomerCart(); render(); }
 }
 function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
 function cartSubtotal(){
@@ -2666,7 +2708,7 @@ function renderDrawer(){
               <div class="variant">${optionLabel(l)}</div>
               <div class="qty-row">
                 <button class="qty-btn" onclick="changeCartQty(${i},-1)">−</button>
-                <span class="qty-val">${l.qty}</span>
+                <span class="qty-val ${state.qtyBumpLine===i?'bump':''}">${l.qty}</span>
                 <button class="qty-btn" onclick="changeCartQty(${i},1)">+</button>
                 <button class="remove-btn" onclick="removeCartLine(${i})">${t('remove')}</button>
               </div>
@@ -2694,11 +2736,15 @@ function updateForm(field, val, el){
      this form deliberately doesn't re-render on keystroke, which is what keeps focus stable. */
   if(el && state.checkoutErrors && state.checkoutErrors[field] && String(val).trim()){
     delete state.checkoutErrors[field];
-    const wrap = el.closest('.form-field');
+    const wrap = el.closest('.form-field'); // desktop: error state lives on the wrapper
     if(wrap){
       wrap.classList.remove('field-error');
       const msg = wrap.querySelector('.field-err-msg');
       if(msg) msg.remove();
+    } else if(el.classList.contains('m-input')){ // phone: it lives on the pill input itself
+      el.classList.remove('field-error');
+      const msg = el.nextElementSibling;
+      if(msg && msg.classList.contains('m-field-err')) msg.remove();
     }
   }
 }
@@ -4978,8 +5024,8 @@ function mOpenProduct(id){
 }
 function mPickVariant(v, i){ state.modalVariant = v; if(i!=null) state.galleryIndex = i; render(); }
 function pickSize(s){ state.modalSize = s; render(); }
-function mIncQty(){ state.mQty = (state.mQty||1) + 1; render(); }
-function mDecQty(){ state.mQty = Math.max(1, (state.mQty||1) - 1); render(); }
+function mIncQty(){ state.mQty = (state.mQty||1) + 1; state.mQtyBump = true; render(); }
+function mDecQty(){ state.mQty = Math.max(1, (state.mQty||1) - 1); state.mQtyBump = true; render(); }
 function mAddToCartFlow(){
   const p = findProduct(state.productId);
   if(!p) return;
@@ -4998,9 +5044,21 @@ function mClearFilter(){ state.listFilter = null; render(); }
 function mPlaceOrder(){
   const f = state.formData;
   if(!f.fullName || !f.phone || !state.selectedGov || !f.address){
+    /* Mark which fields are missing rather than only toasting — the phone form is a stack of
+       identical pills, so "something is missing" is the least helpful thing to say. */
+    const errs = {};
+    if(!f.fullName) errs.fullName = true;
+    if(!f.phone) errs.phone = true;
+    if(!f.address) errs.address = true;
+    if(!state.selectedGov) errs.gov = true;
+    state.checkoutErrors = errs;
     showToast('Please fill in the required fields');
+    render();
+    const firstBad = document.querySelector('.m-input.field-error');
+    if(firstBad){ firstBad.scrollIntoView({behavior:'smooth', block:'center'}); firstBad.focus({preventScroll:true}); }
     return;
   }
+  state.checkoutErrors = {};
   f.city = f.city || state.selectedGov; // mobile checkout has one address field, not a separate city field
   openShippingModal();
 }
@@ -5094,7 +5152,7 @@ function mHome(){
     </div>` : ''}
     <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${deal ? `
-    <div class="m-feature" onclick="mOpenProduct(${deal.id})">
+    <div class="m-feature m-reveal" id="m-deal-sec" onclick="mOpenProduct(${deal.id})">
       <div class="m-feature-img" style="background:${PALETTE[deal.color % PALETTE.length]}">
         <svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[deal.icon]||''}"></path></svg>
         <div class="m-feature-badge">Deal of the week</div>
@@ -5112,15 +5170,17 @@ function mHome(){
       ${CATS.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
     </div>
     ${featured.length ? `
-    <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
-    <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>` : ''}
+    <div class="m-reveal" id="m-picked-sec">
+      <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
+      <div class="m-grid">${featured.slice(0,6).map(mCard).join('')}</div>
+    </div>` : ''}
     ${best.length ? `
-    <div style="padding:0 0 22px">
+    <div class="m-reveal" id="m-best-sec" style="padding:0 0 22px">
       <div class="m-section-head"><div><div class="m-section-kicker">Bought again and again</div><div class="m-section-title">Best sellers</div></div><button class="m-seeall" onclick="mFilterByFlag('best')">See all</button></div>
       <div class="m-rail" style="padding:6px 20px 4px">${best.slice(0,5).map(mRailCard).join('')}</div>
     </div>` : ''}
     ${news.length ? `
-    <div style="padding:0 0 22px">
+    <div class="m-reveal" id="m-new-sec" style="padding:0 0 22px">
       <div class="m-section-head"><div><div class="m-section-kicker">Just landed</div><div class="m-section-title">New arrivals</div></div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
       <div class="m-rail" style="padding:6px 20px 4px">${news.slice(0,5).map(mRailCard).join('')}</div>
     </div>` : ''}
@@ -5206,7 +5266,7 @@ function mProduct(){
         <div class="m-spec-row"><span style="color:var(--muted)">Availability</span><span style="font-weight:600;color:${p.stock===0?'#C0392B':(p.stock<=5?'#B8891F':'var(--text)')}">${p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock')}</span></div>
       </div>
       <div style="display:flex;gap:11px;align-items:center">
-        <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
+        <div class="m-qty"><button onclick="mDecQty()">−</button><span class="m-mono m-qty-val ${state.mQtyBump?'bump':''}" style="min-width:30px;text-align:center;font-weight:600">${state.mQty}</span><button onclick="mIncQty()">+</button></div>
         <button class="m-btn-primary" style="flex:1" ${p.stock===0?'disabled':''} onclick="mAddToCartFlow()">${p.stock===0?'Out of stock':'Add to cart'}</button>
       </div>
       ${(()=>{ const prodReviews = REVIEWS.filter(r=>r.prod===p.id); return prodReviews.length>0?`
@@ -5230,14 +5290,14 @@ function mCart(){
     if(!p) return '';
     const color = PALETTE[p.color % PALETTE.length];
     return `
-    <div class="m-cart-line">
+    <div class="m-cart-line" data-line="${i}">
       <div class="m-cart-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
       <div style="flex:1;min-width:0">
         <div class="m-card-name">${p.name_en}</div>
         <div class="m-card-meta" style="margin-bottom:8px">${optionLabel(l)}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="changeCartQty(${i},-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
-          <span class="m-mono" style="font-weight:600;font-size:13px;min-width:14px;text-align:center">${l.qty}</span>
+          <span class="m-mono m-qty-val ${state.qtyBumpLine===i?'bump':''}" style="font-weight:600;font-size:13px;min-width:14px;text-align:center">${l.qty}</span>
           <button onclick="changeCartQty(${i},1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">+</button>
           <span class="m-mono" style="margin-left:auto;font-weight:600;color:var(--accInk)">${fmt(p.price*l.qty)}</span>
         </div>
@@ -5266,6 +5326,7 @@ function mCart(){
 }
 function mCheckout(){
   const f = state.formData;
+  const mErr = state.checkoutErrors || {};
   const sub = cartSubtotal(), fee = deliveryFee();
   const canPlace = !!(f.fullName && f.phone && state.selectedGov && f.address);
   return `
@@ -5274,14 +5335,18 @@ function mCheckout(){
     <div class="m-steps"><div class="m-step-bar on"></div><div class="m-step-bar on"></div><div class="m-step-bar"></div></div>
     <div class="m-section-kicker" style="margin-bottom:10px">Where should it land?</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
-      <input class="m-input" value="${f.fullName||''}" oninput="updateForm('fullName',this.value)" placeholder="Full name">
-      <input class="m-input" value="${f.phone||''}" oninput="updateForm('phone',this.value)" placeholder="Phone number">
-      <input class="m-input" value="${f.address||''}" oninput="updateForm('address',this.value)" placeholder="Street, building, floor">
+      <input class="m-input ${mErr.fullName?'field-error':''}" value="${f.fullName||''}" oninput="updateForm('fullName',this.value,this)" placeholder="Full name">
+      ${mErr.fullName?`<span class="m-field-err">Enter your full name</span>`:''}
+      <input class="m-input ${mErr.phone?'field-error':''}" value="${f.phone||''}" oninput="updateForm('phone',this.value,this)" placeholder="Phone number">
+      ${mErr.phone?`<span class="m-field-err">Enter a phone number we can reach you on</span>`:''}
+      <input class="m-input ${mErr.address?'field-error':''}" value="${f.address||''}" oninput="updateForm('address',this.value,this)" placeholder="Street, building, floor">
+      ${mErr.address?`<span class="m-field-err">Enter where we should deliver</span>`:''}
     </div>
     <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Governorate</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    <div class="m-gov-wrap ${mErr.gov?'field-error':''}" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:${mErr.gov?'6px':'20px'}">
       ${Object.entries(GOV_FEES.en).map(([g,fe])=>`<button class="m-gov-chip ${state.selectedGov===g?'active':''}" onclick="selectGov('${g}')">${g} · $${fe}</button>`).join('')}
     </div>
+    ${mErr.gov?`<span class="m-field-err" style="margin:0 0 16px 4px">Pick your governorate so we can work out delivery</span>`:''}
     <div class="m-cod">
       <div class="m-cod-icon"><svg viewBox="0 0 24 24"><path d="M3 7h18v10H3zM3 11h18M7 15h3"></path></svg></div>
       <div><div style="font:700 13.5px/1.3 'Figtree',sans-serif">Wish Transfer</div><div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted)">You'll get the account details right after placing your order</div></div>
@@ -5293,7 +5358,7 @@ function mCheckout(){
     </div>
     ${canPlace
       ? `<button class="m-btn-primary" style="width:100%;margin-top:16px" onclick="mPlaceOrder()">Place order · ${fmt(cartTotal())}</button>`
-      : `<div style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Caprasimo',serif;font-size:15px;text-align:center">Add name, phone &amp; governorate</div>`}
+      : `<button class="m-btn-outline" style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Caprasimo',serif;font-size:15px;text-align:center" onclick="mPlaceOrder()">Add name, phone &amp; governorate</button>`}
   </div>`;
 }
 function mPaymentInstructions(){
@@ -5614,6 +5679,9 @@ function render(){
     if(!window._mHeaderFadeBound){ window.addEventListener('scroll', updateMobileHeaderFade, {passive:true}); window._mHeaderFadeBound = true; }
     updateMobileHeaderFade();
     restoreGalleryScroll('pg-mobile');
+    initMobileScrollReveal();
+    state.qtyBumpLine = null;
+    state.mQtyBump = false;
     return;
   }
 
@@ -5640,6 +5708,10 @@ function render(){
   markFirstHomePaint();
   initScrollReveal();
   restoreGalleryScroll('pg-desktop');
+  /* One-shot bumps: the class is already on the freshly built DOM, so clearing the flags here
+     means the animation plays exactly once and never replays on an unrelated render. */
+  state.qtyBumpLine = null;
+  state.mQtyBump = false;
 }
 /* The hero/billboard entrance only plays the first time the shop itself appears — not on the
    login screen before it, and not again on every later re-render of the same page. */
@@ -5677,6 +5749,36 @@ function initScrollReveal(){
       return;
     }
     _revealObserver.observe(el);
+  });
+  initMobileScrollReveal();
+}
+/* The phone layout scrolls inside .m-scr rather than the window, so its sections need an observer
+   rooted on that container — and since render() rebuilds that container, the observer is recreated
+   whenever the root element changes identity. */
+let _mRevealObserver = null;
+let _mRevealRoot = null;
+function initMobileScrollReveal(){
+  if(!('IntersectionObserver' in window)) return;
+  const scr = document.querySelector('.mstore .m-scr');
+  if(!scr) return;
+  if(_mRevealRoot !== scr){
+    _mRevealRoot = scr;
+    _mRevealObserver = new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        if(!en.isIntersecting) return;
+        en.target.classList.add('in');
+        if(en.target.id) _revealedSections.add(en.target.id);
+        _mRevealObserver.unobserve(en.target);
+      });
+    }, {root: scr, threshold:.1});
+  }
+  scr.querySelectorAll('.m-reveal:not(.in)').forEach(el=>{
+    if(el.id && _revealedSections.has(el.id)){
+      el.style.transition = 'none';
+      el.classList.add('in');
+      return;
+    }
+    _mRevealObserver.observe(el);
   });
 }
 /* Tightens the sticky header once the page is scrolled at all — same direct-DOM-patch approach
