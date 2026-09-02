@@ -724,7 +724,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-policy .policy-table th,.m-policy .policy-table td{border-bottom:1px solid var(--line);padding:8px 4px;text-align:start}
 .m-policy .policy-meta{color:var(--muted);opacity:.75}
 
-/* ---- Promo popup (home page, once per visitor, closable immediately) ----
+/* ---- Promo popup (home page, once per page load, closable immediately) ----
    Deliberately a compact centred card rather than a full-screen interstitial, and the close
    button is active from the moment it appears — a forced wait is the pattern shoppers associate
    with scam sites, which is the last thing a store taking payment up front should imitate.
@@ -3538,9 +3538,9 @@ async function handlePromoUpload(event){
     showToast(state.lang==='ar' ? 'تعذر رفع الملف' : 'Could not upload the file');
   }
 }
-/* Lets the admin re-check their own popup without clearing site data by hand. */
+/* Lets the admin re-check their own popup at any time, even after closing it this load. */
 function previewPromo(){
-  try{ localStorage.removeItem(promoDismissKey()); }catch(e){}
+  _promoShownThisLoad = false;
   const root = document.getElementById('promo-root');
   if(root) root.innerHTML = '';
   const p = state.settings.promo;
@@ -3696,22 +3696,15 @@ async function handleBillboardSlideUpload(event, idx){
   }
 }
 /* ============ PROMO POPUP ============
-   A small centred card on the home page carrying an image or a short video. It is shown at most
-   once per visitor per promo: the dismissal is remembered against the promo's own media URL, so
-   swapping in a new video shows it again to everyone instead of staying hidden forever. Lives in
-   #promo-root (outside #app) and is written with direct DOM calls rather than through render(),
-   because render() rebuilds #app on every state change — including from background timers — which
-   would restart the video from frame one every few seconds. */
-function promoDismissKey(){
-  const p = state.settings.promo || {};
-  return 'habibi-promo-seen:' + (p.mediaUrl || '');
-}
-function promoAlreadySeen(){
-  try{ return localStorage.getItem(promoDismissKey()) === '1'; }
-  catch(e){ return false; } // private mode / blocked storage: show it, just don't remember
-}
+   A small centred card on the home page carrying an image or a short video. It is shown once per
+   page load — every visit and every refresh, for customers and the admin alike — and nothing about
+   the dismissal is remembered across loads (per the store owner's explicit instruction). Closing it
+   only sets an in-memory flag, so it does not pop back up while navigating around the same load.
+   Lives in #promo-root (outside #app) and is written with direct DOM calls rather than through
+   render(), because render() rebuilds #app on every state change — including from background
+   timers — which would restart the video from frame one every few seconds. */
+let _promoShownThisLoad = false;
 function closePromo(){
-  try{ localStorage.setItem(promoDismissKey(), '1'); }catch(e){}
   const root = document.getElementById('promo-root');
   if(root) root.innerHTML = '';
   document.removeEventListener('keydown', promoKeyHandler);
@@ -3729,7 +3722,8 @@ function maybeShowPromo(){
   if(!state.currentUserId) return;            // never over the login screen
   if(state.view !== 'home' || state.listFilter) return;
   if(isMobileViewport() && state.mScreen !== 'home') return;
-  if(promoAlreadySeen()) return;
+  if(_promoShownThisLoad) return;             // once per page load, reset by any refresh
+  _promoShownThisLoad = true;
   const root = document.getElementById('promo-root');
   if(!root || root.firstChild) return;        // already on screen
   const hasLink = p.linkType && p.linkType !== 'none' && !!p.linkValue;
@@ -4329,8 +4323,8 @@ function renderAdmin(){
           <button class="mini-toggle ${state.settings.promoEnabled?'on':''}" onclick="togglePromoEnabled(${!state.settings.promoEnabled})">${state.lang==='ar'?'مفعّل':'Enabled'}</button>
         </div>
         <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px">${state.lang==='ar'
-          ? 'بطاقة صغيرة في وسط الشاشة تعرض صورة أو فيديو قصير، تظهر مرة واحدة لكل زائر على الصفحة الرئيسية ويمكن إغلاقها فورًا. عند رفع ملف جديد تظهر من جديد للجميع.'
-          : 'A small card in the middle of the screen with an image or short video. It shows once per visitor on the home page and can be closed straight away. Uploading a new file makes it show again for everyone.'}</p>
+          ? 'بطاقة صغيرة في وسط الشاشة تعرض صورة أو فيديو قصير، تظهر في كل مرة يدخل فيها الزائر إلى الصفحة الرئيسية أو يحدّث الصفحة، ويمكن إغلاقها فورًا.'
+          : 'A small card in the middle of the screen with an image or short video. It shows every time someone opens or refreshes the home page, and can be closed straight away.'}</p>
         <input type="file" accept="image/*,video/*" onchange="handlePromoUpload(event)" style="margin-bottom:6px"/>
         <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 12px">${state.lang==='ar'
           ? 'صورة أو فيديو MP4 — يُضبط النوع تلقائيًا. الفيديو بلا صوت ويُعاد تلقائيًا. يُفضّل أقل من 5 ميغابايت.'
