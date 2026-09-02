@@ -739,25 +739,62 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
    with scam sites, which is the last thing a store taking payment up front should imitate.
    Colours are fixed rather than themed so the card looks identical on desktop, mobile light and
    mobile dark. */
-.promo-backdrop{position:fixed;inset:0;z-index:200;background:rgba(12,18,15,.72);backdrop-filter:blur(3px);
-  display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .22s ease}
-.promo-card{position:relative;width:100%;max-width:400px;background:#12241C;border-radius:16px;overflow:hidden;
-  box-shadow:0 24px 60px -12px rgba(0,0,0,.6);animation:promoIn .3s cubic-bezier(.2,.9,.3,1)}
-@keyframes promoIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
-.promo-media{position:relative;width:100%;aspect-ratio:4/3;background:#0B1712;display:block}
-.promo-media>video,.promo-media>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.promo-close{position:absolute;top:10px;inset-inline-end:10px;z-index:2;width:34px;height:34px;border-radius:50%;
-  border:none;background:rgba(8,14,11,.6);color:#fff;font-size:19px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);transition:background .15s ease}
-.promo-close:hover,.promo-close:focus-visible{background:rgba(8,14,11,.88);outline:2px solid var(--brass-light);outline-offset:2px}
-.promo-body{padding:16px 18px 18px;color:#FBF8F0;text-align:center}
-.promo-title{font-family:'Caprasimo',serif;font-size:20px;line-height:1.2;margin-bottom:6px}
-.promo-sub{font:500 13.5px/1.5 'Figtree',sans-serif;color:rgba(251,248,240,.76);margin-bottom:14px}
-.promo-cta{display:inline-block;font:800 13px/1 'Figtree',sans-serif;background:var(--brass,#C4972A);color:#2e1a0a;
-  border:none;padding:12px 26px;border-radius:999px;cursor:pointer}
+.promo-backdrop{position:fixed;inset:0;z-index:200;background:rgba(9,14,11,.7);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease}
+/* A vignette and a fine grain sit over the whole backdrop — the two cheapest tricks that read as
+   "film" rather than "web modal". Both are pure CSS: no image request, nothing to load. */
+.promo-backdrop::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.55) 100%)}
+.promo-grain{position:absolute;inset:0;pointer-events:none;opacity:.13;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E")}
+.promo-card{position:relative;z-index:2;width:100%;max-width:352px;background:#0B1410;border-radius:22px;overflow:hidden;
+  box-shadow:0 40px 90px -20px rgba(0,0,0,.85),0 0 0 1px rgba(224,181,74,.28);
+  animation:promoIn .62s cubic-bezier(.16,1,.3,1) both}
+@keyframes promoIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
+/* Exit is deliberately quicker than entry — dismissing should feel instant, not narrated. */
+.promo-backdrop.is-closing{animation:fadeOut .2s ease both}
+.promo-backdrop.is-closing .promo-card{animation:promoOut .2s ease both}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes promoOut{to{opacity:0;transform:translateY(8px) scale(.98)}}
+/* Portrait frame: the media is the card, with the words over it, rather than a photo sitting on
+   top of a white panel. */
+.promo-media{position:relative;width:100%;aspect-ratio:4/5;background:#0B1410;display:block;
+  background-size:cover;background-position:center}
+.promo-media>video,.promo-media>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+  animation:promoKen 9s ease-out both}
+.promo-media>video{z-index:1;transition:opacity .6s ease} /* fades in over the stand-in image */
+@keyframes promoKen{from{transform:scale(1.12)}to{transform:scale(1)}}
+.promo-media::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(9,16,12,.35) 0%,transparent 26%,transparent 42%,rgba(9,16,12,.94) 92%)}
+/* Nothing to look at yet? Show a slow shimmer rather than a black hole. */
+.promo-media.is-waiting::before{content:'';position:absolute;inset:0;z-index:1;
+  background:linear-gradient(100deg,#0B1410 30%,#16241D 50%,#0B1410 70%);background-size:220% 100%;
+  animation:promoShimmer 1.5s ease-in-out infinite}
+@keyframes promoShimmer{from{background-position:120% 0}to{background-position:-40% 0}}
+.promo-rule{position:absolute;left:0;right:0;bottom:0;z-index:3;height:2px;
+  background:linear-gradient(90deg,transparent,var(--brass-light),transparent);opacity:.75;
+  animation:promoRule 1.1s cubic-bezier(.16,1,.3,1) .35s both}
+@keyframes promoRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.promo-close{position:absolute;top:12px;inset-inline-end:12px;z-index:4;width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);background:rgba(10,16,12,.55);color:#fff;font-size:17px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
+  transition:background .18s ease, transform .18s ease;animation:fadeIn .4s ease .1s both}
+.promo-close:hover{background:rgba(10,16,12,.88);transform:scale(1.06)}
+.promo-close:focus-visible{outline:2px solid var(--brass-light);outline-offset:2px}
+.promo-body{position:absolute;inset:auto 0 0;z-index:3;padding:0 22px 24px;color:#fff;text-align:center}
+.promo-title{font-family:'Caprasimo',serif;font-size:34px;line-height:1;margin-bottom:9px;letter-spacing:.01em;
+  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .3s both}
+.promo-sub{font:500 13.5px/1.5 'Figtree',sans-serif;color:rgba(255,255,255,.76);margin-bottom:18px;
+  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .38s both}
+.promo-cta{display:block;width:100%;font:800 13.5px/1 'Figtree',sans-serif;background:var(--brass,#C4972A);color:#241804;
+  border:none;padding:16px;border-radius:999px;cursor:pointer;letter-spacing:.04em;
+  box-shadow:0 10px 26px -8px rgba(196,151,42,.75);animation:promoUp .55s cubic-bezier(.16,1,.3,1) .46s both}
 .promo-cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.promo-dismiss{display:block;margin:12px auto 0;background:none;border:none;color:rgba(251,248,240,.5);
-  font:600 12px/1 'Figtree',sans-serif;cursor:pointer;text-decoration:underline}
+.promo-dismiss{display:block;margin:13px auto 0;background:none;border:none;color:rgba(255,255,255,.5);
+  font:600 11.5px/1 'Figtree',sans-serif;letter-spacing:.06em;cursor:pointer;
+  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .54s both}
+.promo-dismiss:hover{color:rgba(255,255,255,.85)}
+@keyframes promoUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 /* ================= SOUK WARM (photo-led layout) =================
    The old hero was a flat cedar panel with the billboard stacked underneath it — two competing
    "top of page" blocks, neither showing merchandise. They are now one photographic hero: the
@@ -981,7 +1018,10 @@ body.first-load .hero-photo,.hero-photo.bb-swap{animation:bbIn .7s var(--ease-ou
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media (prefers-reduced-motion:reduce){
-  .promo-backdrop,.promo-card{animation:none}
+  .promo-backdrop,.promo-card,.promo-media>video,.promo-media>img,.promo-title,.promo-sub,
+  .promo-cta,.promo-dismiss,.promo-rule,.promo-close,.promo-media.is-waiting::before{animation:none}
+  .promo-title,.promo-sub,.promo-cta,.promo-dismiss,.promo-close{opacity:1;transform:none}
+  .promo-rule{transform:none}
   .hero .eyebrow,.hero h1,.hero p,.hero-actions,.billboard,.reveal,.opt-swatch.active,.m-color-swatch.active,
   .cart-count.bump,.m-qty-val.bump,.qty-val.bump,.m-reveal,.m-input.field-error,
   .add-cart-btn.added::after,.ship-ack-btn.loading::after{animation:none !important}
@@ -4098,8 +4138,58 @@ async function handleBillboardSlideUpload(event, idx){
 let _promoShownThisLoad = false;
 function closePromo(){
   const root = document.getElementById('promo-root');
-  if(root) root.innerHTML = '';
   document.removeEventListener('keydown', promoKeyHandler);
+  if(!root) return;
+  const backdrop = root.firstElementChild;
+  if(!backdrop){ root.innerHTML = ''; return; }
+  backdrop.classList.add('is-closing');       // let the exit play, then clear
+  setTimeout(()=>{ if(root.firstElementChild === backdrop) root.innerHTML = ''; }, 210);
+}
+
+/* ---- Promo media weight ----------------------------------------------------------------
+   The promo is a ~10 MB MP4 that autoplays on every visit. Two things soften that without
+   touching the file itself:
+
+   1. The first time it plays on a device, one frame is captured to a canvas and kept in
+      localStorage. From then on the card paints that frame instantly as the video's poster, so
+      the popup is never an empty black rectangle while 10 MB streams in.
+   2. If the visitor has Data Saver on, or is on a 2G-class connection, the video isn't requested
+      at all — they get the stored frame instead. Nobody on a metered Lebanese connection should
+      pay for a 10 MB autoplay they didn't ask for.
+
+   Both degrade quietly: no stored frame yet just means a shimmer for a moment, and everything is
+   wrapped in try/catch because private-mode browsers throw on localStorage access. */
+function promoPosterKey(url){ return 'habibi-promo-poster:' + url; }
+function readPromoPoster(url){
+  try{ return localStorage.getItem(promoPosterKey(url)) || ''; }catch(e){ return ''; }
+}
+function capturePromoPoster(video, url){
+  try{
+    if(!video.videoWidth || readPromoPoster(url)) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 480;
+    canvas.height = Math.round(480 * (video.videoHeight / video.videoWidth)) || 600;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    localStorage.setItem(promoPosterKey(url), canvas.toDataURL('image/jpeg', 0.72));
+  }catch(e){ /* tainted canvas, quota, or private mode — the popup works fine without a poster */ }
+}
+/* True when the visitor has asked to save data, or the browser reports a 2G-class connection. */
+function promoShouldSkipVideo(){
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(!c) return false;
+  return !!c.saveData || c.effectiveType==='slow-2g' || c.effectiveType==='2g';
+}
+/* What the card shows while the video is still on its way. A stored frame from a previous visit is
+   the best match, but on a first visit there isn't one — and measured against the live file, that
+   is a ten-second empty rectangle. So it falls back to a photo the page has already downloaded
+   anyway (the hero's still, or the newest product's photo), which paints immediately. */
+function promoStandInImage(url){
+  const stored = readPromoPoster(url);
+  if(stored) return stored;
+  const still = heroStill();
+  if(still) return still;
+  const newest = [...PRODUCTS].sort((a,b)=>b.id-a.id).find(p=>productPhotos(p).length);
+  return newest ? productPhotos(newest)[0] : '';
 }
 function promoKeyHandler(e){ if(e.key === 'Escape') closePromo(); }
 function promoClickThrough(){
@@ -4120,15 +4210,31 @@ function maybeShowPromo(){
   if(!root || root.firstChild) return;        // already on screen
   const hasLink = p.linkType && p.linkType !== 'none' && !!p.linkValue;
   const closeLabel = state.lang==='ar' ? 'إغلاق' : 'Close';
+  const isVideo = p.type === 'video';
+  const standIn = isVideo ? promoStandInImage(p.mediaUrl) : '';
+  /* Data Saver or a 2G-class connection: don't pull ten megabytes nobody asked for. */
+  const skipVideo = isVideo && promoShouldSkipVideo() && !!standIn;
+  let media = '';
+  if(isVideo){
+    /* The stand-in paints first and the video fades in over it once it can actually play, so the
+       card is never an empty rectangle — on a first visit the video needs about ten seconds. */
+    if(standIn) media += `<img class="promo-standin" src="${standIn}" alt="" aria-hidden="true">`;
+    if(!skipVideo){
+      media += `<video src="${p.mediaUrl}" crossorigin="anonymous" autoplay muted loop playsinline
+        preload="metadata" ${standIn?'style="opacity:0"':''}
+        oncanplay="this.style.opacity=1;this.parentNode.classList.remove('is-waiting');capturePromoPoster(this,'${p.mediaUrl}')"></video>`;
+    }
+  } else {
+    media = `<img src="${p.mediaUrl}" alt="${(p.title||'').replace(/"/g,'&quot;')}"
+      onload="this.parentNode.classList.remove('is-waiting')"/>`;
+  }
   root.innerHTML = `
     <div class="promo-backdrop" role="dialog" aria-modal="true" aria-label="${state.lang==='ar'?'إعلان':'Promotion'}" onclick="if(event.target===this)closePromo()">
+      <div class="promo-grain"></div>
       <div class="promo-card">
         <button class="promo-close" aria-label="${closeLabel}" onclick="closePromo()">&times;</button>
-        <div class="promo-media">
-          ${p.type==='video'
-            ? `<video src="${p.mediaUrl}" autoplay muted loop playsinline></video>`
-            : `<img src="${p.mediaUrl}" alt="${(p.title||'').replace(/"/g,'&quot;')}"/>`}
-        </div>
+        <div class="promo-media${(isVideo && !standIn) ? ' is-waiting' : ''}">${media}</div>
+        <div class="promo-rule"></div>
         ${(p.title || p.subtitle || hasLink) ? `
         <div class="promo-body">
           ${p.title?`<div class="promo-title">${p.title}</div>`:''}
