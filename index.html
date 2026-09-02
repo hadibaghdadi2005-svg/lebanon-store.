@@ -764,10 +764,39 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
    admin's billboard slide (or, failing that, the newest product's own photo) fills it, with the
    headline sitting on a gradient over the image. */
 .hero-photo{position:relative;min-height:460px;display:flex;align-items:flex-end;overflow:hidden;background:var(--cedar);color:var(--paper)}
-.hero-photo{background-size:cover;background-position:center} /* still shown while a video loads */
 .hero-photo .container{width:100%} /* a flex child shrink-wraps otherwise, centring the copy */
 .hero-photo-media{position:absolute;inset:0}
-.hero-photo-media img,.hero-photo-media video{width:100%;height:100%;object-fit:cover}
+
+/* An admin can upload a photo of any shape. Rather than cropping whatever they give us into a
+   wide banner — which cuts the product in half — each slide is two layers: a blurred, dimmed copy
+   that fills the frame edge to edge, and the real image sitting on top, uncropped. fitHeroLayer()
+   measures the file once it loads and only falls back to `cover` when the photo already matches
+   the frame, so a purpose-made banner still fills it with no blurred border at all. */
+.hero-layer{position:absolute;inset:0;opacity:0;transition:opacity .9s cubic-bezier(.4,0,.2,1)}
+.hero-layer.is-active{opacity:1}
+.hero-blur{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.18);filter:blur(26px) saturate(.85) brightness(.62)}
+.hero-main{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:right center}
+.hero-layer[data-fit="cover"] .hero-main{object-fit:cover;object-position:center}
+.hero-layer[data-fit="cover"] .hero-blur{display:none}
+.hero-layer[data-fit="video"] .hero-main{object-fit:cover;object-position:center}
+/* An uncropped photo would otherwise meet the blurred fill along a hard vertical seam, which looks
+   like a mistake rather than a composition. Its leading edge dissolves into the blur instead —
+   on the side the copy sits on for desktop, along the bottom for the phone. */
+.hero-layer[data-fit="contain"] .hero-main{
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.65) 9%,#000 22%,#000 100%);
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.65) 9%,#000 22%,#000 100%);
+}
+.m-hero .hero-layer[data-fit="contain"] .hero-main{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.55) 82%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 62%,rgba(0,0,0,.55) 82%,transparent 100%);
+}
+/* Slow drift while a slide is on screen — the "cinematic" part, and cheap: one transform. */
+.hero-layer.is-active .hero-main,.hero-layer.is-active .hero-blur{animation:heroDrift 9s ease-out forwards}
+@keyframes heroDrift{from{transform:scale(1.055)}to{transform:scale(1)}}
+.hero-layer.is-active .hero-blur{animation-name:heroDriftBlur}
+@keyframes heroDriftBlur{from{transform:scale(1.24)}to{transform:scale(1.18)}}
+.hero-copy{transition:opacity .45s ease, transform .45s cubic-bezier(.16,1,.3,1)}
+.hero-copy.is-swapping{opacity:0;transform:translateY(12px)}
 .hero-photo::after{content:'';position:absolute;inset:0;z-index:1;
   background:linear-gradient(90deg,rgba(9,38,29,.93) 0%,rgba(9,38,29,.74) 42%,rgba(9,38,29,.18) 100%)}
 .hero-photo .container{position:relative;z-index:2;padding-top:56px;padding-bottom:52px}
@@ -806,7 +835,11 @@ section{padding:64px 0}
 
 /* ---- phone ---- */
 .m-hero{position:relative;height:392px;overflow:hidden;background:var(--acc2Ink);display:flex;align-items:flex-end}
-.m-hero>img,.m-hero>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.m-hero-media{position:absolute;inset:0;z-index:0}
+/* Same two-layer treatment as desktop, but the copy sits along the bottom here, so an uncropped
+   photo is anchored to the top of the frame instead of the side. */
+.m-hero .hero-main{object-position:center top}
+.m-hero .hero-blur{filter:blur(22px) saturate(.85) brightness(.6)}
 .m-hero::before{content:'';position:absolute;inset:0;z-index:1;
   background:linear-gradient(180deg,rgba(14,32,25,.12) 0%,rgba(14,32,25,.42) 44%,rgba(14,32,25,.95) 100%)}
 .m-hero-inner{position:relative;z-index:2;padding:0 20px 22px;width:100%;color:#fff}
@@ -3851,7 +3884,12 @@ function updateBillboardSlide(idx, field, val){
   state.settings.billboardSlides[idx][field] = val;
   render(); syncBillboardSlides();
 }
-function goBillboardSlide(idx){ state.billboardIndex = idx; render(); }
+/* Tapping a dot cross-fades in place; render() is only the fallback for when no hero is mounted. */
+function goBillboardSlide(idx){
+  if(crossfadeHeroTo(idx)) return;
+  state.billboardIndex = idx;
+  render();
+}
 
 /* ---- Promo popup (Settings → Promo popup) ---- */
 function syncPromo(){
@@ -4119,6 +4157,44 @@ function heroMedia(){
   const newest = [...PRODUCTS].sort((a,b)=>b.id-a.id).find(p=>productPhotos(p).length);
   return { slide:null, slides:[], url: newest ? productPhotos(newest)[0] : '', isVideo:false };
 }
+/* One slide's media, as a two-layer stack: a blurred fill behind, the real image (uncropped) on
+   top. Shared by the desktop hero and the phone hero so an upload behaves identically on both. */
+function heroLayerHtml(media, idx, active){
+  if(!media || !media.url) return '';
+  const cls = `hero-layer${active?' is-active':''}`;
+  if(media.isVideo){
+    const still = heroStill();
+    /* Deliberately not data-fit="cover", which hides the blur layer: a video paints nothing for
+       the first seconds, and the blurred still is what stands in for it meanwhile. */
+    return `<div class="${cls}" data-idx="${idx}" data-fit="video">
+      ${still?`<img class="hero-blur" src="${still}" alt="" aria-hidden="true">`:''}
+      <video class="hero-main" src="${media.url}" autoplay muted loop playsinline preload="metadata"></video>
+    </div>`;
+  }
+  return `<div class="${cls}" data-idx="${idx}">
+    <img class="hero-blur" src="${media.url}" alt="" aria-hidden="true">
+    <img class="hero-main" src="${media.url}" alt="" onload="fitHeroLayer(this)">
+  </div>`;
+}
+/* Reads the uploaded file's real dimensions and decides how it should sit in the frame. A photo
+   whose shape already matches the billboard fills it edge to edge (no blurred border); anything
+   else — a square product shot, a portrait phone photo — is shown whole against the blur rather
+   than cropped through the middle. */
+function fitHeroLayer(img){
+  const layer = img.closest('.hero-layer');
+  if(!layer || !img.naturalWidth || !img.naturalHeight) return;
+  const frame = layer.getBoundingClientRect();
+  if(!frame.width || !frame.height) return;
+  const imgRatio = img.naturalWidth / img.naturalHeight;
+  const frameRatio = frame.width / frame.height;
+  const diff = Math.abs(imgRatio - frameRatio) / frameRatio;
+  layer.dataset.fit = diff <= 0.12 ? 'cover' : 'contain';
+}
+function refitHeroLayers(){
+  document.querySelectorAll('.hero-layer .hero-main').forEach(img=>{
+    if(img.tagName === 'IMG' && img.complete) fitHeroLayer(img);
+  });
+}
 /* A video slide paints nothing until enough of the file has arrived — on a phone connection that
    is seconds of flat green where the shop window should be. This still sits behind it meanwhile. */
 function heroStill(){
@@ -4144,14 +4220,11 @@ function renderHeroPhoto(){
   const primary = hasLink
     ? `<button class="btn btn-primary" onclick="${s.linkType==='category'?`filterByCat('${s.linkValue}')`:`window.open('${s.linkValue}','_blank')`}">${s.buttonLabel || t('shopNow')} →</button>`
     : `<button class="btn btn-primary" onclick="${scrollTo}">${t('shopNow')} →</button>`;
-  const still = m.isVideo ? heroStill() : '';
   return `
-  <section class="hero-photo" id="hero-sec" ${still?`style="background-image:url('${still}')"`:''}>
-    ${m.url?`<div class="hero-photo-media">${m.isVideo
-      ? `<video src="${m.url}" autoplay muted loop playsinline preload="metadata"></video>`
-      : `<img src="${m.url}" alt="">`}</div>`:''}
+  <section class="hero-photo" id="hero-sec">
+    <div class="hero-photo-media" id="hero-media">${heroLayerHtml(m, state.billboardIndex, true)}</div>
     <div class="container">
-      <div class="hero-inner">
+      <div class="hero-inner hero-copy" id="hero-copy">
         <div class="eyebrow">${isAr?'سوق لبنان الإلكتروني':'Lebanon\'s Online Souk'}</div>
         <h1 class="font-display">${title}</h1>
         <p>${sub}</p>
@@ -4162,10 +4235,57 @@ function renderHeroPhoto(){
       </div>
     </div>
     ${m.slides.length>1?`
-    <div class="billboard-dots hero-dots">
+    <div class="billboard-dots hero-dots" id="hero-dots">
       ${m.slides.map((_,idx)=>`<button class="billboard-dot ${idx===(state.billboardIndex % m.slides.length)?'active':''}" onclick="goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
     </div>`:''}
   </section>`;
+}
+/* Moves the carousel to a slide by cross-fading a freshly built media layer over the current one
+   and swapping the copy under it, instead of replacing the whole hero in one frame. Direct DOM
+   work only — no render() — so this never disturbs anything else on the page. Returns false when
+   there is no hero on screen, which is how the timer knows to leave the state alone. */
+function crossfadeHeroTo(idx){
+  const desktop = document.getElementById('hero-media');
+  const mobile = document.getElementById('m-hero-media');
+  const stack = desktop || mobile;
+  if(!stack) return false;
+  const slides = (state.settings.billboardEnabled && state.settings.billboardSlides) || [];
+  if(slides.length < 2) return false;
+  state.billboardIndex = ((idx % slides.length) + slides.length) % slides.length;
+  const s = slides[state.billboardIndex];
+  const media = { slide:s, slides, url:s.mediaUrl, isVideo:s.type==='video' };
+
+  const outgoing = stack.querySelector('.hero-layer.is-active');
+  stack.insertAdjacentHTML('beforeend', heroLayerHtml(media, state.billboardIndex, false));
+  const incoming = stack.lastElementChild;
+  const mainImg = incoming.querySelector('img.hero-main');
+  if(mainImg && mainImg.complete) fitHeroLayer(mainImg);
+  void incoming.offsetWidth;              // flush, so the opacity transition actually runs
+  incoming.classList.add('is-active');
+  if(outgoing){
+    outgoing.classList.remove('is-active');
+    setTimeout(()=>outgoing.remove(), 950);
+  }
+  swapHeroCopy(s);
+  const dots = document.getElementById(desktop ? 'hero-dots' : 'm-hero-dots');
+  if(dots) [...dots.children].forEach((d,i)=>d.classList.toggle('active', i===state.billboardIndex));
+  return true;
+}
+/* The words fade down and back rather than snapping, so the two halves of the slide change
+   together. Text is set as content, never innerHTML, since it comes from admin input. */
+function swapHeroCopy(slide){
+  const desktopCopy = document.getElementById('hero-copy');
+  const mobileCopy = document.getElementById('m-hero-copy');
+  const copy = desktopCopy || mobileCopy;
+  if(!copy) return;
+  copy.classList.add('is-swapping');
+  setTimeout(()=>{
+    const titleEl = copy.querySelector(desktopCopy ? 'h1' : '.m-hero-title');
+    const subEl = copy.querySelector(desktopCopy ? 'p' : '.m-hero-sub');
+    if(titleEl) titleEl.textContent = (slide && slide.title) || t('heroTitle');
+    if(subEl) subEl.textContent = (slide && slide.subtitle) || t('heroSub');
+    copy.classList.remove('is-swapping');
+  }, 450);
 }
 function setAdminView(v){
   state.adminView=v; state.adminSideOpen=false; render();
@@ -4684,7 +4804,7 @@ function renderAdmin(){
               ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" alt="" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
             </div>`:''}
             <input type="file" accept="image/*,video/*" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
-            <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px">${state.lang==='ar'?'صورة أو فيديو MP4. يُضبط النوع تلقائيًا حسب الملف. الفيديو يعمل بلا صوت ويُعاد تلقائيًا — يُفضّل أقل من 5 ميغابايت وبنسبة عرض عريضة.':'Image or MP4 video — the Type above is set automatically from the file you pick. Video always plays muted and on loop; keep it under ~5&nbsp;MB and wide (about 1600×500) so it loads fast and isn\'t cropped.'}</p>
+            <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px">${state.lang==='ar'?'صورة أو فيديو MP4. يُضبط النوع تلقائيًا حسب الملف، وأي مقاس صورة يظهر كاملًا بدون قص. الفيديو يعمل بلا صوت ويُعاد تلقائيًا — يُفضّل أقل من 5 ميغابايت وبنسبة عرض عريضة (حوالي 1600×500).':'Image or MP4 video — the Type above is set automatically from the file you pick. Any photo shape works: the billboard measures it and shows it whole, against a soft blurred fill, rather than cropping it. A wide file (about 1600×500) fills the frame edge to edge. Video plays muted on loop — keep it under ~5&nbsp;MB.'}</p>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${s.title||''}" onchange="updateBillboardSlide(${idx},'title',this.value)"/></div>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${s.subtitle||''}" onchange="updateBillboardSlide(${idx},'subtitle',this.value)"/></div>
             <div class="form-row" style="margin-bottom:10px">
@@ -5268,18 +5388,16 @@ function mHome(){
       ${mThemeToggleBtn()}
     </div>
     ${hero.url ? `
-    <div class="m-hero" id="m-billboard-sec" ${hero.isVideo && heroStill()?`style="background-image:url('${heroStill()}');background-size:cover;background-position:center"`:''}>
-      ${hero.isVideo
-        ? `<video src="${hero.url}" autoplay muted loop playsinline preload="metadata"></video>`
-        : `<img src="${hero.url}" alt="">`}
-      <div class="m-hero-inner">
+    <div class="m-hero" id="m-billboard-sec">
+      <div class="m-hero-media hero-photo-media" id="m-hero-media">${heroLayerHtml(hero, state.billboardIndex, true)}</div>
+      <div class="m-hero-inner hero-copy" id="m-hero-copy">
         <div class="m-hero-ey">${heroSlide && heroSlide.title ? 'Featured' : 'New in'}</div>
-        <div class="m-hero-title">${heroSlide && heroSlide.title ? heroSlide.title : 'Everything,<br>with love.'}</div>
+        <div class="m-hero-title">${heroSlide && heroSlide.title ? heroSlide.title : 'Everything, with love.'}</div>
         <div class="m-hero-sub">${heroSlide && heroSlide.subtitle ? heroSlide.subtitle : `Chosen by hand, delivered anywhere in Lebanon in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days.`}</div>
         <button class="m-hero-cta" onclick="${bbHasLink ? bbClick : 'mGoShopAll()'}">${heroSlide && heroSlide.buttonLabel ? heroSlide.buttonLabel : 'Shop the edit'} →</button>
       </div>
       ${hero.slides.length>1?`
-      <div class="m-hero-dots">
+      <div class="m-hero-dots" id="m-hero-dots">
         ${hero.slides.map((_,idx)=>`<button class="m-hero-dot ${idx===(state.billboardIndex % hero.slides.length)?'active':''}" onclick="event.stopPropagation();goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
       </div>`:''}
     </div>` : ''}
@@ -6031,32 +6149,24 @@ window.addEventListener('resize', ()=>{
   }, 150);
 });
 window.addEventListener('scroll', updateHeaderShrink, {passive:true});
+/* Advances the hero carousel. It only ever cross-fades the hero's own layers (never render(), and
+   never a full outerHTML swap), so it cannot steal focus from the search bar or any other field on
+   the page — the bug this codebase has hit twice before, see CLAUDE.md items 19-20. It also stands
+   down while the tab is hidden, and entirely when the visitor has asked for reduced motion. */
 let _billboardTimer = setInterval(()=>{
-  if(!state.currentUserId) return; // billboard only shows once logged in — otherwise this fires on the login screen and closes the keyboard mid-type
+  if(!state.currentUserId) return; // the hero only exists once logged in
+  if(document.hidden) return;      // no point animating a tab nobody is looking at
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const slides = state.settings.billboardSlides;
   if(!state.settings.billboardEnabled || !slides || slides.length<=1) return;
-  if(isMobileViewport()){
-    /* state.view stays 'home' throughout the whole mobile session (mGo() only ever changes
-       state.mScreen), so checking state.view alone re-rendered the entire app every 5s no
-       matter which mobile screen — search, checkout, account — was actually on screen. */
-    if(state.mScreen==='home'){
-      state.billboardIndex = (state.billboardIndex+1) % slides.length;
-      render();
-    }
-  } else if(state.view==='home'){
-    state.billboardIndex = (state.billboardIndex+1) % slides.length;
-    /* The desktop header (with the search bar) is a sibling of the billboard, not a parent of
-       it — patch just the billboard's own subtree instead of calling render(), which would
-       rebuild the whole page (header included) every 5s and steal focus from the search bar
-       or any other field on the home page even though neither has anything to do with it. */
-    const el = document.getElementById('hero-sec');
-    if(el){
-      el.outerHTML = renderHeroPhoto();
-      const swapped = document.getElementById('hero-sec');
-      if(swapped) swapped.classList.add('bb-swap'); // fade the new slide in rather than hard-cutting
-    }
-  }
-}, 5000);
+  /* state.view stays 'home' for the whole mobile session (mGo() only changes state.mScreen), so
+     the phone needs its own check — otherwise this fires on search, checkout and account too. */
+  const onHome = isMobileViewport() ? state.mScreen==='home' : state.view==='home';
+  if(!onHome) return;
+  crossfadeHeroTo(state.billboardIndex + 1);
+}, 6500);
+/* An uploaded photo's best fit depends on the frame's shape, which changes when the window does. */
+window.addEventListener('resize', refitHeroLayers, {passive:true});
 /* Products only ever loaded once, on initApp() — a customer already browsing never saw anything
    an admin added later without a full page reload. Poll quietly for new/removed products and only
    re-render on an actual count change (not just a price/stock tweak on something already visible),
