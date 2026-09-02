@@ -758,8 +758,89 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .promo-cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .promo-dismiss{display:block;margin:12px auto 0;background:none;border:none;color:rgba(251,248,240,.5);
   font:600 12px/1 'Figtree',sans-serif;cursor:pointer;text-decoration:underline}
+/* ---------- MOTION PASS (site-wide animation additions) ---------- */
+:root{ --ease-out: cubic-bezier(.16,1,.3,1); --err:#B0402A; }
+
+/* Header: shrinks + gains a shadow past a small scroll threshold */
+header.site{transition:box-shadow .25s ease}
+header.site .topbar{transition:padding .25s cubic-bezier(.22,.61,.36,1)}
+header.site.shrink{box-shadow:0 6px 20px rgba(0,0,0,.18)}
+header.site.shrink .topbar{padding:8px 0}
+.logo-mark{transition:transform .25s var(--ease-out)}
+.logo:hover .logo-mark{transform:rotate(-6deg) scale(1.05)}
+
+/* Hero: headline/eyebrow/actions rise in on load. Scoped to body.first-load — this app rebuilds
+   the whole page on every state change, so an unscoped entrance animation would replay on every
+   unrelated render (add to cart, wishlist toggle) and read as a flicker. */
+body.first-load .hero .eyebrow{opacity:0;animation:riseIn .6s var(--ease-out) .05s forwards}
+body.first-load .hero h1{opacity:0;animation:riseIn .6s var(--ease-out) .16s forwards}
+body.first-load .hero p{opacity:0;animation:riseIn .6s var(--ease-out) .28s forwards}
+body.first-load .hero-actions{opacity:0;animation:riseIn .6s var(--ease-out) .4s forwards}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* Billboard: fades in on first paint, and again each time the carousel swaps to a new slide */
+body.first-load .billboard,.billboard.bb-swap{animation:bbIn .7s var(--ease-out) both}
+@keyframes bbIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:scale(1)}}
+
+/* Scroll reveal for homepage shelves */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .55s var(--ease-out), transform .55s var(--ease-out)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Product cards: stronger lift + a second photo cross-fades in on hover, when one exists */
+.prod-card{transition:transform .3s var(--ease-out), box-shadow .3s var(--ease-out)}
+.prod-card:hover{transform:translateY(-6px);box-shadow:0 16px 34px rgba(15,61,46,.16)}
+.prod-img-a,.prod-img-b{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s ease}
+.prod-img-b{opacity:0}
+.prod-card:hover .prod-img.has-alt .prod-img-a{opacity:0}
+.prod-card:hover .prod-img.has-alt .prod-img-b{opacity:1}
+
+/* Add-to-cart confirms the same way everywhere: a green flash + a pulse ring */
+.add-cart-btn{position:relative;overflow:visible;transition:background .2s ease}
+.add-cart-btn.added{background:#2E8B57}
+.add-cart-btn.added::after{content:'';position:absolute;inset:-2px;border-radius:11px;border:2px solid var(--brass-light);opacity:.9;animation:ringPulse .5s var(--ease-out) forwards}
+.modal-actions .btn-cedar{position:relative;transition:background .2s ease}
+.modal-actions .btn-cedar.added{background:#2E8B57}
+@keyframes ringPulse{to{opacity:0;transform:scale(1.12)}}
+.cart-count{transition:transform .1s}
+.cart-count.bump{animation:bump .4s var(--ease-out)}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.6)}100%{transform:scale(1)}}
+
+/* Color swatches pop on select (both layouts) */
+.opt-swatch.active,.m-color-swatch.active{animation:swatchPop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes swatchPop{from{transform:scale(.85)}to{transform:scale(1)}}
+
+/* Cart drawer: removing a line slides it out and collapses its space instead of an instant cut */
+.cart-line{transition:opacity .3s var(--ease-out), transform .3s var(--ease-out), max-height .3s var(--ease-out), padding .3s var(--ease-out), margin .3s var(--ease-out);max-height:140px;overflow:hidden}
+.cart-line.removing{opacity:0;transform:translateX(24px);max-height:0;padding-top:0;padding-bottom:0;margin:0;border-color:transparent}
+
+/* Checkout: focus glow, shake + inline message on a field left empty */
+.form-field input,.form-field select,.form-field textarea{transition:border-color .2s ease, box-shadow .2s ease}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{box-shadow:0 0 0 3px rgba(15,61,46,.12)}
+.form-field.field-error input,.form-field.field-error select{border-color:var(--err);animation:fieldShake .35s}
+.field-err-msg{display:block;font-size:11px;font-weight:600;color:var(--err);margin-top:2px}
+@keyframes fieldShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* Checkout: a small progress row showing where you are */
+.co-steps{display:flex;align-items:center;gap:6px;margin-bottom:18px}
+.co-step{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink-soft)}
+.co-step .dot{width:20px;height:20px;border-radius:50%;background:var(--sand-dark);color:var(--ink-soft);font:700 10.5px/20px 'IBM Plex Mono',monospace;text-align:center;transition:background .3s,color .3s}
+.co-step.on{color:var(--ink)}
+.co-step.on .dot{background:var(--cedar);color:#fff}
+.co-step.done .dot{background:#2E8B57;color:#fff}
+.co-step-sep{flex:0 0 28px;height:1.5px;background:var(--line)}
+
+/* Checkout: Place Order shows it's actually working */
+.ship-ack-btn.loading{opacity:.8;pointer-events:none}
+.ship-ack-btn.loading::after{content:'';display:inline-block;width:13px;height:13px;margin-inline-start:8px;border-radius:50%;border:2px solid rgba(34,22,4,.35);border-top-color:#221604;vertical-align:middle;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 @media (prefers-reduced-motion:reduce){
   .promo-backdrop,.promo-card{animation:none}
+  .hero .eyebrow,.hero h1,.hero p,.hero-actions,.billboard,.reveal,.opt-swatch.active,.cart-count.bump,
+  .add-cart-btn.added::after,.ship-ack-btn.loading::after{animation:none !important}
+  .reveal{opacity:1;transform:none}
+  .hero .eyebrow,.hero h1,.hero p,.hero-actions{opacity:1;transform:none}
+  .prod-card,.cart-line,.form-field input,.form-field select,.form-field textarea,header.site .topbar{transition:none}
 }
 </style>
 </head>
@@ -1062,6 +1143,8 @@ let state = {
   modalOpen: false,
   modalVariant: null,
   modalSize: null,          // chosen size, when the product has any (never auto-filled)
+  justAddedId: null,        // product id whose add-to-cart button is mid-confirmation animation
+  checkoutErrors: {},       // required-field names left empty on the last checkout attempt
   chatOpen: false,
   chatLog: [],
   chatConversation: null, // {id, status, updated_at} for the current customer's support conversation
@@ -1527,7 +1610,16 @@ function addToCart(id, variant, qty, size){
   else { state.cart.push({id, variant, size, qty}); }
   syncCustomerCart();
   showToast(t('addedToCart'));
+  /* Same "added" confirmation everywhere an add-to-cart button lives (grid card, product
+     page): render once with justAddedId set so the button shows its checkmark/green state,
+     then a single follow-up render clears it. One-shot, user-triggered — not a background
+     interval — so this doesn't repeat the render()-in-a-timer bug from CLAUDE.md items 19-20. */
+  state.justAddedId = id;
   render();
+  clearTimeout(window._addedBtnTimer);
+  window._addedBtnTimer = setTimeout(()=>{
+    if(state.justAddedId===id){ state.justAddedId = null; render(); }
+  }, 1300);
   return true;
 }
 /* Adds whatever the customer currently has selected on the product page (both layouts). */
@@ -1549,9 +1641,14 @@ function quickAdd(id){
 }
 function removeCartLine(i){
   if(i<0 || i>=state.cart.length) return;
-  state.cart.splice(i,1);
-  syncCustomerCart();
-  render();
+  const drop = ()=>{ state.cart.splice(i,1); syncCustomerCart(); render(); };
+  /* Let the line slide out and collapse before the state change rebuilds the drawer — an
+     instant vanish reads as a glitch rather than as a confirmation. Direct DOM patch only,
+     no render() until the animation is done. */
+  const line = document.querySelector('.cart-line[data-line="'+i+'"]');
+  if(!line){ drop(); return; }
+  line.classList.add('removing');
+  setTimeout(drop, 300);
 }
 function changeCartQty(i, delta){
   const line = state.cart[i];
@@ -1979,7 +2076,7 @@ function toggleChat(v){ state.chatOpen = v!==undefined ? v : !state.chatOpen; re
 /* ============ RENDER: HEADER ============ */
 function renderHeader(){
   return `
-  <header class="site">
+  <header class="site" id="siteHeader">
     <div class="container topbar">
       <button class="hamburger" onclick="toggleMobileMenu()">
         <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -2012,7 +2109,7 @@ function renderHeader(){
         <button class="icon-btn" onclick="toggleDrawer(true)">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
           <span>${t('cart')}</span>
-          ${cartCount()>0?`<span class="cart-count">${cartCount()}</span>`:''}
+          ${cartCount()>0?`<span class="cart-count ${state.justAddedId?'bump':''}">${cartCount()}</span>`:''}
         </button>
       </div>
     </div>
@@ -2167,10 +2264,17 @@ function productCard(p){
   const stockLabel = p.stock===0? t('outOfStock') : (p.stock<=5? t('lowStock') : t('inStock'));
   const stockClass = p.stock===0?'stock-out':(p.stock<=5?'stock-low':'stock-ok');
   const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
+  /* When a product has 2+ photos, the second one cross-fades in on hover (see CLAUDE.md item 24's
+     productPhotos() helper) — a free preview of another angle/color without an extra click. */
+  const photos = productPhotos(p);
+  const imgA = photos[0] || p.imageUrl;
+  const imgB = photos[1];
+  const justAdded = state.justAddedId === p.id;
   return `
   <div class="prod-card">
-    <div class="prod-img" style="background:${color}" onclick="openProduct(${p.id})">
-      ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}
+    <div class="prod-img ${imgB?'has-alt':''}" style="background:${color}" onclick="openProduct(${p.id})">
+      ${imgA?`<img class="prod-img-a" src="${imgA}" alt="${pname(p)}">`:ICONS[p.icon]}
+      ${imgB?`<img class="prod-img-b" src="${imgB}" alt="${pname(p)}">`:''}
       <div class="prod-badges">
         ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
         ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
@@ -2191,9 +2295,10 @@ function productCard(p){
         <span class="price-now">${fmt(p.price)}</span>
         ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span>`:''}
       </div>
-      <button class="add-cart-btn" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})">
-        <svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-        ${p.stock===0?t('outOfStock'):t('addCart')}
+      <button class="add-cart-btn ${justAdded?'added':''}" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})">
+        ${justAdded
+          ? `<svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${state.lang==='ar'?'تمت الإضافة':'Added'}`
+          : `<svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.6 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>${p.stock===0?t('outOfStock'):t('addCart')}`}
       </button>
     </div>
   </div>`;
@@ -2248,7 +2353,7 @@ function renderHome(){
      Featured/Best, or when no product has a `was` price to feed Offers. An empty shelf is now
      dropped entirely instead. */
   const shelf = (id, headHtml, flag, list) => list.length ? `
-  <section id="${id}" class="container">
+  <section id="${id}" class="container reveal">
     <div class="section-head">
       ${headHtml}
       <a class="view-all" href="#" onclick="filterByFlag('${flag}');return false;">${t('viewAll')}</a>
@@ -2278,7 +2383,7 @@ function renderHome(){
   <div class="zellige-divider"></div>
   ${state.settings.billboardEnabled && state.settings.billboardSlides && state.settings.billboardSlides.length ? renderBillboard() : ''}
 
-  <section id="cats-sec" class="container">
+  <section id="cats-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('categories')}</h2></div></div>
     <div class="cat-grid">
       ${CATS.map(c=>`
@@ -2297,14 +2402,14 @@ function renderHome(){
 
   ${shelf('offers-sec', `<div><div class="eyebrow">%</div><h2 class="font-display">${t('offers')}</h2></div>`, 'offer', offers)}
   ${!featured.length && !best.length && !news.length && !offers.length && PRODUCTS.length ? `
-  <section id="all-sec" class="container">
+  <section id="all-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${state.lang==='ar'?'كل المنتجات':'All Products'}</h2></div></div>
     <div class="prod-grid">${PRODUCTS.map(productCard).join('')}</div>
   </section>` : ''}
 
   <div class="zellige-divider"></div>
 
-  <section class="container">
+  <section id="why-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('why')}</h2></div></div>
     <div class="why-grid">
       <div class="why-card"><div class="cat-icon">${ICONS.car}</div><h3>${t('delivery')}</h3><p>${t('deliveryDesc')}</p></div>
@@ -2314,7 +2419,7 @@ function renderHome(){
     </div>
   </section>
 
-  <section class="container">
+  <section id="reviews-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('reviews')}</h2></div></div>
     <div class="review-grid">
       ${REVIEWS.filter(r=>findProduct(r.prod)).map(r=>`
@@ -2479,7 +2584,7 @@ function renderProductPage(){
             ${!selSize?`<p class="size-hint">${state.lang==='ar'?'اختر المقاس للمتابعة':'Choose your size to continue'}</p>`:''}
           </div>`:''}
           <div class="modal-actions">
-            <button class="btn btn-cedar" ${p.stock===0?'disabled':''} onclick="addSelectedToCart(${p.id}, 1)">${t('addCart')}</button>
+            <button class="btn btn-cedar ${state.justAddedId===p.id?'added':''}" ${p.stock===0?'disabled':''} onclick="addSelectedToCart(${p.id}, 1)">${state.justAddedId===p.id?(state.lang==='ar'?'✓ تمت الإضافة':'✓ Added'):t('addCart')}</button>
             <button class="btn btn-primary" ${p.stock===0?'disabled':''} onclick="if(addSelectedToCart(${p.id}, 1))goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
             <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
               <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
@@ -2554,7 +2659,7 @@ function renderDrawer(){
           if(!p) return '';
           const color = PALETTE[p.color % PALETTE.length];
           return `
-          <div class="cart-line">
+          <div class="cart-line" data-line="${i}">
             <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
             <div class="cart-info">
               <div class="name">${pname(p)}</div>
@@ -2583,14 +2688,31 @@ function renderDrawer(){
 /* ============ RENDER: PRODUCT QUICK MODAL (not used directly, product page handles detail) ============ */
 
 /* ============ RENDER: CHECKOUT ============ */
-function updateForm(field, val){ state.formData[field] = val; }
+function updateForm(field, val, el){
+  state.formData[field] = val;
+  /* Clear that field's error as soon as it's filled. Direct DOM patch, never a render() —
+     this form deliberately doesn't re-render on keystroke, which is what keeps focus stable. */
+  if(el && state.checkoutErrors && state.checkoutErrors[field] && String(val).trim()){
+    delete state.checkoutErrors[field];
+    const wrap = el.closest('.form-field');
+    if(wrap){
+      wrap.classList.remove('field-error');
+      const msg = wrap.querySelector('.field-err-msg');
+      if(msg) msg.remove();
+    }
+  }
+}
 function applyCoupon(){
   const code = (state.couponInput||'').trim().toUpperCase();
   if(COUPONS[code] && COUPONS[code].active!==false){ state.coupon = COUPONS[code]; showToast(state.lang==='ar'?'تم تطبيق الرمز!':'Coupon applied!'); }
   else { state.coupon = null; showToast(state.lang==='ar'?'رمز غير صالح':'Invalid coupon'); }
   render();
 }
-function selectGov(g){ state.selectedGov = g; render(); }
+function selectGov(g){
+  state.selectedGov = g;
+  if(g && state.checkoutErrors) delete state.checkoutErrors.gov;
+  render();
+}
 
 /* Items in these categories are treated as electronics/battery items for the shipping notice */
 function cartHasElectronics(){
@@ -2598,10 +2720,23 @@ function cartHasElectronics(){
 }
 function openShippingModal(){
   const f = state.formData;
-  if(!f.fullName || !f.phone || !state.selectedGov || !f.city || !f.address){
+  /* Mark the specific fields that are missing, so the customer sees which ones rather than
+     just a toast telling them something, somewhere, is empty. */
+  const errs = {};
+  if(!f.fullName) errs.fullName = true;
+  if(!f.phone) errs.phone = true;
+  if(!state.selectedGov) errs.gov = true;
+  if(!f.city) errs.city = true;
+  if(!f.address) errs.address = true;
+  if(Object.keys(errs).length){
+    state.checkoutErrors = errs;
     showToast(state.lang==='ar'?'يرجى تعبئة الحقول المطلوبة':'Please fill in the required fields');
+    render();
+    const firstBad = document.querySelector('.form-field.field-error input, .form-field.field-error select');
+    if(firstBad){ firstBad.scrollIntoView({behavior:'smooth', block:'center'}); firstBad.focus({preventScroll:true}); }
     return;
   }
+  state.checkoutErrors = {};
   state.shippingModalOpen = true;
   state.shippingModalCountdown = 3;
   render();
@@ -2619,6 +2754,10 @@ function closeShippingModal(){
 }
 function confirmShippingAndPlaceOrder(){
   if(state.shippingModalCountdown > 0) return;
+  /* placeOrder() awaits the network before its own render(), so this modal stays on screen
+     for the whole request — without this the button just sits there looking un-clicked. */
+  const btn = document.querySelector('.ship-ack-btn');
+  if(btn){ btn.classList.add('loading'); btn.disabled = true; }
   state.shippingModalOpen = false;
   state.shippingModalCountdown = 3;
   placeOrder();
@@ -2832,28 +2971,39 @@ function renderCheckout(){
   const sub = cartSubtotal();
   const disc = discountAmount();
   const total = Math.max(0, sub - disc + fee);
+  const err = state.checkoutErrors || {};
+  const isAr = state.lang==='ar';
+  const required = isAr ? 'هذا الحقل مطلوب' : 'This field is required';
   return `
   <div class="page container">
     <div class="breadcrumb"><a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${t('checkout')}</div>
+    <div class="co-steps">
+      <div class="co-step done"><span class="dot">✓</span>${t('cart')}</div>
+      <span class="co-step-sep"></span>
+      <div class="co-step on"><span class="dot">2</span>${isAr?'التفاصيل':'Details'}</div>
+      <span class="co-step-sep"></span>
+      <div class="co-step"><span class="dot">3</span>${isAr?'الدفع':'Payment'}</div>
+    </div>
     <div class="checkout-grid">
       <div class="panel">
         <h3>${t('fullName')} & ${t('address')}</h3>
         <div class="form-row">
-          <div class="form-field"><label>${t('fullName')} *</label><input type="text" value="${state.formData.fullName||''}" oninput="updateForm('fullName',this.value)"/></div>
-          <div class="form-field"><label>${t('phone')} *</label><input type="tel" placeholder="+961" value="${state.formData.phone||''}" oninput="updateForm('phone',this.value)"/></div>
+          <div class="form-field ${err.fullName?'field-error':''}"><label>${t('fullName')} *</label><input type="text" value="${state.formData.fullName||''}" oninput="updateForm('fullName',this.value,this)"/>${err.fullName?`<span class="field-err-msg">${required}</span>`:''}</div>
+          <div class="form-field ${err.phone?'field-error':''}"><label>${t('phone')} *</label><input type="tel" placeholder="+961" value="${state.formData.phone||''}" oninput="updateForm('phone',this.value,this)"/>${err.phone?`<span class="field-err-msg">${required}</span>`:''}</div>
         </div>
         <div class="form-row">
           <div class="form-field full"><label>${t('email')}</label><input type="email" value="${state.formData.email||''}" oninput="updateForm('email',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field">
+          <div class="form-field ${err.gov?'field-error':''}">
             <label>${t('governorate')} *</label>
             <select onchange="selectGov(this.value)">
               <option value="">${state.lang==='ar'?'اختر':'Select'}</option>
               ${govs.map(g=>`<option value="${g}" ${state.selectedGov===g?'selected':''}>${g} (+${fmt(GOV_FEES[state.lang][g])})</option>`).join('')}
             </select>
+            ${err.gov?`<span class="field-err-msg">${required}</span>`:''}
           </div>
-          <div class="form-field"><label>${t('city')} *</label><input type="text" value="${state.formData.city||''}" oninput="updateForm('city',this.value)"/></div>
+          <div class="form-field ${err.city?'field-error':''}"><label>${t('city')} *</label><input type="text" value="${state.formData.city||''}" oninput="updateForm('city',this.value,this)"/>${err.city?`<span class="field-err-msg">${required}</span>`:''}</div>
         </div>
         <div class="form-row">
           <div class="form-field"><label>${t('area')}</label><input type="text" value="${state.formData.area||''}" oninput="updateForm('area',this.value)"/></div>
@@ -2864,7 +3014,7 @@ function renderCheckout(){
           <div class="form-field"><label>${t('apartment')}</label><input type="text" value="${state.formData.apartment||''}" oninput="updateForm('apartment',this.value)"/></div>
         </div>
         <div class="form-row">
-          <div class="form-field full"><label>${t('address')} *</label><input type="text" value="${state.formData.address||''}" oninput="updateForm('address',this.value)"/></div>
+          <div class="form-field full ${err.address?'field-error':''}"><label>${t('address')} *</label><input type="text" value="${state.formData.address||''}" oninput="updateForm('address',this.value,this)"/>${err.address?`<span class="field-err-msg">${required}</span>`:''}</div>
         </div>
         <div class="form-row">
           <div class="form-field full"><label>${t('notes')}</label><textarea rows="2" oninput="updateForm('notes',this.value)">${state.formData.notes||''}</textarea></div>
@@ -5486,7 +5636,55 @@ function render(){
   document.getElementById('overlay').classList.toggle('open', state.drawerOpen);
   document.getElementById('overlay').onclick = ()=>{ toggleDrawer(false); };
   updateHeroFade();
+  updateHeaderShrink();
+  markFirstHomePaint();
+  initScrollReveal();
   restoreGalleryScroll('pg-desktop');
+}
+/* The hero/billboard entrance only plays the first time the shop itself appears — not on the
+   login screen before it, and not again on every later re-render of the same page. */
+let _firstHomePaint = false;
+function markFirstHomePaint(){
+  if(_firstHomePaint || state.view!=='home' || !state.currentUserId) return;
+  _firstHomePaint = true;
+  document.body.classList.add('first-load');
+  setTimeout(()=>document.body.classList.remove('first-load'), 1600);
+}
+/* Sections fade/rise in as they enter the viewport. The observer is module-level and re-attached
+   after every render() because this app replaces #app's innerHTML wholesale, so every .reveal
+   node is a brand-new element each time. Class toggle only — never calls render(). */
+let _revealObserver = null;
+const _revealedSections = new Set();
+function initScrollReveal(){
+  if(!('IntersectionObserver' in window)) return;
+  if(!_revealObserver){
+    _revealObserver = new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        if(!en.isIntersecting) return;
+        en.target.classList.add('in');
+        if(en.target.id) _revealedSections.add(en.target.id);
+        _revealObserver.unobserve(en.target);
+      });
+    }, {threshold:.12});
+  }
+  document.querySelectorAll('.reveal:not(.in)').forEach(el=>{
+    /* A section that has already been revealed once is shown immediately on later renders —
+       otherwise every unrelated render() (add to cart, wishlist toggle) would replay the whole
+       page's entrance animation, which reads as a flicker rather than as motion. */
+    if(el.id && _revealedSections.has(el.id)){
+      el.style.transition = 'none'; // show it outright: a 0→1 transition here would re-fade the page
+      el.classList.add('in');
+      return;
+    }
+    _revealObserver.observe(el);
+  });
+}
+/* Tightens the sticky header once the page is scrolled at all — same direct-DOM-patch approach
+   as updateHeroFade() below, so a scroll never triggers a re-render. */
+function updateHeaderShrink(){
+  const h = document.getElementById('siteHeader');
+  if(!h) return;
+  h.classList.toggle('shrink', window.scrollY > 40);
 }
 function updateHeroFade(){
   const hero = document.getElementById('hero-sec');
@@ -5591,6 +5789,7 @@ window.addEventListener('resize', ()=>{
   }, 150);
 });
 window.addEventListener('scroll', updateHeroFade, {passive:true});
+window.addEventListener('scroll', updateHeaderShrink, {passive:true});
 let _billboardTimer = setInterval(()=>{
   if(!state.currentUserId) return; // billboard only shows once logged in — otherwise this fires on the login screen and closes the keyboard mid-type
   const slides = state.settings.billboardSlides;
@@ -5610,7 +5809,11 @@ let _billboardTimer = setInterval(()=>{
        rebuild the whole page (header included) every 5s and steal focus from the search bar
        or any other field on the home page even though neither has anything to do with it. */
     const el = document.getElementById('billboard-full-sec');
-    if(el) el.outerHTML = renderBillboard();
+    if(el){
+      el.outerHTML = renderBillboard();
+      const swapped = document.querySelector('#billboard-full-sec .billboard');
+      if(swapped) swapped.classList.add('bb-swap'); // fade the new slide in rather than hard-cutting
+    }
   }
 }, 5000);
 /* Products only ever loaded once, on initApp() — a customer already browsing never saw anything
