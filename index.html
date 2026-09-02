@@ -778,14 +778,6 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .hero-photo .eyebrow{color:var(--brass-light)}
 .hero-dots{position:absolute;bottom:20px;inset-inline-end:26px;z-index:3;display:flex;gap:8px}
 
-/* Three facts, directly under the hero. This is the highest-value block on the page for a shop
-   that asks to be paid before it ships. */
-.trust-strip{background:var(--cedar-light);color:rgba(255,255,255,.92);display:grid;grid-template-columns:repeat(3,1fr)}
-.trust-strip div{padding:18px 22px;border-inline-end:1px solid rgba(255,255,255,.12)}
-.trust-strip div:last-child{border:none}
-.trust-strip b{display:block;font-size:13.5px;font-weight:700;margin-bottom:4px}
-.trust-strip span{font-size:12px;color:rgba(255,255,255,.62);line-height:1.45}
-
 /* Roomier sections — the old 52px rhythm made a short catalogue look crowded and cheap. */
 section{padding:64px 0}
 .section-head{margin-bottom:28px}
@@ -825,11 +817,6 @@ section{padding:64px 0}
 .m-hero-dots{position:absolute;bottom:14px;inset-inline-end:18px;z-index:3;display:flex;gap:6px}
 .m-hero-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.45);border:0;padding:0}
 .m-hero-dot.active{width:18px;background:#fff}
-.m-trust{display:flex;background:var(--acc2Ink);color:rgba(255,255,255,.92)}
-.m-trust div{flex:1;padding:12px 8px;text-align:center;border-inline-end:1px solid rgba(255,255,255,.12)}
-.m-trust div:last-child{border:none}
-.m-trust b{display:block;font:700 10.5px/1.3 'Figtree',sans-serif;margin-bottom:3px}
-.m-trust span{font:500 9px/1.3 'Figtree',sans-serif;color:rgba(255,255,255,.62)}
 /* One product per row, with a 4:3 photo — three items stop reading as a half-empty shelf. */
 .m-grid.m-grid-wide{grid-template-columns:1fr;gap:16px}
 .m-grid-wide .m-card-img{aspect-ratio:4/3}
@@ -2507,11 +2494,6 @@ function renderHome(){
   const liveCats = CATS.filter(c=>PRODUCTS.some(p=>productInCat(p, c.id)));
   return `
   ${renderHeroPhoto(shopTarget)}
-  <div class="trust-strip">
-    <div><b>${state.lang==='ar'?'صور حقيقية للمنتج':'Real photos of the exact item'}</b><span>${state.lang==='ar'?'لا صور مأخوذة من الإنترنت':'No stock imagery, ever'}</span></div>
-    <div><b>${state.lang==='ar'?'نتأكد من الدفع قبل الشحن':'Payment verified before we ship'}</b><span>${state.lang==='ar'?'تحويل Wish، نراجعه يدويًا':'Wish transfer, checked by hand'}</span></div>
-    <div><b>${state.lang==='ar'?'توصيل لكل المحافظات':'Delivery to every governorate'}</b><span>${state.lang==='ar'?`رسوم ثابتة · مجاني فوق $${FREE_DELIVERY_MIN}`:`Flat fee · free over $${FREE_DELIVERY_MIN}`}</span></div>
-  </div>
 
   ${liveCats.length>1?`
   <section id="cats-sec" class="container reveal">
@@ -5300,11 +5282,6 @@ function mHome(){
       <div class="m-hero-dots">
         ${hero.slides.map((_,idx)=>`<button class="m-hero-dot ${idx===(state.billboardIndex % hero.slides.length)?'active':''}" onclick="event.stopPropagation();goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
       </div>`:''}
-    </div>
-    <div class="m-trust">
-      <div><b>Real photos</b><span>Of the exact item</span></div>
-      <div><b>Verified pay</b><span>Before we ship</span></div>
-      <div><b>All Lebanon</b><span>Flat fee by area</span></div>
     </div>` : ''}
     <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${deal ? `
