@@ -1297,13 +1297,13 @@ function applySettingsDerived(){
   COUPONS = Object.fromEntries(coupons.map(c=>[c.code, c]));
 }
 
-const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered','cancelled','returned'];
+const ORDER_STATUSES = ['pending','confirmed','ordered_supplier','received_china','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered','cancelled','returned'];
 const ORDER_STATUS_LABELS = {
-  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', processing:'قيد التجهيز', shipped:'تم الشحن', arrived_lebanon:'وصل إلى لبنان', received_lebanon:'تم استلامه في لبنان', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
-  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', processing:'Processing', shipped:'Shipped', arrived_lebanon:'Arrived in Lebanon', received_lebanon:'Received in Lebanon', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
+  ar:{pending:'قيد الانتظار', confirmed:'مؤكد', ordered_supplier:'تم الشراء من المورد', received_china:'تم استلامه في الصين', processing:'قيد التجهيز', shipped:'تم الشحن', arrived_lebanon:'وصل إلى لبنان', received_lebanon:'تم استلامه في لبنان', out_for_delivery:'قيد التوصيل', delivered:'تم التسليم', cancelled:'ملغى', returned:'مرتجع'},
+  en:{pending:'Pending', confirmed:'Confirmed', ordered_supplier:'Ordered from Supplier', received_china:'Received in China', processing:'Processing', shipped:'Shipped', arrived_lebanon:'Arrived in Lebanon', received_lebanon:'Received in Lebanon', out_for_delivery:'Out for Delivery', delivered:'Delivered', cancelled:'Cancelled', returned:'Returned'}
 };
 /* The subset of statuses shown as a step-by-step progress tracker to customers (cancelled/returned are shown as a plain badge instead) */
-const TRACK_STATUSES = ['pending','confirmed','ordered_supplier','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered'];
+const TRACK_STATUSES = ['pending','confirmed','ordered_supplier','received_china','processing','shipped','arrived_lebanon','received_lebanon','out_for_delivery','delivered'];
 
 /* Suggested-price margin curve: cheaper items need a higher % markup to be worth handling */
 function suggestedMarginPct(cost){
@@ -3062,6 +3062,23 @@ async function updateItemSku(dbId, itemIndex, sku){
     showToast(state.lang==='ar' ? 'تعذر حفظ الرمز' : 'Could not save the code');
   }
 }
+/* The China-to-Lebanon shipping cost is only known once the item is actually received by our
+   agent in China, so it's entered per order-item (like the SKU) rather than guessed up front.
+   It's shown to the customer as an informational line — it's not collected as extra payment. */
+async function updateItemShippingCost(dbId, itemIndex, value){
+  const o = state.orders.find(o=>o._dbId===dbId);
+  if(!o || !o.items[itemIndex]) return;
+  const n = parseFloat(value);
+  o.items[itemIndex].shippingCost = (value==='' || isNaN(n)) ? null : n;
+  render();
+  try{
+    const { error } = await sb.from('orders').update({ items: o.items }).eq('id', dbId);
+    if(error) throw error;
+  } catch(e){
+    console.error('Item shipping cost update failed:', e);
+    showToast(state.lang==='ar' ? 'تعذر حفظ تكلفة الشحن' : 'Could not save the shipping cost');
+  }
+}
 /* Screenshots live in the private payment-proofs bucket, so admin needs a signed URL per
    order rather than a plain public URL — fetched once when entering the Payments tab. */
 async function loadPaymentProofUrls(){
@@ -3379,6 +3396,7 @@ function renderItemTrack(it, key){
         <a href="#" class="view-all" style="font-size:11px" onclick="toggleTrackerExpand('${key}');return false;">${expanded?(isAr?'إخفاء الخطوات':'Hide steps'):(isAr?'عرض كل الخطوات':'Show all steps')}</a>
       </div>
     </div>
+    ${it.shippingCost!=null?`<div style="font-size:12px;color:var(--ink-soft);margin-top:2px">${isAr?`تكلفة الشحن من الصين: ${fmt(it.shippingCost)}`:`China shipping cost: ${fmt(it.shippingCost)}`}</div>`:''}
     ${expanded?`<div class="order-track">
       ${TRACK_STATUSES.map((s,i)=>`
         <div class="track-step ${i<idx?'done':''} ${i===idx?'current':''}">
@@ -4424,6 +4442,7 @@ function renderAdminItemStatusTable(o){
       <th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th>
       <th>${isAr?'رمز التتبع':'Tracking code'}</th>
       <th>${isAr?'الحالة/اللوجستيات':'Status / Logistics'}</th>
+      <th>${isAr?'تكلفة الشحن من الصين':'China shipping cost'}</th>
     </tr></thead>
     <tbody>
       ${o.items.map((it,i)=>`
@@ -4437,6 +4456,7 @@ function renderAdminItemStatusTable(o){
               ${ORDER_STATUSES.map(s=>`<option value="${s}" ${(it.status||'confirmed')===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
             </select>
           </td>
+          <td><input type="number" step="0.01" min="0" class="font-mono" value="${it.shippingCost!=null?it.shippingCost:''}" placeholder="$" onchange="updateItemShippingCost('${o._dbId}', ${i}, this.value)" style="width:80px;font-size:11px"/></td>
         </tr>`).join('')}
     </tbody>
   </table>`;
@@ -4824,6 +4844,7 @@ function renderAdmin(){
                 <th>${state.lang==='ar'?'رمز التتبع':'Tracking code'}</th>
                 <th>${state.lang==='ar'?'سعر البيع':'Sell Price'}</th><th>${t('costLabel')}</th><th>${t('supplierLink')}</th>
                 <th>${state.lang==='ar'?'الحالة/اللوجستيات':'Status / Logistics'}</th>
+                <th>${state.lang==='ar'?'تكلفة الشحن من الصين':'China shipping cost'}</th>
               </tr></thead>
               <tbody>
                 ${o.items.map((it,i)=>`
@@ -4840,6 +4861,7 @@ function renderAdmin(){
                         ${ORDER_STATUSES.map(s=>`<option value="${s}" ${(it.status||'confirmed')===s?'selected':''}>${ORDER_STATUS_LABELS[state.lang][s]}</option>`).join('')}
                       </select>
                     </td>
+                    <td><input type="number" step="0.01" min="0" class="font-mono" value="${it.shippingCost!=null?it.shippingCost:''}" placeholder="$" onchange="updateItemShippingCost('${o._dbId}', ${i}, this.value)" style="width:80px;font-size:11px"/></td>
                   </tr>`).join('')}
               </tbody>
             </table>
@@ -5824,6 +5846,14 @@ function mTrack(){
       <div class="m-disp" style="font-size:22px;line-height:1.25;margin-bottom:8px">${PAYMENT_STATUS_LABELS[status] || ORDER_STATUS_LABELS.en[status] || status}</div>
       <div style="font:400 13px/1.55 'Figtree',sans-serif;opacity:.85">${paymentPending ? "We'll update this the moment your payment is checked." : `Estimated delivery in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days from order date.`}</div>
     </div>
+    ${o.items.some(it=>it.shippingCost!=null)?`<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin:12px 0">
+      <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">China shipping cost</div>
+      ${o.items.filter(it=>it.shippingCost!=null).map(it=>`
+      <div style="display:flex;justify-content:space-between;font:500 13px/1.5 'Figtree',sans-serif">
+        <span style="color:var(--text)">${it.name_en}</span>
+        <span class="m-mono" style="color:var(--accInk);font-weight:600">${fmt(it.shippingCost)}</span>
+      </div>`).join('')}
+    </div>`:''}
     ${paymentPending ? '' : `<div style="background:var(--card);border:1px solid var(--line);border-radius:26px;padding:8px 18px 14px">
       ${steps.map(s=>`
       <div class="m-track-step">
