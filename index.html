@@ -4975,8 +4975,8 @@ function renderAdmin(){
           : 'A small card in the middle of the screen with an image or short video. It shows every time someone opens or refreshes the home page, and can be closed straight away.'}</p>
         <input type="file" accept="image/*,video/*" onchange="handlePromoUpload(event)" style="margin-bottom:6px"/>
         <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 12px">${state.lang==='ar'
-          ? 'صورة أو فيديو MP4 — يُضبط النوع تلقائيًا. الفيديو بلا صوت ويُعاد تلقائيًا. يُفضّل أقل من 5 ميغابايت.'
-          : 'Image or MP4 video — the type is detected automatically. Video plays muted and loops. Keep it under ~5&nbsp;MB so it loads fast on mobile data.'}</p>
+          ? 'صورة أو فيديو MP4 — يُضبط النوع تلقائيًا. الفيديو بلا صوت ويُعاد تلقائيًا. أفضل مقاس عريض بنسبة 16:9 (مثلًا 1280×720) — يظهر كاملًا بلا اقتصاص. يُفضّل أقل من 5 ميغابايت.'
+          : 'Image or MP4 video — the type is detected automatically. Video plays muted and loops. Best as a wide 16:9 banner (e.g. 1280×720) — it always shows in full, never cropped. Keep it under ~5&nbsp;MB so it loads fast on mobile data.'}</p>
         ${p.mediaUrl?`
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           ${p.type==='video'
