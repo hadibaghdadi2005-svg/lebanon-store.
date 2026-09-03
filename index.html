@@ -756,23 +756,21 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .promo-backdrop.is-closing .promo-card{animation:promoOut .2s ease both}
 @keyframes fadeOut{to{opacity:0}}
 @keyframes promoOut{to{opacity:0;transform:translateY(8px) scale(.98)}}
-/* Landscape frame: the media is the card, with the words over it, rather than a photo sitting on
-   top of a white panel. object-fit:contain (not cover) so a wide banner never gets cropped down
-   to a sliver — it letterboxes into the card's own near-black background instead, which blends. */
+/* Landscape frame with the words in their own panel below it, rather than overlaid on top of the
+   media — a real ad (like an uploaded marketing banner) usually carries its own headline/CTA
+   baked in, so stacking our own title/button on top of it just hides half the picture. */
 .promo-media{position:relative;width:100%;aspect-ratio:16/9;background:#0B1410;display:block;
   background-size:cover;background-position:center}
 .promo-media>video,.promo-media>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;
   animation:promoKen 9s ease-out both}
 .promo-media>video{z-index:1;transition:opacity .6s ease} /* fades in over the stand-in image */
 @keyframes promoKen{from{transform:scale(1.12)}to{transform:scale(1)}}
-.promo-media::after{content:'';position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(9,16,12,.35) 0%,transparent 26%,transparent 42%,rgba(9,16,12,.94) 92%)}
 /* Nothing to look at yet? Show a slow shimmer rather than a black hole. */
 .promo-media.is-waiting::before{content:'';position:absolute;inset:0;z-index:1;
   background:linear-gradient(100deg,#0B1410 30%,#16241D 50%,#0B1410 70%);background-size:220% 100%;
   animation:promoShimmer 1.5s ease-in-out infinite}
 @keyframes promoShimmer{from{background-position:120% 0}to{background-position:-40% 0}}
-.promo-rule{position:absolute;left:0;right:0;bottom:0;z-index:3;height:2px;
+.promo-rule{width:100%;height:2px;
   background:linear-gradient(90deg,transparent,var(--brass-light),transparent);opacity:.75;
   animation:promoRule 1.1s cubic-bezier(.16,1,.3,1) .35s both}
 @keyframes promoRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -782,7 +780,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
   transition:background .18s ease, transform .18s ease;animation:fadeIn .4s ease .1s both}
 .promo-close:hover{background:rgba(10,16,12,.88);transform:scale(1.06)}
 .promo-close:focus-visible{outline:2px solid var(--brass-light);outline-offset:2px}
-.promo-body{position:absolute;inset:auto 0 0;z-index:3;padding:0 22px 24px;color:#fff;text-align:center}
+.promo-body{padding:20px 22px 24px;color:#fff;text-align:center;background:#0B1410}
 .promo-title{font-family:'Caprasimo',serif;font-size:34px;line-height:1;margin-bottom:9px;letter-spacing:.01em;
   animation:promoUp .55s cubic-bezier(.16,1,.3,1) .3s both}
 .promo-sub{font:500 13.5px/1.5 'Figtree',sans-serif;color:rgba(255,255,255,.76);margin-bottom:18px;
