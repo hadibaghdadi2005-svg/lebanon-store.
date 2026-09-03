@@ -17,7 +17,20 @@
 <meta name="twitter:description" content="Shop electronics, home & kitchen, fashion, beauty and more with fast delivery across every region in Lebanon.">
 <meta name="twitter:image" content="https://hadibaghdadi2005-svg.github.io/lebanon-store./social-preview.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Tajawal:wght@400;500;700;800&family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- The stylesheet comes from googleapis, but the font FILES it then asks for come from
+     gstatic — a second origin whose DNS + TLS handshake was previously only started after
+     the stylesheet had finished parsing, putting a full extra round trip on the critical path. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Same idea for the database. It lives in ap-northeast-1 (Tokyo); from Lebanon that
+     handshake is a few hundred ms, and it used to begin only once supabase-js had finished
+     downloading from a third CDN. Warming it during head parse overlaps it with everything else. -->
+<link rel="preconnect" href="https://vsmihhipjmrapwcupmcx.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Tajawal (4 weights) is deliberately absent: it is only ever applied under [dir="rtl"], and
+     the Arabic UI has been unreachable since the language toggle was removed — setLang() has no
+     call site left. Arabic strings still in the data render in the system Arabic fallback, exactly
+     as they already did, since the Tajawal rules were never in force on an English page anyway. -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --cedar:#0F3D2E;
@@ -1546,12 +1559,15 @@ function productInCat(p, catId){
   return productCats(p).includes(catId);
 }
 
-function showToast(msg){
+/* ms is optional and defaults to the original 2.2s, so every existing call is unaffected — it
+   exists for the few messages carrying instructions rather than an acknowledgement, which need
+   longer on screen than "Added to basket" does. */
+function showToast(msg, ms){
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+  window._toastTimer = setTimeout(()=>el.classList.remove('show'), ms || 2200);
 }
 
 /* ============ ACCOUNTS / LOGIN ============ */
@@ -1765,8 +1781,14 @@ function completeLogin(c){
   window.scrollTo(0,0);
   render();
   /* Let the home page paint first — the popup sits over it, so showing it in the same frame
-     makes the store look like it loaded as an ad rather than as a shop. */
-  setTimeout(maybeShowPromo, 900);
+     makes the store look like it loaded as an ad rather than as a shop.
+     The wait is also a bandwidth decision, not just a visual one: the promo media is the
+     single heaviest file on the page (a 3.28 MB GIF as things stand), so it must not be in
+     flight while the product photos a customer actually came for are still arriving. Idle
+     time means "the shop has settled"; the timeout is the ceiling for a browser that never
+     goes idle, and the plain setTimeout is the fallback for Safari, which has no rIC. */
+  if(window.requestIdleCallback) requestIdleCallback(maybeShowPromo, {timeout:4000});
+  else setTimeout(maybeShowPromo, 1500);
 }
 /* ============ REAL AUTH (Supabase Auth — email + password) ============
    Identity is verified by Supabase itself (the account owner is whoever knows
@@ -2582,8 +2604,10 @@ function productCard(p){
   return `
   <div class="prod-card">
     <div class="prod-img ${imgB?'has-alt':''}" style="background:${color}" onclick="openProduct(${p.id})">
-      ${imgA?`<img class="prod-img-a" src="${imgA}" alt="${pname(p)}">`:ICONS[p.icon]}
-      ${imgB?`<img class="prod-img-b" src="${imgB}" alt="${pname(p)}">`:''}
+      ${imgA?`<img class="prod-img-a" src="${imgA}" alt="${pname(p)}" loading="lazy" decoding="async">`:ICONS[p.icon]}
+      ${/* The second photo only ever appears on hover, so it is pure waste on a phone, which has
+            no hover at all — and it used to double the grid's image payload on every load. */''}
+      ${imgB?`<img class="prod-img-b" src="${imgB}" alt="" aria-hidden="true" loading="lazy" decoding="async">`:''}
       <div class="prod-badges">
         ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
         ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
@@ -2789,7 +2813,8 @@ function renderPhotoGallery(p, idPrefix, fallbackIconHtml){
   }
   return `
   <div class="gallery-track" id="${idPrefix}-track" onscroll="updateGalleryDots('${idPrefix}')">
-    ${photos.map(url=>`<div class="gallery-slide" style="background:${color}"><img src="${url}" alt="${p.name_en}"></div>`).join('')}
+    ${/* Only the first frame is on screen; the rest are a swipe away, so they load on demand. */''}
+    ${photos.map((url,i)=>`<div class="gallery-slide" style="background:${color}"><img src="${url}" alt="${p.name_en}" ${i===0?'fetchpriority="high"':'loading="lazy"'} decoding="async"></div>`).join('')}
   </div>
   ${photos.length>1?`
   <div class="billboard-dots" id="${idPrefix}-dots">
@@ -2970,7 +2995,7 @@ function renderDrawer(){
           const color = PALETTE[p.color % PALETTE.length];
           return `
           <div class="cart-line" data-line="${i}">
-            <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
+            <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
             <div class="cart-info">
               <div class="name">${pname(p)}</div>
               <div class="variant">${optionLabel(l)}</div>
@@ -3373,7 +3398,7 @@ function renderCheckout(){
           return `
           <div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--sand-dark)">
             <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:${color};position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
-              ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
+              ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
             </div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700">
@@ -4005,6 +4030,7 @@ async function handleProductPhotoUpload(event, id){
     showToast(state.lang==='ar' ? 'يرجى اختيار ملف صورة' : 'Please choose an image file');
     return;
   }
+  const heavy = heavyUploadWarning(file);
   showToast(state.lang==='ar' ? 'جارٍ رفع الصورة...' : 'Uploading image...');
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -4016,7 +4042,8 @@ async function handleProductPhotoUpload(event, id){
     ensureProductPhotoArray(p).push(data.publicUrl);
     p.imageUrl = p.imageUrls[0];
     syncProductPhotos(p);
-    showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
+    if(heavy) showToast(heavy, 9000);
+    else showToast(state.lang==='ar' ? 'تم رفع الصورة!' : 'Image uploaded!');
     render();
   } catch(e){
     console.error('Image upload failed:', e);
@@ -4086,6 +4113,7 @@ function togglePromoEnabled(val){
 async function handlePromoUpload(event){
   const file = event.target.files[0];
   if(!file) return;
+  const heavy = heavyUploadWarning(file);
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `promo-${Date.now()}.${ext}`;
@@ -4099,7 +4127,7 @@ async function handlePromoUpload(event){
     if(actualType) state.settings.promo.type = actualType;
     state.settings.promo.mediaUrl = data.publicUrl;
     render(); syncPromo();
-    showToast(state.lang==='ar' ? 'تم رفع الملف!' : 'File uploaded!');
+    toastUploadDone(heavy);
   } catch(e){
     console.error('Promo upload failed:', e);
     showToast(state.lang==='ar' ? 'تعذر رفع الملف' : 'Could not upload the file');
@@ -4237,9 +4265,36 @@ async function deleteCategory(id){
   logAdminAction('delete_category', { id });
   render();
 }
+/* Every customer downloads whatever gets uploaded here — on a phone, on Lebanese mobile data,
+   before the shop is usable — and nothing in this panel used to say so. That is how a 9.85 MB
+   billboard video and a 3.28 MB promo GIF ended up on the live homepage: both uploaded without
+   complaint, and neither looks like a problem from the admin's own desk on wifi.
+   This warns rather than blocks — it is the owner's store, and a deliberate heavy upload is
+   theirs to make — and words its advice from the actual file type. */
+const HEAVY_UPLOAD_MB = 2;
+/* Returns the warning text, or '' when the file is a reasonable weight. It deliberately does not
+   toast by itself: the upload handlers finish with a "File uploaded!" toast, which would simply
+   replace anything shown beforehand — so the caller substitutes this for that success message. */
+function heavyUploadWarning(file){
+  const mb = file.size / (1024*1024);
+  if(mb <= HEAVY_UPLOAD_MB) return '';
+  const type = file.type || '';
+  const advice = type.startsWith('video/')
+    ? 'Re-export it around 1600x500, H.264, under 2 MB.'
+    : type === 'image/gif'
+      ? 'A GIF is the heaviest way to ship animation - the same clip as an MP4 is usually 10x smaller.'
+      : 'Resize it to about 1600px wide and save as JPEG at ~75% quality.';
+  return `Uploaded, but it is ${mb.toFixed(1)} MB. Every visitor downloads this on mobile data. ${advice}`;
+}
+/* One place to end an upload, so the size warning can never be clobbered by the success toast. */
+function toastUploadDone(warning){
+  if(warning) showToast(warning, 9000);
+  else showToast(state.lang==='ar' ? 'تم رفع الملف!' : 'File uploaded!');
+}
 async function handleBillboardSlideUpload(event, idx){
   const file = event.target.files[0];
   if(!file) return;
+  const heavy = heavyUploadWarning(file);
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `billboard-${Date.now()}.${ext}`;
@@ -4256,7 +4311,7 @@ async function handleBillboardSlideUpload(event, idx){
       updateBillboardSlide(idx, 'type', actualType);
     }
     updateBillboardSlide(idx, 'mediaUrl', data.publicUrl);
-    showToast(state.lang==='ar' ? 'تم رفع الملف!' : 'File uploaded!');
+    toastUploadDone(heavy);
   } catch(e){
     console.error('Billboard slide upload failed:', e);
     showToast(state.lang==='ar' ? 'تعذر رفع الملف' : 'Could not upload the file');
@@ -4308,12 +4363,24 @@ function capturePromoPoster(video, url){
     localStorage.setItem(promoPosterKey(url), canvas.toDataURL('image/jpeg', 0.72));
   }catch(e){ /* tainted canvas, quota, or private mode — the popup works fine without a poster */ }
 }
-/* True when the visitor has asked to save data, or the browser reports a 2G-class connection. */
-function promoShouldSkipVideo(){
+/* Whether this visitor should be spared a multi-megabyte decorative autoplay file.
+   Worth being blunt about why this exists: the billboard slide live on the site is a 9.85 MB
+   MP4 and the promo is a 3.28 MB GIF, and `autoplay` makes a browser fetch the whole video
+   regardless of preload="metadata" — so a phone was pulling ~13 MB of pure decoration before
+   the shop was usable. Both have a still image standing in for them, so skipping costs a
+   campaign its motion, not its message.
+   navigator.connection is Chromium-only (absent on iOS Safari and Firefox), which is why the
+   viewport check is the fallback rather than the other way round: a phone is the device where
+   this hurts most and the one where we can least often measure the connection. */
+function shouldSkipHeavyMedia(){
   const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if(!c) return false;
-  return !!c.saveData || c.effectiveType==='slow-2g' || c.effectiveType==='2g';
+  if(c){
+    if(c.saveData) return true;                                   // explicit "I am paying per MB"
+    if(['slow-2g','2g','3g'].includes(c.effectiveType)) return true;
+  }
+  return isMobileViewport();
 }
+function promoShouldSkipVideo(){ return shouldSkipHeavyMedia(); }
 /* What the card shows while the video is still on its way. A stored frame from a previous visit is
    the best match, but on a first visit there isn't one — and measured against the live file, that
    is a ten-second empty rectangle. So it falls back to a photo the page has already downloaded
@@ -4360,7 +4427,12 @@ function maybeShowPromo(){
         oncanplay="this.style.opacity=1;this.parentNode.classList.remove('is-waiting');capturePromoPoster(this,'${p.mediaUrl}')"></video>`;
     }
   } else {
+    /* Low priority and async decoding on purpose. An animated GIF is the worst format a promo
+       can be in — no hardware decode, and the live one is 3.28 MB, roughly fifteen product
+       photos' worth — so it queues behind the shop rather than in front of it. The real fix for
+       a file that size is to re-upload it as an MP4, which the admin panel now warns about. */
     media = `<img src="${p.mediaUrl}" alt="${(p.title||'').replace(/"/g,'&quot;')}"
+      fetchpriority="low" decoding="async"
       onload="this.parentNode.classList.remove('is-waiting')"/>`;
   }
   root.innerHTML = `
@@ -4406,6 +4478,15 @@ function heroLayerHtml(media, idx, active){
   const cls = `hero-layer${active?' is-active':''}`;
   if(media.isVideo){
     const still = heroStill();
+    /* A phone or a metered connection gets the still on its own rather than ~10 MB of autoplay
+       video for a hero it scrolls past in two seconds. Without a still to fall back on the video
+       is still the only thing we have, so it loads regardless — an empty hero is worse. */
+    if(still && shouldSkipHeavyMedia()){
+      return `<div class="${cls}" data-idx="${idx}">
+        <img class="hero-blur" src="${still}" alt="" aria-hidden="true">
+        <img class="hero-main" src="${still}" alt="" fetchpriority="high" onload="fitHeroLayer(this)">
+      </div>`;
+    }
     /* Deliberately not data-fit="cover", which hides the blur layer: a video paints nothing for
        the first seconds, and the blurred still is what stands in for it meanwhile. */
     return `<div class="${cls}" data-idx="${idx}" data-fit="video">
@@ -4413,9 +4494,11 @@ function heroLayerHtml(media, idx, active){
       <video class="hero-main" src="${media.url}" autoplay muted loop playsinline preload="metadata"></video>
     </div>`;
   }
+  /* The hero is the largest thing on the first screen, so it is the page's LCP element —
+     it should outrank every other image in the queue, and it must never be lazy. */
   return `<div class="${cls}" data-idx="${idx}">
     <img class="hero-blur" src="${media.url}" alt="" aria-hidden="true">
-    <img class="hero-main" src="${media.url}" alt="" onload="fitHeroLayer(this)">
+    <img class="hero-main" src="${media.url}" alt="" fetchpriority="high" onload="fitHeroLayer(this)">
   </div>`;
 }
 /* Reads the uploaded file's real dimensions and decides how it should sit in the frame. A photo
@@ -4727,7 +4810,7 @@ function renderProductEditorPanel(p){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         ${productPhotos(p).map((url,idx)=>`
         <div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)">
-          <img src="${url}" alt="${p.name_en}" style="width:100%;height:100%;object-fit:cover">
+          <img src="${url}" alt="${p.name_en}" decoding="async" style="width:100%;height:100%;object-fit:cover">
           <button onclick="removeProductPhoto(${p.id}, ${idx})" title="${isAr?'إزالة':'Remove'}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer">✕</button>
         </div>`).join('')}
         <label style="width:64px;height:64px;border-radius:8px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:24px;flex-shrink:0">
@@ -4862,7 +4945,7 @@ function renderAdmin(){
             <tr>
               <td>
                 <div style="width:38px;height:38px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
-                  ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
+                  ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
                 </div>
               </td>
               <td>${pname(p)}</td>
@@ -5008,7 +5091,7 @@ function renderAdmin(){
             <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${o.paymentSubmittedAt?(isAr?'أُرسل بتاريخ ':'Submitted ')+new Date(o.paymentSubmittedAt).toLocaleString():(isAr?'لم يُرسل أي إثبات بعد — سيُلغى تلقائيًا خلال 24 ساعة من الطلب':'Nothing submitted yet — will auto-cancel 24h after the order was placed')}</div>
             ${o.paymentReference?`<div style="font-size:13px;margin-bottom:10px"><b>${isAr?'رقم العملية:':'Reference:'}</b> <span class="font-mono">${o.paymentReference}</span></div>`:''}
             ${o.paymentProofPath?(state.adminPaymentProofUrls[o._dbId]
-              ? `<img src="${state.adminPaymentProofUrls[o._dbId]}" alt="${isAr?'إثبات التحويل':'Payment screenshot'}" style="max-width:220px;border-radius:8px;border:1px solid var(--line);display:block;margin-bottom:10px"/>`
+              ? `<img loading="lazy" decoding="async" src="${state.adminPaymentProofUrls[o._dbId]}" alt="${isAr?'إثبات التحويل':'Payment screenshot'}" style="max-width:220px;border-radius:8px;border:1px solid var(--line);display:block;margin-bottom:10px"/>`
               : `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${isAr?'جارٍ تحميل الصورة...':'Loading screenshot...'}</div>`)
             :''}
             <div style="display:flex;gap:8px">
@@ -5050,7 +5133,7 @@ function renderAdmin(){
               ${s.type==='video'?`<video src="${s.mediaUrl}" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`:`<img src="${s.mediaUrl}" alt="" style="width:120px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
             </div>`:''}
             <input type="file" accept="image/*,video/*" onchange="handleBillboardSlideUpload(event,${idx})" style="margin-bottom:10px"/>
-            <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px">${state.lang==='ar'?'صورة أو فيديو MP4. يُضبط النوع تلقائيًا حسب الملف، وأي مقاس صورة يظهر كاملًا بدون قص. الفيديو يعمل بلا صوت ويُعاد تلقائيًا — يُفضّل أقل من 5 ميغابايت وبنسبة عرض عريضة (حوالي 1600×500).':'Image or MP4 video — the Type above is set automatically from the file you pick. Any photo shape works: the billboard measures it and shows it whole, against a soft blurred fill, rather than cropping it. A wide file (about 1600×500) fills the frame edge to edge. Video plays muted on loop — keep it under ~5&nbsp;MB.'}</p>
+            <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px">${state.lang==='ar'?'صورة أو فيديو MP4. يُضبط النوع تلقائيًا حسب الملف، وأي مقاس صورة يظهر كاملًا بدون قص. الفيديو يعمل بلا صوت ويُعاد تلقائيًا — يُفضّل أقل من 2 ميغابايت وبنسبة عرض عريضة (حوالي 1600×500)، إذ يحمّله كل زائر على بيانات الهاتف، وعلى الهواتف والاتصالات البطيئة تظهر صورة الشريحة الأخرى بدلًا منه.':'Image or MP4 video — the Type above is set automatically from the file you pick. Any photo shape works: the billboard measures it and shows it whole, against a soft blurred fill, rather than cropping it. A wide file (about 1600×500) fills the frame edge to edge. Video plays muted on loop — keep it under 2&nbsp;MB: every visitor downloads it on mobile data, and on phones and slow connections the still from your other slide is shown in its place.'}</p>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${s.title||''}" onchange="updateBillboardSlide(${idx},'title',this.value)"/></div>
             <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان الفرعي':'Subtitle'}</label><input type="text" value="${s.subtitle||''}" onchange="updateBillboardSlide(${idx},'subtitle',this.value)"/></div>
             <div class="form-row" style="margin-bottom:10px">
@@ -5094,13 +5177,13 @@ function renderAdmin(){
           : 'A small card in the middle of the screen with an image or short video. It shows every time someone opens or refreshes the home page, and can be closed straight away.'}</p>
         <input type="file" accept="image/*,video/*" onchange="handlePromoUpload(event)" style="margin-bottom:6px"/>
         <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 12px">${state.lang==='ar'
-          ? 'صورة أو فيديو MP4 — يُضبط النوع تلقائيًا. الفيديو بلا صوت ويُعاد تلقائيًا. أفضل مقاس عريض بنسبة 16:9 (مثلًا 1280×720) — يظهر كاملًا بلا اقتصاص. يُفضّل أقل من 5 ميغابايت.'
-          : 'Image or MP4 video — the type is detected automatically. Video plays muted and loops. Best as a wide 16:9 banner (e.g. 1280×720) — it always shows in full, never cropped. Keep it under ~5&nbsp;MB so it loads fast on mobile data.'}</p>
+          ? 'صورة أو فيديو MP4 — يُضبط النوع تلقائيًا. الفيديو بلا صوت ويُعاد تلقائيًا. أفضل مقاس عريض بنسبة 16:9 (مثلًا 1280×720) — يظهر كاملًا بلا اقتصاص. يُفضّل أقل من 2 ميغابايت — تجنّب صور GIF المتحركة، فملف MP4 لنفس المقطع أصغر بعشر مرات تقريبًا.'
+          : 'Image or MP4 video — the type is detected automatically. Video plays muted and loops. Best as a wide 16:9 banner (e.g. 1280×720) — it always shows in full, never cropped. Keep it under 2&nbsp;MB: this is the heaviest file on the page and every visitor downloads it on mobile data. Avoid animated GIFs — the same clip saved as an MP4 is usually about ten times smaller.'}</p>
         ${p.mediaUrl?`
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           ${p.type==='video'
             ? `<video src="${p.mediaUrl}" style="width:120px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" muted></video>`
-            : `<img src="${p.mediaUrl}" alt="" style="width:120px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
+            : `<img loading="lazy" decoding="async" src="${p.mediaUrl}" alt="" style="width:120px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"/>`}
           <button class="btn btn-secondary btn-sm" onclick="previewPromo()">${state.lang==='ar'?'معاينة':'Preview'}</button>
         </div>`:''}
         <div class="form-field" style="margin-bottom:10px"><label>${state.lang==='ar'?'العنوان':'Title'}</label><input type="text" value="${p.title||''}" onchange="updatePromoField('title', this.value)"/></div>
@@ -5623,7 +5706,7 @@ function mCard(p){
 function mProductMediaInner(p){
   const color = PALETTE[p.color % PALETTE.length];
   const svg = `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`;
-  return p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name_en}" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
+  return p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name_en}" loading="lazy" decoding="async" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
 }
 function mRailCard(p){
   return `
@@ -6368,7 +6451,7 @@ function updateMobileHeaderFade(){
   }
 }
 
-async function initApp(){
+async function loadSettings(){
   try{
     const { data, error } = await sb.from('settings').select('*').eq('id', 1).single();
     if(!error && data){
@@ -6392,35 +6475,51 @@ async function initApp(){
     console.error('Could not load settings:', e);
   }
   applySettingsDerived();
-  try{
-    await loadCategories();
-  } catch(e){
-    console.error('Could not load categories:', e);
-  }
-  try{
-    await loadPublicProducts();
-  } catch(e){
-    console.error('Could not load product edits:', e);
-  }
-  try{
-    await loadReviews();
-  } catch(e){
-    console.error('Could not load reviews:', e);
-  }
+}
+/* The four content loads are independent of one another, but used to be awaited one after the
+   next. The database is in ap-northeast-1 (Tokyo) and the shop's customers are in Lebanon, so
+   each `await` was a ~300ms round trip spent staring at an empty #app — four of them in a row
+   before a single pixel of the store existed. Issued together they cost one round trip, not four.
+   allSettled rather than all: one failing table must not take the whole storefront down with it,
+   which is what the four separate try/catch blocks were there to guarantee. */
+function loadStoreData(){
+  return Promise.allSettled([
+    loadSettings(), loadCategories(), loadPublicProducts(), loadReviews()
+  ]).then(results=>{
+    const names = ['settings','categories','products','reviews'];
+    results.forEach((r,i)=>{ if(r.status==='rejected') console.error(`Could not load ${names[i]}:`, r.reason); });
+    /* loadReviews() ends by deriving every product's rating from the reviews it just fetched —
+       which silently did nothing if reviews happened to land before products. Running it once
+       more here makes the arrival order of those two requests irrelevant. */
+    recomputeProductRatings();
+  });
+}
+async function initApp(){
+  const dataReady = loadStoreData();
   const isRecoveryLink = window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+  let session = null;
   try{
-    const { data:{ session } } = await sb.auth.getSession();
-    if(session){
-      if(isRecoveryLink){ state.authMode = 'recovery'; render(); return; }
-      const c = await findOrCreateCustomer({ email: session.user.email, method:'password' });
-      if(c){
-        completeLogin(c);
-        if(window.location.hash === '#admin-payments' && isAdminUser(c)){
-          state.view = 'admin'; state.adminView = 'payments';
-          refreshAdminData(); loadPaymentProofUrls(); render();
-        }
-        return;
+    ({ data:{ session } } = await sb.auth.getSession());
+  } catch(e){
+    console.error('Session restore failed:', e);
+  }
+  /* A visitor who is not signed in lands on the login screen, and that screen needs no store
+     data whatsoever — no products, categories, reviews or settings appear on it. It used to be
+     withheld until all four finished anyway, which meant a first-time visitor (the person most
+     likely to give up) waited on a catalogue they could not yet see. Paint it now; the data
+     carries on loading behind the form and is ready by the time they finish typing. */
+  if(!session){ render(); await dataReady; return; }
+  if(isRecoveryLink){ state.authMode = 'recovery'; render(); return; }
+  await dataReady;   // the home page, unlike the login screen, genuinely needs the catalogue
+  try{
+    const c = await findOrCreateCustomer({ email: session.user.email, method:'password' });
+    if(c){
+      completeLogin(c);
+      if(window.location.hash === '#admin-payments' && isAdminUser(c)){
+        state.view = 'admin'; state.adminView = 'payments';
+        refreshAdminData(); loadPaymentProofUrls(); render();
       }
+      return;
     }
   } catch(e){
     console.error('Session restore failed:', e);
