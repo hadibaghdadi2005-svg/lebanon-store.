@@ -25,7 +25,10 @@
      handshake is a few hundred ms, and it used to begin only once supabase-js had finished
      downloading from a third CDN. Warming it during head parse overlaps it with everything else. -->
 <link rel="preconnect" href="https://vsmihhipjmrapwcupmcx.supabase.co" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Deliberately NOT crossorigin: the supabase-js <script> below is a plain same-mode request,
+     and a preconnect only pre-warms a socket the browser will actually reuse if the CORS mode
+     matches. Marked crossorigin, this opened a second connection nobody used. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
 <!-- Tajawal (4 weights) is deliberately absent: it is only ever applied under [dir="rtl"], and
      the Arabic UI has been unreachable since the language toggle was removed — setLang() has no
      call site left. Arabic strings still in the data render in the system Arabic fallback, exactly
@@ -1052,9 +1055,12 @@ header.site.shrink .topbar{padding:8px 0}
 /* Hero: headline/eyebrow/actions rise in on load. Scoped to body.first-load — this app rebuilds
    the whole page on every state change, so an unscoped entrance animation would replay on every
    unrelated render (add to cart, wishlist toggle) and read as a flicker. */
-body.first-load .hero .eyebrow{opacity:0;animation:riseIn .6s var(--ease-out) .05s forwards}
-body.first-load .hero h1{opacity:0;animation:riseIn .6s var(--ease-out) .16s forwards}
-body.first-load .hero p{opacity:0;animation:riseIn .6s var(--ease-out) .28s forwards}
+/* .hero-photo, not .hero — item 42 replaced the flat cedar hero with the photographic one and
+   these selectors were never updated, so the eyebrow/headline/copy rise-in had been silently
+   dead ever since and only the buttons below still animated. */
+body.first-load .hero-photo .eyebrow{opacity:0;animation:riseIn .6s var(--ease-out) .05s forwards}
+body.first-load .hero-photo h1{opacity:0;animation:riseIn .6s var(--ease-out) .16s forwards}
+body.first-load .hero-photo p{opacity:0;animation:riseIn .6s var(--ease-out) .28s forwards}
 body.first-load .hero-actions{opacity:0;animation:riseIn .6s var(--ease-out) .4s forwards}
 @keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
@@ -1155,11 +1161,20 @@ body.first-load .hero-photo,.hero-photo.bb-swap{animation:bbIn .7s var(--ease-ou
   .promo-cta,.promo-dismiss,.promo-rule,.promo-close,.promo-media.is-waiting::before{animation:none}
   .promo-title,.promo-sub,.promo-cta,.promo-dismiss,.promo-close{opacity:1;transform:none}
   .promo-rule{transform:none}
-  .hero .eyebrow,.hero h1,.hero p,.hero-actions,.billboard,.reveal,.opt-swatch.active,.m-color-swatch.active,
+  /* .hero-photo carries bbIn (a fade-and-scale) and was missing from this list entirely;
+     .billboard stopped existing when item 42 folded the carousel into the hero. */
+  .hero-photo,.hero-photo .eyebrow,.hero-photo h1,.hero-photo p,.hero-actions,
+  .reveal,.opt-swatch.active,.m-color-swatch.active,
   .cart-count.bump,.m-qty-val.bump,.qty-val.bump,.m-reveal,.m-input.field-error,
   .add-cart-btn.added::after,.ship-ack-btn.loading::after{animation:none !important}
   .reveal,.m-reveal{opacity:1;transform:none}
-  .hero .eyebrow,.hero h1,.hero p,.hero-actions{opacity:1;transform:none}
+  /* Prefixed with body.first-load on purpose. The rules that hide these for their entrance are
+     `body.first-load .hero-photo .eyebrow` and `body.first-load .hero-actions`; a bare
+     `.hero-actions{opacity:1}` loses to them on specificity, so killing the animation above
+     without matching that specificity left the hero's buttons invisible for the 1.6s the
+     first-load class is on the body — for exactly the visitors who asked for less motion. */
+  body.first-load .hero-photo .eyebrow,body.first-load .hero-photo h1,
+  body.first-load .hero-photo p,body.first-load .hero-actions{opacity:1;transform:none}
   .prod-card,.cart-line,.m-cart-line,.form-field input,.form-field select,.form-field textarea,
   header.site .topbar,.m-card,.m-rail-card,.m-list-item,.m-feature,.m-btn-primary,.m-tab svg{transition:none}
   .m-card:active,.m-rail-card:active,.m-list-item:active,.m-feature:active,.m-search:active,
@@ -1409,6 +1424,14 @@ async function loadReviews(){
   if(error || !data) return;
   REVIEWS = data.map(r=>({ id:r.id, name_en:r.customer_name, rating:r.rating, prod:r.product_id, en:r.review_text, date:r.review_date }));
   recomputeProductRatings();
+}
+/* Re-derives every product's icon from the loaded category list. applyProductRows() already does
+   this inline, but only with whatever CATS held at the moment the product rows arrived. */
+function resolveProductIcons(){
+  PRODUCTS.forEach(p=>{
+    const ci = CATS.find(c=>c.id===p.cat);
+    if(ci) p.icon = ci.icon;      // no match: keep what it has rather than blanking a seed icon
+  });
 }
 /* Product cards/pages show p.rating/p.reviews as real social proof, so they must be derived
    from the actual reviews table rather than carrying invented seed numbers. */
@@ -4421,7 +4444,17 @@ function shouldSkipHeavyMedia(){
   }
   return isMobileViewport();
 }
-function promoShouldSkipVideo(){ return shouldSkipHeavyMedia(); }
+/* Deliberately connection-only, and NOT shouldSkipHeavyMedia(), which also skips on any mobile
+   viewport. That rule is right for the hero — it autoplays above the fold and holds up the shop —
+   but wrong here: the promo mounts on idle, well after the page is usable, is dismissible, and
+   unlike the hero it has no honest substitute, because the promo video *is* the advert. Skipping
+   it on every phone meant a phone visitor was shown the billboard's still, or a random product
+   photo, captioned with the advert's own headline. */
+function promoShouldSkipVideo(){
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(!c) return false;
+  return !!c.saveData || ['slow-2g','2g','3g'].includes(c.effectiveType);
+}
 /* What the card shows while the video is still on its way. A stored frame from a previous visit is
    the best match, but on a first visit there isn't one — and measured against the live file, that
    is a ten-second empty rectangle. So it falls back to a photo the page has already downloaded
@@ -4454,14 +4487,27 @@ function maybeShowPromo(){
   const hasLink = p.linkType && p.linkType !== 'none' && !!p.linkValue;
   const closeLabel = state.lang==='ar' ? 'إغلاق' : 'Close';
   const isVideo = p.type === 'video';
+  /* Two different jobs that used to share one image, which is how a phone ended up showing the
+     billboard's photo captioned "FIRE OFFER".
+       - poster: a frame captured from THIS video on a previous visit. The only thing that may
+         legitimately stand in for the video when the video will not be loaded at all.
+       - standIn: any reasonable image to paint behind the video while it arrives. Unrelated
+         artwork is fine for a backdrop that is about to be covered; it is not fine as a
+         permanent substitute for an advert. */
+  const poster = isVideo ? readPromoPoster(p.mediaUrl) : '';
   const standIn = isVideo ? promoStandInImage(p.mediaUrl) : '';
   /* Data Saver or a 2G-class connection: don't pull ten megabytes nobody asked for. */
-  const skipVideo = isVideo && promoShouldSkipVideo() && !!standIn;
+  const skipVideo = isVideo && promoShouldSkipVideo();
+  /* Nothing honest to show: the video is not loading and we have never seen a frame of it. An
+     advert the visitor cannot actually see is better skipped than faked with someone else's
+     photo. It stays marked as shown so it cannot retry in a loop within this page load. */
+  if(skipVideo && !poster) return;
   let media = '';
   if(isVideo){
     /* The stand-in paints first and the video fades in over it once it can actually play, so the
        card is never an empty rectangle — on a first visit the video needs about ten seconds. */
-    if(standIn) media += `<img class="promo-standin" src="${standIn}" alt="" aria-hidden="true">`;
+    if(skipVideo) media += `<img class="promo-standin" src="${poster}" alt="${(p.title||'').replace(/"/g,'&quot;')}">`;
+    else if(standIn) media += `<img class="promo-standin" src="${standIn}" alt="" aria-hidden="true">`;
     if(!skipVideo){
       media += `<video src="${p.mediaUrl}" crossorigin="anonymous" autoplay muted loop playsinline
         preload="metadata" ${standIn?'style="opacity:0"':''}
@@ -6528,10 +6574,16 @@ function loadStoreData(){
   ]).then(results=>{
     const names = ['settings','categories','products','reviews'];
     results.forEach((r,i)=>{ if(r.status==='rejected') console.error(`Could not load ${names[i]}:`, r.reason); });
-    /* loadReviews() ends by deriving every product's rating from the reviews it just fetched —
-       which silently did nothing if reviews happened to land before products. Running it once
-       more here makes the arrival order of those two requests irrelevant. */
+    /* Two things below re-run because parallelising these four loads removed the ordering that
+       used to make them work by accident. Both are idempotent, so running them once here makes
+       the arrival order of the four requests irrelevant.
+         - loadReviews() derives every product's rating from the reviews it just fetched, which
+           silently did nothing if reviews landed before products.
+         - applyProductRows() resolves a product's icon through CATS and falls back to the
+           'offers' price-tag glyph when the category is not loaded yet, so a product in an
+           admin-created category got the wrong icon whenever products won the race. */
     recomputeProductRatings();
+    resolveProductIcons();
   });
 }
 async function initApp(){
