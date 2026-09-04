@@ -2430,6 +2430,15 @@ function renderHeader(){
         <button type="button" class="search-clear-btn" onclick="clearSearch()" aria-label="${state.lang==='ar'?'مسح البحث':'Clear search'}">✕</button>
       </div>
       <div class="topbar-icons">
+        ${/* Lives here, with the other account-level destinations, rather than appended to the
+             category bar. It is not a product category, and as an 11th pill among ten categories
+             it was the item that got pushed off the right edge - so the admin's own way into the
+             panel was the thing hidden. */''}
+        ${isAdminUser(currentCustomer())?`
+        <button class="icon-btn" onclick="goAdmin()" style="color:var(--brass-light)" title="${t('goAdmin')}">
+          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4Z"/></svg>
+          <span>${t('goAdmin')}</span>
+        </button>`:''}
         <button class="icon-btn" onclick="goAccount()">
           <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
           <span>${currentCustomer() ? currentCustomer().name.split(' ')[0] : t('account')}</span>
@@ -2451,8 +2460,8 @@ function renderHeader(){
     </div>
     <div class="catbar">
       <div class="container">
+        ${/* Categories only. The admin-panel link moved up into .topbar-icons — see the note there. */''}
         ${CATS.map(c=>`<a href="#" onclick="filterByCat('${c.id}');return false;">${catName(c)}</a>`).join('')}
-        ${isAdminUser(currentCustomer())?`<a href="#" onclick="goAdmin();return false;" style="display:inline-flex;align-items:center;gap:6px;background:rgba(196,151,42,.16);color:var(--brass-light);font-weight:700;padding:6px 14px;border-radius:999px;border:1px solid rgba(196,151,42,.35)"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4Z"/></svg>${t('goAdmin')}</a>`:''}
       </div>
     </div>
     ${state.mobileMenuOpen?`
