@@ -121,11 +121,16 @@ header.site{
 }
 .hamburger{display:none;background:none;border:none;color:var(--paper)}
 .catbar{background:var(--cedar-light);border-top:1px solid rgba(255,255,255,.08)}
-.catbar .container{display:flex;gap:22px;overflow-x:auto;padding:9px 20px;scrollbar-width:none}
-.catbar .container::-webkit-scrollbar{display:none}
+/* Wraps rather than scrolls. This used to be overflow-x:auto with the scrollbar deliberately
+   hidden, which on a desktop mouse meant any category past the right edge could not be reached
+   at all - no scrollbar, no arrow buttons, and no touch to swipe with. Every pill here is a
+   destination, so none of them may be hidden.
+   The 22px gap dated from when these were plain text links; once they became padded pills that
+   spacing is what pushed the last one off the edge, so it comes down to a pill-appropriate gap. */
+.catbar .container{display:flex;flex-wrap:wrap;gap:8px 10px;padding:9px 20px}
 .catbar a{white-space:nowrap;font-size:13px;color:rgba(255,255,255,.92);font-weight:600;
   background:linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.04) 100%);
-  border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 14px;
+  border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 12px;
   box-shadow:0 2px 4px rgba(0,0,0,.25),0 4px 8px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.18);
   transform:perspective(600px) rotateX(0deg) translateY(0);
   transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease,background .18s ease,color .18s ease;
