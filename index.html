@@ -286,7 +286,11 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 }
 .modal.open{display:block}
 .modal-close{position:sticky;top:14px;float:inline-end;margin-inline-end:14px;z-index:5;background:var(--paper);width:34px;height:34px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
-.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+/* align-items:start matters. The two columns are a square photo and a much taller info column,
+   and a grid stretches its items by default - so .modal-gallery grew to the info column's height
+   and painted its cedar background as a large green slab below the photo. Starting the gallery
+   instead leaves the panel's own surface there. */
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:start}
 .modal-gallery{background:var(--cedar);display:flex;flex-direction:column}
 .gallery-main{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
 .gallery-main svg{width:38%;height:38%;stroke:rgba(255,255,255,.9);fill:none;stroke-width:1.2}
@@ -1275,6 +1279,15 @@ const T = {
   }
 };
 
+/* Concept icons for the "Why Choose Us" promises. Kept separate from ICONS, which is the
+   product-category set — reusing a category glyph to illustrate a promise is what put a wrench
+   next to "Secure Payment". Same viewBox and stroke conventions so they sit together. */
+const WHY_ICONS = {
+  delivery:'<svg viewBox="0 0 24 24"><rect x="1" y="6" width="14" height="11" rx="1.5"/><path d="M15 9.5h3.6L22 13v4h-7"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="17" cy="18.5" r="2"/></svg>',
+  secure:'<svg viewBox="0 0 24 24"><path d="M12 2.5l7.5 3.4v5.6c0 4.7-3.2 7.6-7.5 9.4-4.3-1.8-7.5-4.7-7.5-9.4V5.9L12 2.5Z"/><path d="M8.8 11.9l2.2 2.2 4.2-4.4"/></svg>',
+  quality:'<svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="M9.6 13.9L8.5 21.5 12 19.4l3.5 2.1-1.1-7.6"/><path d="M9.9 8.9l1.5 1.5 2.9-3"/></svg>',
+  support:'<svg viewBox="0 0 24 24"><path d="M4.5 13.5v-1.2a7.5 7.5 0 0 1 15 0v1.2"/><path d="M4.5 13h2a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 6.5 19h-1a1 1 0 0 1-1-1v-5Z"/><path d="M19.5 13h-2a1.5 1.5 0 0 0-1.5 1.5v3a1.5 1.5 0 0 0 1.5 1.5h1a1 1 0 0 0 1-1v-5Z"/></svg>'
+};
 const ICONS = {
   electronics:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="12" rx="1.5"/><path d="M9 21h6M12 15v6"/></svg>',
   kitchen:'<svg viewBox="0 0 24 24"><path d="M6 2v7a3 3 0 0 0 6 0V2M9 9v13M17 2v20M17 2a4 4 0 0 1 4 4v3h-4"/></svg>',
@@ -2691,6 +2704,9 @@ function renderHome(){
   const best = PRODUCTS.filter(p=>p.best);
   const news = PRODUCTS.filter(p=>p.new);
   const offers = PRODUCTS.filter(p=>p.was>p.price);
+  /* A review whose product has since been deleted has nothing to point at and is dropped, which
+     can empty this list entirely — hence the guard on the section itself further down. */
+  const liveReviews = REVIEWS.filter(r=>findProduct(r.prod));
   /* A shelf with nothing in it used to still render its heading and "View all" link with blank
      space underneath, which reads as a broken page — most visible whenever nothing is marked
      Featured/Best, or when no product has a `was` price to feed Offers. An empty shelf is now
@@ -2747,17 +2763,26 @@ function renderHome(){
   <section id="why-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('why')}</h2></div></div>
     <div class="why-grid">
-      <div class="why-card"><div class="cat-icon">${ICONS.car}</div><h3>${t('delivery')}</h3><p>${t('deliveryDesc')}</p></div>
-      <div class="why-card"><div class="cat-icon">${ICONS.tools}</div><h3>${t('secure')}</h3><p>${t('secureDesc')}</p></div>
-      <div class="why-card"><div class="cat-icon">${ICONS.offers}</div><h3>${t('quality')}</h3><p>${t('qualityDesc')}</p></div>
-      <div class="why-card"><div class="cat-icon">${ICONS.phones}</div><h3>${t('support')}</h3><p>${t('supportDesc')}</p></div>
+      ${/* These are drawn for the promises they sit under, rather than borrowed from the product
+            category set as they were: "Secure Payment" was labelled with ICONS.tools — a wrench —
+            and "Quality Products" with ICONS.offers, a price tag. An icon that contradicts its
+            own heading is worse than no icon, and this block is the one a shopper reads before
+            deciding whether to send money by Wish. Same 24x24 stroke style as ICONS. */''}
+      <div class="why-card"><div class="cat-icon">${WHY_ICONS.delivery}</div><h3>${t('delivery')}</h3><p>${t('deliveryDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${WHY_ICONS.secure}</div><h3>${t('secure')}</h3><p>${t('secureDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${WHY_ICONS.quality}</div><h3>${t('quality')}</h3><p>${t('qualityDesc')}</p></div>
+      <div class="why-card"><div class="cat-icon">${WHY_ICONS.support}</div><h3>${t('support')}</h3><p>${t('supportDesc')}</p></div>
     </div>
   </section>
 
+  ${/* Reviews are filtered to products that still exist, so a store whose only reviews belong
+        to deleted products had nothing to put under this heading - it rendered "Customer Reviews"
+        over bare space above the footer. Same guard item 32 gave the product shelves. */''}
+  ${liveReviews.length ? `
   <section id="reviews-sec" class="container reveal">
     <div class="section-head"><div><h2 class="font-display">${t('reviews')}</h2></div></div>
     <div class="review-grid">
-      ${REVIEWS.filter(r=>findProduct(r.prod)).map(r=>`
+      ${liveReviews.map(r=>`
         <div class="review-card">
           <div class="review-top">
             <span class="review-name">${r.name_en}</span>
@@ -2767,7 +2792,7 @@ function renderHome(){
           <div class="review-meta">${pname(findProduct(r.prod))} · ${r.date}</div>
         </div>`).join('')}
     </div>
-  </section>
+  </section>` : ''}
   `;
 }
 
@@ -2859,7 +2884,9 @@ function renderProductPage(){
   const variant = state.modalVariant || p.variants[0];
   const sizes = productSizes(p);
   const selSize = state.modalSize;
-  const specs = specsFor(p);
+  /* specsFor() can return an empty object for a product added through the supplier-link
+     workflow; the heading below is only drawn when there is something to put under it. */
+  const specRows = Object.entries(specsFor(p) || {});
   const discount = p.was>p.price ? Math.round((1-p.price/p.was)*100) : 0;
   const related = PRODUCTS.filter(x=>x.id!==p.id && productCats(x).some(c=>productCats(p).includes(c))).slice(0,4);
   const log = currentAiLog(p.id);
@@ -2928,18 +2955,24 @@ function renderProductPage(){
           </div>`:''}
           <div class="modal-actions">
             <button class="btn btn-cedar ${state.justAddedId===p.id?'added':''}" ${p.stock===0?'disabled':''} onclick="addSelectedToCart(${p.id}, 1)">${state.justAddedId===p.id?(state.lang==='ar'?'✓ تمت الإضافة':'✓ Added'):t('addCart')}</button>
-            <button class="btn btn-primary" ${p.stock===0?'disabled':''} onclick="if(addSelectedToCart(${p.id}, 1))goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
+            ${/* Secondary, not a second primary. This was brass - louder than the green Add to
+                  Cart beside it - so the screen presented two competing primary actions and did
+                  not say which one it wanted. Add to Cart leads; Buy Now stays available. */''}
+            <button class="btn btn-ghost" ${p.stock===0?'disabled':''} onclick="if(addSelectedToCart(${p.id}, 1))goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
             <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
               <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
             </button>
           </div>
 
+          ${/* Products added through the supplier-link workflow carry no specs, so this used to
+                render a "Specifications" heading above an empty table. */''}
+          ${specRows.length ? `
           <div style="margin-top:6px">
             <h3 style="font-size:14px;margin-bottom:6px">${t('specifications')}</h3>
             <table class="spec-table">
-              ${Object.entries(specs).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+              ${specRows.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
             </table>
-          </div>
+          </div>` : ''}
 
           <div class="ai-box">
             <div class="ai-box-head">
