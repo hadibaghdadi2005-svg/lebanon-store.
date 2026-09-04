@@ -30,7 +30,7 @@
      the Arabic UI has been unreachable since the language toggle was removed — setLang() has no
      call site left. Arabic strings still in the data render in the system Arabic fallback, exactly
      as they already did, since the Tajawal rules were never in force on an English page anyway. -->
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Caprasimo&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --cedar:#0F3D2E;
@@ -51,7 +51,7 @@
 body{
   background:var(--sand);
   color:var(--ink);
-  font-family:'Inter',system-ui,sans-serif;
+  font-family:'Figtree',system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
 }
@@ -132,15 +132,15 @@ header.site{
   background:linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.04) 100%);
   border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 12px;
   box-shadow:0 2px 4px rgba(0,0,0,.25),0 4px 8px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.18);
-  transform:perspective(600px) rotateX(0deg) translateY(0);
-  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease,background .18s ease,color .18s ease;
+  transform:translateY(0);
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease;
   text-shadow:0 1px 2px rgba(0,0,0,.3)}
 .catbar a:hover{color:var(--brass-light);
   background:linear-gradient(180deg,rgba(196,151,42,.28) 0%,rgba(196,151,42,.12) 100%);
   border-color:rgba(196,151,42,.4);
-  transform:perspective(600px) rotateX(-4deg) translateY(-3px);
-  box-shadow:0 4px 8px rgba(0,0,0,.3),0 8px 20px rgba(0,0,0,.2),0 0 12px rgba(196,151,42,.25),inset 0 1px 0 rgba(255,255,255,.22)}
-.catbar a:active{transform:perspective(600px) rotateX(2deg) translateY(1px);
+  transform:translateY(-2px);
+  box-shadow:0 4px 8px rgba(0,0,0,.3),0 8px 20px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.22)}
+.catbar a:active{transform:translateY(1px) scale(.98);
   box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 1px 3px rgba(0,0,0,.2)}
 
 /* ---------- HERO ---------- */
@@ -556,9 +556,14 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 
 /* ============================================================
    MOBILE APP UI — phone-width customer experience.
-   Own design language (Caprasimo/Figtree/IBM Plex Mono, warm
-   terracotta palette), English-only, entirely separate from the
-   desktop CSS above. Only ever mounted below MOBILE_BP by JS.
+   Warm terracotta palette, English-only, entirely separate from the desktop
+   CSS above. Only ever mounted below MOBILE_BP by JS.
+   It shares the site's typefaces rather than carrying its own: this used to set
+   Caprasimo against the desktop's Fraunces and Figtree against Inter, so the two
+   layouts of a single shop did not read as the same brand. Both now use Fraunces
+   for display and Figtree for body, which also drops two families from the
+   font request. Caprasimo shipped one very heavy weight, so every rule that used
+   it pins font-weight:700 to keep the headings from lightening.
    ============================================================ */
 .mstore{
   --bg:#f5ead8;--card:#fffcf4;--surf:#ebddc5;--text:#201e1d;--muted:#645c50;--line:rgba(32,30,29,.12);
@@ -575,24 +580,27 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 }
 .mstore *{box-sizing:border-box}
 .mstore .m-scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:112px}
-.mstore .m-disp{font-family:'Caprasimo',serif}
+.mstore .m-disp{font-family:'Fraunces',serif;font-weight:700}
 .mstore .m-mono{font-family:'IBM Plex Mono',monospace}
 .mstore button{font-family:inherit}
 .mstore img,.mstore svg{display:block}
 
 .m-header{padding:16px 20px 14px;display:flex;align-items:center;gap:12px;transition:opacity .08s linear,transform .08s linear;will-change:opacity,transform}
 .m-logo-mark{width:38px;height:38px;border-radius:14px;background:var(--acc);display:flex;align-items:center;justify-content:center;flex:none;
-  cursor:pointer;transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease,border-radius .3s ease}
-.m-logo-mark:active{transform:scale(.85) rotate(-15deg);border-radius:50%;box-shadow:0 0 0 6px rgba(198,113,57,.3)}
+  cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+/* A press acknowledgement, not a performance. This used to shrink and rotate the mark 15deg
+   while morphing its corners into a circle and throwing a coloured ring around it - and the
+   bounce below then scaled it to 1.2 with an 8px glow. It is a back button; it should feel
+   pressed, not celebrate. */
+.m-logo-mark:active{transform:scale(.94)}
 .m-logo-mark svg{width:20px;height:20px;fill:none;stroke:#2e1a0a;stroke-width:2.75;stroke-linecap:round;stroke-linejoin:round;
-  transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
-.m-logo-mark:active svg{transform:rotate(15deg) scale(1.15)}
-.m-logo-mark.m-logo-bounce{animation:logoBounce .6s cubic-bezier(.34,1.56,.64,1)}
-.m-logo-mark.m-logo-bounce svg{animation:logoSpin .6s cubic-bezier(.34,1.56,.64,1)}
-@keyframes logoBounce{0%{transform:scale(1)}15%{transform:scale(.8) rotate(-12deg)}40%{transform:scale(1.2) rotate(8deg);border-radius:50%;box-shadow:0 0 0 8px rgba(198,113,57,.35)}65%{transform:scale(.95) rotate(-3deg)}100%{transform:scale(1) rotate(0)}}
-@keyframes logoSpin{0%{transform:rotate(0)}30%{transform:rotate(-20deg) scale(1.2)}60%{transform:rotate(15deg)}100%{transform:rotate(0) scale(1)}}
+  transition:transform .18s ease}
+/* The class is still applied by mBackBtn/mGoHome, so it keeps a short, quiet acknowledgement
+   rather than becoming dead markup. */
+.m-logo-mark.m-logo-bounce{animation:logoBounce .32s ease}
+@keyframes logoBounce{0%{transform:scale(1)}45%{transform:scale(.92)}100%{transform:scale(1)}}
 .m-kicker{font:600 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accInk)}
-.m-title{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;color:var(--text)}
+.m-title{font-family:'Fraunces',serif;font-weight:700;font-size:19px;line-height:1.2;color:var(--text)}
 .m-iconbtn{width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
 .m-iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 
@@ -604,7 +612,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-feature-img svg{width:90px;height:90px;fill:none;stroke:rgba(255,255,255,.5);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
 .m-feature-badge{position:absolute;top:16px;left:16px;background:var(--acc);color:#2e1a0a;font:700 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:7px 11px;border-radius:999px}
 .m-feature-body{padding:16px 18px 18px;background:var(--card)}
-.m-feature-name{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;color:var(--text);margin-bottom:6px}
+.m-feature-name{font-family:'Fraunces',serif;font-weight:700;font-size:19px;line-height:1.2;color:var(--text);margin-bottom:6px}
 .m-feature-row{display:flex;align-items:baseline;gap:9px}
 .m-price{font:600 20px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
 .m-was{font:500 13px/1 'IBM Plex Mono',monospace;color:var(--muted);text-decoration:line-through}
@@ -617,7 +625,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-billboard>.billboard-video{z-index:0}
 .m-billboard::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(20,14,10,.05), rgba(20,14,10,.72));z-index:1}
 .m-billboard-inner{position:relative;padding:16px 18px 18px;color:#fff;width:100%;z-index:2}
-.m-billboard-title{font-family:'Caprasimo',serif;font-size:19px;line-height:1.2;margin-bottom:4px}
+.m-billboard-title{font-family:'Fraunces',serif;font-weight:700;font-size:19px;line-height:1.2;margin-bottom:4px}
 .m-billboard-sub{font:500 13px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.85);margin-bottom:10px}
 .m-billboard-cta{display:inline-block;font:700 12px/1 'Figtree',sans-serif;background:var(--acc);color:#2e1a0a;padding:9px 16px;border-radius:999px}
 
@@ -627,7 +635,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-cat-chip svg{width:15px;height:15px;fill:none;stroke:var(--accInk);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 
 .m-section-head{padding:0 20px 10px;display:flex;align-items:baseline;justify-content:space-between}
-.m-section-title{font-family:'Caprasimo',serif;font-size:20px;color:var(--text)}
+.m-section-title{font-family:'Fraunces',serif;font-weight:700;font-size:20px;color:var(--text)}
 .m-section-kicker{font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accInk)}
 .m-seeall{background:none;border:0;cursor:pointer;font:600 12px/1 'Figtree',sans-serif;color:var(--accInk);border-bottom:2px solid var(--acc);padding:0 0 2px}
 
@@ -653,17 +661,15 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-promo-icon svg{width:20px;height:20px;fill:none;stroke:#272e1b;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 
 .m-list-head{padding:8px 20px 14px;display:flex;align-items:center;gap:12px}
-.m-list-title{font-family:'Caprasimo',serif;font-size:21px;color:var(--text)}
+.m-list-title{font-family:'Fraunces',serif;font-weight:700;font-size:21px;color:var(--text)}
 .m-chip{flex:none;border-radius:999px;padding:8px 14px;cursor:pointer;font:600 12.5px/1 'Figtree',sans-serif;border:1.5px solid var(--line);background:var(--card);color:var(--muted);
   box-shadow:0 2px 4px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.15);
-  transform:perspective(500px) rotateX(0deg) translateY(0);
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease,background .18s ease,border-color .18s ease,color .18s ease}
-.m-chip:hover{transform:perspective(500px) rotateX(-5deg) translateY(-2px);
+  transform:translateY(0);
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,color .18s ease}
+.m-chip:hover{transform:translateY(-2px);
   box-shadow:0 4px 10px rgba(0,0,0,.18),0 8px 20px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.2)}
-.m-chip:active{transform:perspective(500px) rotateX(4deg) translateY(1px) scale(.93);
-  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.15);
-  animation:chipPop .4s cubic-bezier(.34,1.56,.64,1)}
-@keyframes chipPop{0%{transform:perspective(500px) rotateX(4deg) scale(.93)}40%{transform:perspective(500px) rotateX(-8deg) scale(1.08) translateY(-4px)}70%{transform:perspective(500px) rotateX(2deg) scale(.98)}100%{transform:perspective(500px) rotateX(0) scale(1)}}
+.m-chip:active{transform:scale(.96);
+  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.15)}
 .m-chip.active{border-color:var(--acc);background:var(--acc);color:#2e1a0a;
   box-shadow:0 3px 8px rgba(198,113,57,.35),0 6px 16px rgba(198,113,57,.2),inset 0 1px 0 rgba(255,255,255,.2)}
 .m-list{padding:0 20px 26px;display:flex;flex-direction:column;gap:12px}
@@ -699,30 +705,26 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-spec-row:last-child{border-bottom:0}
 .m-qty{display:flex;align-items:center;gap:2px;background:var(--surf);border-radius:999px;padding:5px}
 .m-qty button{width:36px;height:36px;border-radius:999px;border:0;background:var(--card);color:var(--text);font:600 17px/1 'Figtree',sans-serif;cursor:pointer}
-.m-btn-primary{border:0;cursor:pointer;border-radius:999px;padding:16px;background:var(--acc);color:#2e1a0a;font-family:'Caprasimo',serif;font-size:15px;text-align:center;
+.m-btn-primary{border:0;cursor:pointer;border-radius:999px;padding:16px;background:var(--acc);color:#2e1a0a;font-family:'Fraunces',serif;font-weight:700;font-size:15px;text-align:center;
   box-shadow:0 2px 4px rgba(198,113,57,.25),0 6px 16px rgba(198,113,57,.2),inset 0 1px 0 rgba(255,255,255,.2);
-  transform:perspective(600px) rotateX(0deg) translateY(0);
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease,background .2s ease}
-.m-btn-primary:hover{transform:perspective(600px) rotateX(-4deg) translateY(-2px);
+  transform:translateY(0);
+  transition:transform .18s ease,box-shadow .18s ease,background .2s ease}
+.m-btn-primary:hover{transform:translateY(-2px);
   box-shadow:0 4px 10px rgba(198,113,57,.35),0 10px 28px rgba(198,113,57,.25),inset 0 1px 0 rgba(255,255,255,.25)}
-.m-btn-primary:active{transform:perspective(600px) rotateX(3deg) translateY(1px) scale(.95);
-  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.1);
-  animation:btnPrimary3D .45s cubic-bezier(.34,1.56,.64,1)}
-@keyframes btnPrimary3D{0%{transform:perspective(600px) rotateX(3deg) scale(.95)}35%{transform:perspective(600px) rotateX(-7deg) scale(1.06) translateY(-3px)}65%{transform:perspective(600px) rotateX(1deg) scale(.98)}100%{transform:perspective(600px) rotateX(0) scale(1)}}
+.m-btn-primary:active{transform:scale(.97);
+  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.1)}
 .m-btn-primary:disabled{opacity:.5;cursor:default}
-.m-btn-primary:disabled:active{transform:none;animation:none}
+.m-btn-primary:disabled:active{transform:none}
 .m-btn-outline{border:2px solid var(--acc);cursor:pointer;border-radius:999px;padding:15px;background:transparent;color:var(--accInk);font:700 14px/1 'Figtree',sans-serif;text-align:center;
   box-shadow:0 2px 4px rgba(198,113,57,.15),0 4px 10px rgba(198,113,57,.1),inset 0 1px 0 rgba(255,255,255,.1);
-  transform:perspective(600px) rotateX(0deg) translateY(0);
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease,background .2s ease,color .2s ease,border-color .2s ease}
+  transform:translateY(0);
+  transition:transform .18s ease,box-shadow .18s ease,background .2s ease,color .2s ease,border-color .2s ease}
 .m-btn-outline:hover{background:rgba(198,113,57,.08);
-  transform:perspective(600px) rotateX(-4deg) translateY(-2px);
+  transform:translateY(-2px);
   box-shadow:0 4px 12px rgba(198,113,57,.25),0 8px 24px rgba(198,113,57,.15),inset 0 1px 0 rgba(255,255,255,.15)}
-.m-btn-outline:active{transform:perspective(600px) rotateX(3deg) translateY(1px) scale(.93);
+.m-btn-outline:active{transform:scale(.96);
   background:var(--acc);color:#2e1a0a;
-  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.1);
-  animation:outlinePop .45s cubic-bezier(.34,1.56,.64,1)}
-@keyframes outlinePop{0%{transform:perspective(600px) rotateX(3deg) scale(.93)}40%{transform:perspective(600px) rotateX(-6deg) scale(1.06) translateY(-3px)}70%{transform:perspective(600px) rotateX(1deg) scale(.98)}100%{transform:perspective(600px) rotateX(0) scale(1)}}
+  box-shadow:0 1px 2px rgba(0,0,0,.2),inset 0 2px 4px rgba(0,0,0,.1)}
 .mstore[data-theme="dark"] .m-btn-outline{border-color:var(--acc);color:var(--acc);box-shadow:0 2px 4px rgba(246,160,107,.15),0 4px 10px rgba(246,160,107,.1)}
 
 .m-cart-line{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:11px;box-shadow:var(--shadow)}
@@ -767,7 +769,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-account-card::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 80%,rgba(0,0,0,.1),transparent 60%);pointer-events:none}
 .mstore[data-theme="dark"] .m-account-card{background:linear-gradient(135deg,#8c491a 0%,#56633f 100%);
   box-shadow:0 4px 16px rgba(198,113,57,.25),0 8px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)}
-.m-avatar{width:52px;height:52px;border-radius:999px;background:rgba(255,255,255,.25);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Caprasimo',serif;font-size:19px;flex:none;
+.m-avatar{width:52px;height:52px;border-radius:999px;background:rgba(255,255,255,.25);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:19px;flex:none;
   border:2px solid rgba(255,255,255,.35);box-shadow:0 2px 10px rgba(0,0,0,.15)}
 .mstore[data-theme="dark"] .m-avatar{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2)}
 .m-panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:6px 18px;margin-bottom:16px}
@@ -775,8 +777,16 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-panel-row:last-child{border-bottom:0}
 .m-switch{width:58px;height:32px;border-radius:999px;border:0;cursor:pointer;padding:3px;display:flex;position:relative;overflow:hidden;
   transition:background .4s ease,box-shadow .4s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,.15)}
-.m-switch::before{content:'☀️';position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:13px;transition:opacity .3s ease;opacity:1}
-.m-switch::after{content:'🌙';position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:13px;transition:opacity .3s ease;opacity:.4}
+/* Inline SVG rather than the ☀️/🌙 emoji these used to be. An emoji is a font glyph: it is
+   drawn by whatever emoji set the device ships, so the control looked materially different on
+   an iPhone, an Android and a desktop browser, at a size and colour none of them let us set.
+   These are drawn by us, inherit the switch's own sizing, and are identical everywhere. */
+.m-switch::before,.m-switch::after{content:'';position:absolute;top:50%;width:13px;height:13px;
+  transform:translateY(-50%);transition:opacity .3s ease;background-repeat:no-repeat;background-size:contain}
+.m-switch::before{left:6px;opacity:1;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff8e6' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4.2'/%3E%3Cpath d='M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4'/%3E%3C/svg%3E")}
+.m-switch::after{right:6px;opacity:.4;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff8e6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 14.5A8.5 8.5 0 1 1 9.5 4a6.7 6.7 0 0 0 10.5 10.5Z'/%3E%3C/svg%3E")}
 .m-switch[style*="flex-end"]::before{opacity:.4}
 .m-switch[style*="flex-end"]::after{opacity:1}
 .m-switch-knob{width:26px;height:26px;border-radius:999px;background:#fffcf4;box-shadow:0 2px 6px rgba(0,0,0,.3),0 0 10px rgba(196,151,42,.3);
@@ -790,14 +800,13 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .mstore .typing-dots span{background:var(--muted)}
 
 .m-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--card);border-top:1px solid var(--line);padding:9px 10px calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:space-around;max-width:inherit;
-  box-shadow:0 -4px 20px rgba(0,0,0,.1);perspective:800px}
+  box-shadow:0 -4px 20px rgba(0,0,0,.1)}
 .m-tab{position:relative;flex:1;background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0;color:var(--muted);
-  transform:perspective(600px) translateZ(0);transition:transform .3s cubic-bezier(.34,1.56,.64,1),color .2s ease}
-.m-tab:active{transform:perspective(600px) translateZ(-10px) scale(.88);animation:tabTap .5s cubic-bezier(.34,1.56,.64,1)}
+  transform:scale(1);transition:transform .18s ease,color .2s ease}
+.m-tab:active{transform:scale(.94)}
 .m-tab.active{color:var(--accInk)}
 .m-tab.active::after{content:'';position:absolute;bottom:-2px;width:28px;height:4px;border-radius:999px;background:var(--acc);box-shadow:0 0 10px rgba(198,113,57,.5);animation:tabDotIn .35s cubic-bezier(.34,1.56,.64,1)}
 @keyframes tabDotIn{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:1}}
-@keyframes tabTap{0%{transform:perspective(600px) translateZ(-10px) scale(.88)}35%{transform:perspective(600px) translateZ(8px) scale(1.12) rotateX(-6deg)}65%{transform:perspective(600px) translateZ(-2px) scale(.97)}100%{transform:perspective(600px) translateZ(0) scale(1)}}
 .m-tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;
   transition:transform .3s cubic-bezier(.34,1.56,.64,1),filter .3s ease}
 .m-tab.active svg{transform:translateY(-3px) scale(1.15);filter:drop-shadow(0 2px 6px rgba(198,113,57,.35))}
@@ -855,22 +864,18 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
     0 48px 90px -12px rgba(0,0,0,.6),
     0 0 0 1px rgba(224,181,74,.28),
     inset 0 1px 0 rgba(255,255,255,.08);
-  animation:promoIn3D 1s cubic-bezier(.16,1,.3,1) both,promoFloat 4s ease-in-out 1.2s infinite;
-  transform-style:preserve-3d}
-.promo-card::before{content:'';position:absolute;inset:-2px;border-radius:24px;z-index:-1;pointer-events:none;
-  background:conic-gradient(from 0deg,rgba(196,151,42,.6),rgba(194,84,45,.4),rgba(196,151,42,.6),rgba(122,138,94,.4),rgba(196,151,42,.6));
-  animation:promoGlowSpin 4s linear infinite;opacity:.7;
-  filter:blur(6px)}
-@keyframes promoGlowSpin{to{background:conic-gradient(from 360deg,rgba(196,151,42,.6),rgba(194,84,45,.4),rgba(196,151,42,.6),rgba(122,138,94,.4),rgba(196,151,42,.6))}}
-@keyframes promoFloat{0%,100%{transform:rotateX(2deg) rotateY(-1deg) translateY(0)}50%{transform:rotateX(-1deg) rotateY(1.5deg) translateY(-8px)}}
+  /* Rises once and then sits still. It used to fly in on a 3D flip and then run two perpetual
+     animations for as long as it was open - a 4s float that kept tilting the card, and a conic
+     gradient ring spinning behind it. Both are the decorative-modal vocabulary this store most
+     needs to avoid, and perpetual compositing on an open dialog costs battery on a phone.
+     promoIn/promoOut were already defined here and unused; they are the calm originals. */
+  animation:promoIn .45s cubic-bezier(.16,1,.3,1) both}
 @keyframes promoIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
-@keyframes promoIn3D{from{opacity:0;transform:rotateX(25deg) rotateY(-8deg) translateY(80px) translateZ(-100px) scale(.7)}50%{opacity:1;transform:rotateX(-5deg) rotateY(3deg) translateY(-10px) translateZ(20px) scale(1.03)}to{opacity:1;transform:rotateX(2deg) rotateY(-1deg) translateY(0) translateZ(0) scale(1)}}
 /* Exit is deliberately quicker than entry — dismissing should feel instant, not narrated. */
 .promo-backdrop.is-closing{animation:fadeOut .2s ease both}
-.promo-backdrop.is-closing .promo-card{animation:promoOut3D .25s ease both}
+.promo-backdrop.is-closing .promo-card{animation:promoOut .2s ease both}
 @keyframes fadeOut{to{opacity:0}}
 @keyframes promoOut{to{opacity:0;transform:translateY(8px) scale(.98)}}
-@keyframes promoOut3D{to{opacity:0;transform:rotateX(-8deg) translateY(30px) scale(.92)}}
 /* Landscape frame with the words in their own panel below it, rather than overlaid on top of the
    media — a real ad (like an uploaded marketing banner) usually carries its own headline/CTA
    baked in, so stacking our own title/button on top of it just hides half the picture. */
@@ -897,33 +902,22 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 @keyframes promoCloseIn{from{opacity:0;transform:scale(0) rotate(-90deg)}to{opacity:1;transform:scale(1) rotate(0)}}
 .promo-close:focus-visible{outline:2px solid var(--brass-light);outline-offset:2px}
 .promo-body{padding:20px 22px 24px;color:#fff;text-align:center;background:#0B1410;border-radius:0 0 22px 22px;overflow:hidden}
-.promo-title{font-family:'Caprasimo',serif;font-size:34px;line-height:1;margin-bottom:9px;letter-spacing:.01em;
-  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .3s both, promoFireGlow 1.5s ease-in-out infinite alternate, promoTitleShake .06s ease-in-out .3s 6;
-  background:linear-gradient(180deg,#fff44f 0%,#ff6600 30%,#ff2200 60%,#cc0000 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  text-shadow:none;filter:drop-shadow(0 0 8px rgba(255,60,0,.6)) drop-shadow(0 0 20px rgba(255,30,0,.35))}
-@keyframes promoFireGlow{from{filter:drop-shadow(0 0 8px rgba(255,60,0,.6)) drop-shadow(0 0 20px rgba(255,30,0,.35))}to{filter:drop-shadow(0 0 14px rgba(255,80,0,.8)) drop-shadow(0 0 30px rgba(255,30,0,.5))}}
-@keyframes promoTitleShake{0%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}100%{transform:translateX(0)}}
-.promo-sparkle{position:absolute;width:4px;height:4px;border-radius:50%;pointer-events:none;z-index:3}
-.promo-sparkle:nth-child(1){top:8%;left:5%;background:#C4972A;animation:sparkle1 2.5s ease-in-out infinite}
-.promo-sparkle:nth-child(2){top:15%;right:8%;background:#ff6600;animation:sparkle2 3s ease-in-out .4s infinite}
-.promo-sparkle:nth-child(3){bottom:20%;left:3%;background:#E0B54A;animation:sparkle1 2.8s ease-in-out .8s infinite}
-.promo-sparkle:nth-child(4){bottom:10%;right:5%;background:#C2542D;animation:sparkle2 2.2s ease-in-out 1.2s infinite}
-.promo-sparkle:nth-child(5){top:50%;left:-6px;background:#C4972A;animation:sparkle3 3.2s ease-in-out .2s infinite}
-.promo-sparkle:nth-child(6){top:35%;right:-6px;background:#ff6600;animation:sparkle3 2.6s ease-in-out .9s infinite}
-@keyframes sparkle1{0%,100%{transform:translateY(0) scale(1);opacity:.3}50%{transform:translateY(-18px) scale(2.2);opacity:1}}
-@keyframes sparkle2{0%,100%{transform:translate(0,0) scale(1);opacity:.2}50%{transform:translate(-10px,-14px) scale(2.5);opacity:1}}
-@keyframes sparkle3{0%,100%{transform:translateX(0) scale(1);opacity:.2}50%{transform:translateX(6px) scale(2.8);opacity:.9}}
+.promo-title{font-family:'Fraunces',serif;font-weight:700;font-size:34px;line-height:1;margin-bottom:9px;letter-spacing:.01em;
+  /* One entrance, then it holds still. This carried a fire-gradient text fill, a perpetual
+     glow pulse and a six-cycle shake, alongside six animated sparkle dots around the card.
+     A shop asking strangers to send money by Wish before anything ships cannot afford to look
+     like the sites that pattern belongs to - and perpetual animation costs battery for nothing. */
+  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .3s both;
+  color:var(--brass-light)}
 .promo-sub{font:500 13.5px/1.5 'Figtree',sans-serif;color:#f0c850;margin-bottom:18px;
-  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .38s both;
-  text-shadow:0 0 8px rgba(224,181,74,.7),0 0 20px rgba(196,151,42,.4)}
+  animation:promoUp .55s cubic-bezier(.16,1,.3,1) .38s both}
 .promo-cta{display:block;width:100%;font:800 13.5px/1 'Figtree',sans-serif;background:var(--brass,#C4972A);color:#241804;
   border:none;padding:16px;border-radius:999px;cursor:pointer;letter-spacing:.04em;
   box-shadow:0 10px 26px -8px rgba(196,151,42,.75);animation:promoUp .55s cubic-bezier(.16,1,.3,1) .46s both;
   transition:transform .2s ease,box-shadow .2s ease}
-.promo-cta:hover{transform:perspective(600px) rotateX(-3deg) translateY(-2px) scale(1.02);
+.promo-cta:hover{transform:translateY(-2px);
   box-shadow:0 14px 32px -6px rgba(196,151,42,.85)}
-.promo-cta:active{transform:perspective(600px) rotateX(2deg) scale(.97)}
+.promo-cta:active{transform:scale(.97)}
 .promo-cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .promo-dismiss{display:block;margin:13px auto 0;background:none;border:none;color:rgba(255,255,255,.5);
   font:600 11.5px/1 'Figtree',sans-serif;letter-spacing:.06em;cursor:pointer;
@@ -1016,7 +1010,7 @@ section{padding:64px 0}
   background:linear-gradient(180deg,rgba(14,32,25,.12) 0%,rgba(14,32,25,.42) 44%,rgba(14,32,25,.95) 100%)}
 .m-hero-inner{position:relative;z-index:2;padding:0 20px 22px;width:100%;color:#fff}
 .m-hero-ey{font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin-bottom:11px}
-.m-hero-title{font-family:'Caprasimo',serif;font-size:32px;line-height:1.04;margin-bottom:10px}
+.m-hero-title{font-family:'Fraunces',serif;font-weight:700;font-size:32px;line-height:1.04;margin-bottom:10px}
 .m-hero-sub{font:500 13px/1.55 'Figtree',sans-serif;color:rgba(255,255,255,.82);margin-bottom:17px;max-width:30ch}
 .m-hero-cta{display:inline-block;background:var(--acc);color:#2e1a0a;font:800 13px/1 'Figtree',sans-serif;padding:14px 22px;border-radius:999px}
 .m-hero-dots{position:absolute;bottom:14px;inset-inline-end:18px;z-index:3;display:flex;gap:6px}
@@ -4453,7 +4447,6 @@ function maybeShowPromo(){
     <div class="promo-backdrop" role="dialog" aria-modal="true" aria-label="${state.lang==='ar'?'إعلان':'Promotion'}" onclick="if(event.target===this)closePromo()">
       <div class="promo-grain"></div>
       <div class="promo-card">
-        <div class="promo-sparkle"></div><div class="promo-sparkle"></div><div class="promo-sparkle"></div><div class="promo-sparkle"></div><div class="promo-sparkle"></div><div class="promo-sparkle"></div>
         <button class="promo-close" aria-label="${closeLabel}" onclick="closePromo()">&times;</button>
         <div class="promo-media${(isVideo && !standIn) ? ' is-waiting' : ''}">${media}</div>
         <div class="promo-rule"></div>
@@ -5994,7 +5987,7 @@ function mCheckout(){
     </div>
     ${canPlace
       ? `<button class="m-btn-primary" style="width:100%;margin-top:16px" onclick="mPlaceOrder()">Place order · ${fmt(cartTotal())}</button>`
-      : `<button class="m-btn-outline" style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Caprasimo',serif;font-size:15px;text-align:center" onclick="mPlaceOrder()">Add name, phone &amp; governorate</button>`}
+      : `<button class="m-btn-outline" style="margin-top:16px;width:100%;border-radius:999px;padding:17px;background:var(--surf);color:var(--muted);font-family:'Fraunces',serif;font-weight:700;font-size:15px;text-align:center" onclick="mPlaceOrder()">Add name, phone &amp; governorate</button>`}
   </div>`;
 }
 function mPaymentInstructions(){
