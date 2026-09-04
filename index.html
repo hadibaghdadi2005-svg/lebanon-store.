@@ -110,9 +110,17 @@ header.site{
 }
 .searchbar input{background:transparent;border:none;outline:none;color:var(--paper);width:100%;font-size:14px}
 .searchbar input::placeholder{color:rgba(255,255,255,.55)}
-.search-clear-btn{flex-shrink:0;width:18px;height:18px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.search-clear-btn{position:relative;flex-shrink:0;width:18px;height:18px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.search-clear-btn::after{content:'';position:absolute;inset:-4px;border-radius:50%}
 .search-clear-btn:hover{background:rgba(255,255,255,.3)}
 .topbar-icons{display:flex;align-items:center;gap:16px;flex-shrink:0}
+/* No hit-area overlay here, deliberately. The header icons are 18-22px wide (their label sets
+   the width) against a 24px guideline, but the last one sits flush with the header row's end, so
+   an overhanging ::after added 6px to the document's scroll width at viewports under ~1180px --
+   invisible thanks to body{overflow-x:hidden}, but a real measurable regression and the sort of
+   thing that produces a phantom scrollbar elsewhere. They are already 32px tall with a 16px gap,
+   so the practical mis-tap risk is low; making them genuinely 24px wide means changing their size
+   or spacing, which is a design decision rather than a bug fix. */
 .icon-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:rgba(255,255,255,.85)}
 .icon-btn .cart-count{
   position:absolute;top:-6px;inset-inline-end:-8px;background:var(--brick);color:#fff;font-size:10px;font-weight:700;
@@ -170,7 +178,16 @@ header.site{
 .billboard-inner h2{font-size:28px;line-height:1.15;margin-bottom:10px}
 .billboard-inner p{font-size:14.5px;color:rgba(255,255,255,.82);margin-bottom:18px}
 .billboard-dots{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
-.billboard-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);border:none;cursor:pointer;padding:0}
+/* The dot stays 8px; only the region that responds to a tap grows, via an invisible
+   ::after overlay rather than padding — padding would push the dots apart and change the
+   design. WCAG 2.2 wants a pointer target of at least 24x24, and an 8px dot is a genuinely
+   hard thing to hit on a phone. */
+.billboard-dot{position:relative;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);border:none;cursor:pointer;padding:0}
+/* Vertically to a full 24px (nothing sits above or below), horizontally only to half the 8px
+   gap so neighbouring hit areas tile exactly instead of overlapping - an overlap would hand the
+   tap to whichever dot paints last and select the wrong slide. Reaching a true 24x24 would mean
+   widening the gap, which is a design change, so that is reported rather than done. */
+.billboard-dot::after{content:'';position:absolute;inset:-8px -4px}
 .billboard-dot.active{background:#fff}
 
 /* ---------- SECTIONS ---------- */
@@ -243,7 +260,7 @@ section{padding:52px 0}
 
 footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 20px;margin-top:20px}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.3fr;gap:24px;margin-bottom:32px}
-.footer-grid h4{color:var(--paper);font-size:13.5px;margin-bottom:14px}
+.footer-grid h3{color:var(--paper);font-size:13.5px;margin-bottom:14px}
 .footer-grid ul{list-style:none;display:flex;flex-direction:column;gap:8px}
 .footer-grid a{font-size:13px;color:rgba(255,255,255,.7)}
 .footer-grid a:hover{color:var(--brass-light)}
@@ -1021,7 +1038,8 @@ section{padding:64px 0}
 .m-hero-sub{font:500 13px/1.55 'Figtree',sans-serif;color:rgba(255,255,255,.82);margin-bottom:17px;max-width:30ch}
 .m-hero-cta{display:inline-block;background:var(--acc);color:#2e1a0a;font:800 13px/1 'Figtree',sans-serif;padding:14px 22px;border-radius:999px}
 .m-hero-dots{position:absolute;bottom:14px;inset-inline-end:18px;z-index:3;display:flex;gap:6px}
-.m-hero-dot{width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.45);border:0;padding:0}
+.m-hero-dot{position:relative;width:6px;height:6px;border-radius:999px;background:rgba(255,255,255,.45);border:0;padding:0}
+.m-hero-dot::after{content:'';position:absolute;inset:-9px -3px}
 .m-hero-dot.active{width:18px;background:#fff}
 /* One product per row, with a 4:3 photo — three items stop reading as a half-empty shelf. */
 .m-grid.m-grid-wide{grid-template-columns:1fr;gap:16px}
@@ -2456,7 +2474,7 @@ function renderHeader(){
       </a>
       <div class="searchbar">
         <svg class="icon" style="width:16px;height:16px;cursor:pointer" viewBox="0 0 24 24" onclick="submitSearch(document.getElementById('site-search-input').value)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input id="site-search-input" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${state.searchDraft||''}" oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
+        <input id="site-search-input" aria-label="${state.lang==='ar'?'ابحث في المتجر':'Search the store'}" placeholder="${state.lang==='ar'?'شو عايز....':'Shu 3ayez....'}" value="${state.searchDraft||''}" oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')submitSearch(this.value)"/>
         <button type="button" class="search-clear-btn" onclick="clearSearch()" aria-label="${state.lang==='ar'?'مسح البحث':'Clear search'}">✕</button>
       </div>
       <div class="topbar-icons">
@@ -2496,7 +2514,7 @@ function renderHeader(){
     </div>
     ${state.mobileMenuOpen?`
     <div style="background:var(--cedar-light);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
-      <div class="searchbar"><svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="${t('search')}"/></div>
+      <div class="searchbar"><svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input aria-label="${t('search')}" placeholder="${t('search')}"/></div>
       ${CATS.map(c=>`<a href="#" style="font-size:13.5px;color:rgba(255,255,255,.85)" onclick="toggleMobileMenu(false)">${catName(c)}</a>`).join('')}
     </div>`:''}
   </header>`;
@@ -2515,7 +2533,7 @@ function renderLogin(){
       <label>${t('email')}</label>
       <div class="login-input-wrap">
         <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
-        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()"/>
+        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()"/ aria-label="name@example.com">
       </div>
     </div>
     <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitForgotPassword()">${isAr?'إرسال رابط إعادة التعيين':'Send reset link'}</button>
@@ -2541,7 +2559,7 @@ function renderLogin(){
       <label>${isAr?'كلمة مرور جديدة':'New password'}</label>
       <div class="login-input-wrap">
         <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="recovery-pw1" type="password" autocomplete="new-password" placeholder="••••••••"/>
+        <input id="recovery-pw1" type="password" autocomplete="new-password" placeholder="••••••••"/ aria-label="••••••••">
         <button type="button" class="login-pw-toggle" onclick="togglePwField('recovery-pw1', this)" aria-label="${isAr?'إظهار/إخفاء':'Show/hide'}">${EYE_CLOSED_SVG}</button>
       </div>
     </div>
@@ -2549,7 +2567,7 @@ function renderLogin(){
       <label>${isAr?'تأكيد كلمة المرور':'Confirm password'}</label>
       <div class="login-input-wrap">
         <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="recovery-pw2" type="password" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitRecoveryPassword()"/>
+        <input id="recovery-pw2" type="password" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitRecoveryPassword()"/ aria-label="••••••••">
         <button type="button" class="login-pw-toggle" onclick="togglePwField('recovery-pw2', this)" aria-label="${isAr?'إظهار/إخفاء':'Show/hide'}">${EYE_CLOSED_SVG}</button>
       </div>
     </div>
@@ -2581,14 +2599,14 @@ function renderLogin(){
       <label>${t('email')}</label>
       <div class="login-input-wrap">
         <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
-        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/>
+        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/ aria-label="name@example.com">
       </div>
     </div>
     <div class="login-form-field">
       <label>${t('password')}</label>
       <div class="login-input-wrap">
         <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="login-pw-input" type="${pwShown?'text':'password'}" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()"/>
+        <input id="login-pw-input" type="${pwShown?'text':'password'}" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()"/ aria-label="••••••••">
         <button type="button" class="login-pw-toggle" onclick="toggleLoginPw()" aria-label="${pwShown?'Hide password':'Show password'}">
           ${pwShown
             ? `<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`
@@ -2657,7 +2675,7 @@ function productCard(p){
         ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
         ${discount>0?`<span class="badge badge-offer">-${discount}%</span>`:''}
       </div>
-      <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWishlist(${p.id})">
+      <button class="wish-btn ${wished?'active':''}" aria-pressed="${wished}" aria-label="${wished?(state.lang==='ar'?'إزالة من المفضلة':'Remove from wishlist'):(state.lang==='ar'?'أضف إلى المفضلة':'Add to wishlist')}" onclick="event.stopPropagation();toggleWishlist(${p.id})">
         <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
       </button>
     </div>
@@ -2772,7 +2790,7 @@ function renderHome(){
 
   ${shelf('best-sec', `<div><div class="eyebrow">🔥</div><h2 class="font-display">${t('bestSellers')}</h2></div>`, 'best', best)}
 
-  ${shelf('new-sec', `<div><div class="eyebrow">✦</div><h2 class="font-display" style="background:linear-gradient(90deg, var(--cedar), var(--brass-light));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-flex;align-items:center;gap:10px">${t('newArrivals')}<span style="font-family:'Figtree',sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;background:var(--brass);color:#2e1a0a;padding:4px 10px;border-radius:999px">NEW</span></h2></div>`, 'new', news)}
+  ${shelf('new-sec', `<div><div class="eyebrow" aria-hidden="true">✦</div><h2 class="font-display" style="background:linear-gradient(90deg, var(--cedar), var(--brass-light));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-flex;align-items:center;gap:10px">${t('newArrivals')}<span style="font-family:'Figtree',sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;background:var(--brass);color:#2e1a0a;padding:4px 10px;border-radius:999px">NEW</span></h2></div>`, 'new', news)}
 
   ${shelf('offers-sec', `<div><div class="eyebrow">%</div><h2 class="font-display">${t('offers')}</h2></div>`, 'offer', offers)}
   ${!featured.length && !best.length && !news.length && !offers.length && PRODUCTS.length ? `
@@ -2874,7 +2892,7 @@ function renderPhotoGallery(p, idPrefix, fallbackIconHtml){
   </div>
   ${photos.length>1?`
   <div class="billboard-dots" id="${idPrefix}-dots">
-    ${photos.map((_,i)=>`<button class="billboard-dot ${i===0?'active':''}" onclick="scrollGalleryTo('${idPrefix}',${i})"></button>`).join('')}
+    ${photos.map((_,i)=>`<button class="billboard-dot ${i===0?'active':''}" onclick="scrollGalleryTo('${idPrefix}',${i})" aria-label="Photo ${i+1} of ${photos.length}"></button>`).join('')}
   </div>`:''}`;
 }
 /* Direct DOM patch only — no state mutation triggering render() — so scrolling the gallery
@@ -2982,7 +3000,7 @@ function renderProductPage(){
                   Cart beside it - so the screen presented two competing primary actions and did
                   not say which one it wanted. Add to Cart leads; Buy Now stays available. */''}
             <button class="btn btn-ghost" ${p.stock===0?'disabled':''} onclick="if(addSelectedToCart(${p.id}, 1))goCheckout()">${state.lang==='ar'?'اشترِ الآن':'Buy Now'}</button>
-            <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
+            <button class="wish-btn ${state.wishlist.has(p.id)?'active':''}" aria-pressed="${state.wishlist.has(p.id)}" aria-label="${state.wishlist.has(p.id)?(state.lang==='ar'?'إزالة من المفضلة':'Remove from wishlist'):(state.lang==='ar'?'أضف إلى المفضلة':'Add to wishlist')}" style="position:static;border:1px solid var(--line)" onclick="toggleWishlist(${p.id})">
               <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C1 8 2.5 4 6.5 4c2 0 3.5 1.2 4 2 .5-.8 2-2 4-2 4 0 5.5 4 4 8-2.5 4.5-6.5 9-6.5 9z"/></svg>
             </button>
           </div>
@@ -3007,7 +3025,7 @@ function renderProductPage(){
                 log.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
             </div>
             <div class="ai-input-row">
-              <input id="ai-q-input" type="text" placeholder="${t('askPlaceholder')}" onkeydown="if(event.key==='Enter')submitProductQuestion(${p.id})"/>
+              <input id="ai-q-input" type="text" aria-label="${t('askAbout')}" placeholder="${t('askPlaceholder')}" onkeydown="if(event.key==='Enter')submitProductQuestion(${p.id})"/>
               <button class="btn btn-cedar btn-sm" onclick="submitProductQuestion(${p.id})">${state.lang==='ar'?'إرسال':'Ask'}</button>
             </div>
           </div>
@@ -3042,7 +3060,7 @@ function renderDrawer(){
   <div class="drawer ${state.drawerOpen?'open':''}">
     <div class="drawer-head">
       <h3>${t('cart')} (${cartCount()})</h3>
-      <button class="close-btn" onclick="toggleDrawer(false)">
+      <button class="close-btn" aria-label="${state.lang==='ar'?'إغلاق السلة':'Close basket'}" onclick="toggleDrawer(false)">
         <svg class="icon" style="width:15px;height:15px" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -3409,7 +3427,7 @@ function renderCheckout(){
         <h3>${t('fullName')} & ${t('address')}</h3>
         <div class="form-row">
           <div class="form-field ${err.fullName?'field-error':''}"><label>${t('fullName')} *</label><input type="text" value="${state.formData.fullName||''}" oninput="updateForm('fullName',this.value,this)"/>${err.fullName?`<span class="field-err-msg">${required}</span>`:''}</div>
-          <div class="form-field ${err.phone?'field-error':''}"><label>${t('phone')} *</label><input type="tel" placeholder="+961" value="${state.formData.phone||''}" oninput="updateForm('phone',this.value,this)"/>${err.phone?`<span class="field-err-msg">${required}</span>`:''}</div>
+          <div class="form-field ${err.phone?'field-error':''}"><label>${t('phone')} *</label><input type="tel" placeholder="+961" value="${state.formData.phone||''}" oninput="updateForm('phone',this.value,this)"/ aria-label="+961">${err.phone?`<span class="field-err-msg">${required}</span>`:''}</div>
         </div>
         <div class="form-row">
           <div class="form-field full"><label>${t('email')}</label><input type="email" value="${state.formData.email||''}" oninput="updateForm('email',this.value)"/></div>
@@ -3814,28 +3832,28 @@ function renderFooter(){
     <div class="container">
       <div class="footer-grid">
         <div>
-          <h4 class="font-display" style="color:var(--paper);font-size:18px">${t('storeName')}</h4>
+          <h3 class="font-display" style="color:var(--paper);font-size:18px">${t('storeName')}</h3>
           <p style="margin-top:8px">${t('aboutText')}</p>
         </div>
-        <div><h4>${t('contact')}</h4><ul>
+        <div><h3>${t('contact')}</h3><ul>
           ${state.settings.contactPhone?`<li><a href="tel:${state.settings.contactPhone.replace(/\s+/g,'')}">${state.settings.contactPhone}</a></li>`:''}
           ${state.settings.contactEmail?`<li><a href="mailto:${state.settings.contactEmail}">${state.settings.contactEmail}</a></li>`:''}
           ${state.settings.contactAddress?`<li>${state.settings.contactAddress}</li>`:''}
           ${(state.settings.socialLinks||[]).map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener">${s.platform}</a></li>`).join('')}
         </ul></div>
-        <div><h4>${t('supportNav')}</h4><ul>
+        <div><h3>${t('supportNav')}</h3><ul>
           <li><a href="#" onclick="goPage('shipping');return false;">${t('shipping')}</a></li>
           <li><a href="#" onclick="goPage('returns');return false;">${t('returns')}</a></li>
           <li><a href="#" onclick="goPage('faq');return false;">${t('faq')}</a></li>
         </ul></div>
-        <div><h4>${t('legalNav')}</h4><ul>
+        <div><h3>${t('legalNav')}</h3><ul>
           <li><a href="#" onclick="goPage('privacy');return false;">${t('privacy')}</a></li>
           <li><a href="#" onclick="goPage('terms');return false;">${t('terms')}</a></li>
         </ul></div>
         <div>
-          <h4>${t('newsletter')}</h4>
+          <h3>${t('newsletter')}</h3>
           <p>${t('newsletterSub')}</p>
-          <div class="newsletter"><input id="newsletter-email" placeholder="you@email.com"/><button class="btn btn-primary btn-sm" onclick="submitNewsletter()">${t('subscribe')}</button></div>
+          <div class="newsletter"><input id="newsletter-email" type="email" autocomplete="email" aria-label="${t('newsletter')}" placeholder="you@email.com"/><button class="btn btn-primary btn-sm" onclick="submitNewsletter()">${t('subscribe')}</button></div>
         </div>
       </div>
       <div class="footer-bottom">
@@ -4864,7 +4882,7 @@ function renderAddProductForm(){
         </div>
         <p style="font-size:11px;color:var(--ink-soft)">${isAr?'"عروض" تظهر تلقائيًا عند إدخال سعر أصلي أعلى من السعر الحالي.':'"Offers" is automatic — it shows up whenever you set a "Was" price higher than the current price.'}</p>
       </div>
-      <div class="form-field"><label>${isAr?'الألوان (مفصولة بفاصلة)':'Colors (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/></div>
+      <div class="form-field"><label>${isAr?'الألوان (مفصولة بفاصلة)':'Colors (comma separated)'}</label><input id="new-variants" type="text" placeholder="Black, White"/ aria-label="Black, White"></div>
       <div class="form-field"><label>${isAr?'المقاسات (مفصولة بفاصلة) — اختياري':'Sizes (comma separated) — optional'}</label><input id="new-sizes" type="text" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}"/></div>
       <p style="font-size:11px;color:var(--ink-soft);grid-column:1/-1;margin:-6px 0 0">${isAr?'لا تضع المقاسات في حقل الألوان — استخدم حقل المقاسات أدناه.':'Don’t put sizes in the Colors field — use the Sizes field for those.'}</p>
     </div>
@@ -4918,7 +4936,7 @@ function renderProductEditorPanel(p){
       <button class="btn btn-primary btn-sm" onclick="saveProductDescription(${p.id})">${isAr?'💾 حفظ الوصف':'💾 Save Description'}</button>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'الألوان (مفصولة بفواصل)':'Colors (comma-separated)'}</label>
-        <input type="text" value="${(p.variants||[]).join(', ')}" placeholder="Black, White, Blue" dir="ltr" onchange="adminUpdateVariants(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
+        <input type="text" value="${(p.variants||[]).join(', ')}" placeholder="Black, White, Blue" dir="ltr" onchange="adminUpdateVariants(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/ aria-label="Black, White, Blue">
         <p style="font-size:11px;color:var(--ink-soft);margin-top:6px">${isAr?'الألوان التي يختار العميل من بينها. لا تضع المقاسات هنا — استخدم حقل المقاسات أدناه.':'The colours a customer picks from. Don’t put sizes here — use the Sizes field below.'}</p>
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin:14px 0 6px">${isAr?'المقاسات (مفصولة بفواصل)':'Sizes (comma-separated)'}</label>
         <input type="text" value="${productSizes(p).join(', ')}" placeholder="${isAr?'مثال: 40, 41, 42 أو S, M, L':'e.g. 40, 41, 42 or S, M, L'}" dir="ltr" onchange="adminUpdateSizes(${p.id}, this.value)" style="width:100%;padding:10px 12px;border:1.4px solid var(--line);border-radius:9px;font-size:13px;font-family:inherit"/>
@@ -5061,7 +5079,7 @@ function renderAdmin(){
               <td><input type="number" step="0.01" value="${p.weight!=null?p.weight:''}" placeholder="${isAr?'إن عُرف':'if known'}" onchange="adminUpdateWeight(${p.id}, this.value)" style="width:64px"/></td>
               <td>
                 <div style="display:flex;gap:5px;align-items:center">
-                  <input type="text" value="${p.supplierUrl||''}" placeholder="https://chinahubpro.../item/..." onchange="adminUpdateSupplierUrl(${p.id}, this.value)" style="width:150px;font-size:11px"/>
+                  <input type="text" value="${p.supplierUrl||''}" placeholder="https://chinahubpro.../item/..." onchange="adminUpdateSupplierUrl(${p.id}, this.value)" style="width:150px;font-size:11px"/ aria-label="https://chinahubpro.../item/...">
                   ${p.supplierUrl?`<a href="${p.supplierUrl}" target="_blank" rel="noopener" title="${t('openSupplier')}" style="flex-shrink:0;font-size:15px;color:var(--cedar)">↗</a>`:''}
                 </div>
               </td>
@@ -5242,7 +5260,7 @@ function renderAdmin(){
               ${s.linkType==='url'?`
               <div class="form-field">
                 <label>URL</label>
-                <input type="text" value="${s.linkValue||''}" placeholder="https://..." onchange="updateBillboardSlide(${idx},'linkValue',this.value)"/>
+                <input type="text" value="${s.linkValue||''}" placeholder="https://..." onchange="updateBillboardSlide(${idx},'linkValue',this.value)"/ aria-label="https://...">
               </div>`:''}
             </div>
             ${s.linkType && s.linkType!=='none'?`
@@ -5290,7 +5308,7 @@ function renderAdmin(){
             </select>
           </div>`:''}
           ${p.linkType==='url'?`
-          <div class="form-field"><label>URL</label><input type="text" value="${p.linkValue||''}" placeholder="https://..." onchange="updatePromoField('linkValue', this.value)"/></div>`:''}
+          <div class="form-field"><label>URL</label><input type="text" value="${p.linkValue||''}" placeholder="https://..." onchange="updatePromoField('linkValue', this.value)"/ aria-label="https://..."></div>`:''}
         </div>
         ${p.linkType && p.linkType!=='none'?`
         <div class="form-field" style="max-width:240px"><label>${state.lang==='ar'?'نص الزر':'Button label'}</label><input type="text" value="${p.buttonLabel||''}" placeholder="${state.lang==='ar'?'تسوق الآن':'Shop now'}" onchange="updatePromoField('buttonLabel', this.value)"/></div>`:''}
@@ -5356,8 +5374,8 @@ function renderAdmin(){
         <p style="font-size:12px;color:var(--ink-soft);margin:14px 0 8px">${state.lang==='ar'?'روابط اجتماعية (تظهر في تذييل الصفحة)':'Social links (shown in the site footer)'}</p>
         ${(state.settings.socialLinks||[]).map((s,idx)=>`
         <div class="form-row" style="margin-bottom:8px;align-items:end">
-          <div class="form-field"><label>${state.lang==='ar'?'المنصة':'Platform'}</label><input type="text" placeholder="Instagram" value="${s.platform||''}" onchange="updateSocialLink(${idx},'platform',this.value)"/></div>
-          <div class="form-field"><label>URL</label><input type="text" placeholder="https://..." value="${s.url||''}" onchange="updateSocialLink(${idx},'url',this.value)"/></div>
+          <div class="form-field"><label>${state.lang==='ar'?'المنصة':'Platform'}</label><input type="text" placeholder="Instagram" value="${s.platform||''}" onchange="updateSocialLink(${idx},'platform',this.value)"/ aria-label="Instagram"></div>
+          <div class="form-field"><label>URL</label><input type="text" placeholder="https://..." value="${s.url||''}" onchange="updateSocialLink(${idx},'url',this.value)"/ aria-label="https://..."></div>
           <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="removeSocialLink(${idx})">🗑️</button>
         </div>`).join('')}
         <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addSocialLink()">+ ${state.lang==='ar'?'إضافة رابط':'Add link'}</button>
@@ -5592,7 +5610,7 @@ function renderChat(){
   <div class="chat-panel ${state.chatOpen?'open':''}">
     <div class="chat-head">
       <div><span class="t1">${t('chatTitle')}</span><span class="t2">${t('chatSub')}</span></div>
-      <button class="close-btn" style="background:rgba(255,255,255,.15)" onclick="toggleChat(false)">
+      <button class="close-btn" style="background:rgba(255,255,255,.15)" aria-label="${state.lang==='ar'?'إغلاق المحادثة':'Close chat'}" onclick="toggleChat(false)">
         <svg class="icon" style="width:13px;height:13px;stroke:#fff" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -5768,7 +5786,10 @@ function mThemeToggleBtn(){
   const d = state.mTheme==='light'
     ? "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"
     : "M12 5v-2M12 21v-2M5 12H3M21 12h-2M6.5 6.5L5 5M19 19l-1.5-1.5M6.5 17.5L5 19M19 5l-1.5 1.5M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8";
-  return `<button class="m-iconbtn" onclick="mToggleTheme()"><svg viewBox="0 0 24 24"><path d="${d}"></path></svg></button>`;
+  /* The icon shows the theme you would switch TO, so the name has to say the action, not the
+     current state, or it reads backwards to a screen reader. aria-pressed exposes the state. */
+  const label = state.mTheme==='light' ? 'Switch to dark theme' : 'Switch to light theme';
+  return `<button class="m-iconbtn" onclick="mToggleTheme()" aria-label="${label}" aria-pressed="${state.mTheme==='dark'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"></path></svg></button>`;
 }
 
 function mCard(p){
@@ -5910,7 +5931,7 @@ function mList(){
     <div class="m-list-head"><div class="m-logo-mark" onclick="this.classList.add('m-logo-bounce');setTimeout(()=>this.classList.remove('m-logo-bounce'),600);mGoHome()"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><div class="m-list-title">${title}</div></div>
     ${f && f.type==='search' ? `
     <div style="padding:0 20px 14px;display:flex;gap:8px;align-items:center">
-      <input id="m-search-input" class="m-input" value="${state.searchDraft||''}" placeholder="Shu 3ayez...." oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')mSubmitSearchBox()" style="flex:1"/>
+      <input id="m-search-input" class="m-input" value="${state.searchDraft||''}" placeholder="Shu 3ayez...." oninput="state.searchDraft=this.value" onkeydown="if(event.key==='Enter')mSubmitSearchBox()" style="flex:1"/ aria-label="Shu 3ayez....">
       <button onclick="mClearSearch()" aria-label="Clear search" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
       <button class="m-btn-primary" style="padding:0 20px;flex-shrink:0" onclick="mSubmitSearchBox()">Go</button>
     </div>` : `
@@ -5936,8 +5957,9 @@ function mProduct(){
   <div style="animation:fadeIn .25s ease">
     <div class="m-product-hero">
       ${renderPhotoGallery(p, 'pg-mobile', `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`)}
-      <div class="m-iconbtn" style="left:18px" onclick="mBack()"><svg viewBox="0 0 24 24"><path d="${M_BACK_D}"></path></svg></div>
-      <button class="m-iconbtn" style="right:18px" onclick="toggleWishlist(${p.id})"><svg viewBox="0 0 24 24" style="stroke:#c2542d;fill:${wished?'#c2542d':'none'}"><path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20z"></path></svg></button>
+      ${/* A <div onclick> is invisible to the keyboard and to assistive tech. It is a button. */''}
+      <button class="m-iconbtn" style="left:18px" onclick="mBack()" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${M_BACK_D}"></path></svg></button>
+      <button class="m-iconbtn" style="right:18px" onclick="toggleWishlist(${p.id})" aria-pressed="${wished}" aria-label="${wished?'Remove from wishlist':'Add to wishlist'}"><svg viewBox="0 0 24 24" style="stroke:#c2542d;fill:${wished?'#c2542d':'none'}"><path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20z"></path></svg></button>
     </div>
     <div class="m-product-body">
       <div class="m-kicker" style="margin-bottom:6px">${(CATS.find(c=>c.id===p.cat)||{en:''}).en}</div>
@@ -6043,11 +6065,11 @@ function mCheckout(){
     <div class="m-steps"><div class="m-step-bar on"></div><div class="m-step-bar on"></div><div class="m-step-bar"></div></div>
     <div class="m-section-kicker" style="margin-bottom:10px">Where should it land?</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
-      <input class="m-input ${mErr.fullName?'field-error':''}" value="${f.fullName||''}" oninput="updateForm('fullName',this.value,this)" placeholder="Full name">
+      <input class="m-input ${mErr.fullName?'field-error':''}" value="${f.fullName||''}" oninput="updateForm('fullName',this.value,this)" placeholder="Full name" aria-label="Full name" autocomplete="name">
       ${mErr.fullName?`<span class="m-field-err">Enter your full name</span>`:''}
-      <input class="m-input ${mErr.phone?'field-error':''}" value="${f.phone||''}" oninput="updateForm('phone',this.value,this)" placeholder="Phone number">
+      <input class="m-input ${mErr.phone?'field-error':''}" value="${f.phone||''}" oninput="updateForm('phone',this.value,this)" placeholder="Phone number" aria-label="Phone number" autocomplete="tel">
       ${mErr.phone?`<span class="m-field-err">Enter a phone number we can reach you on</span>`:''}
-      <input class="m-input ${mErr.address?'field-error':''}" value="${f.address||''}" oninput="updateForm('address',this.value,this)" placeholder="Street, building, floor">
+      <input class="m-input ${mErr.address?'field-error':''}" value="${f.address||''}" oninput="updateForm('address',this.value,this)" placeholder="Street, building, floor" aria-label="Street, building, floor" autocomplete="street-address">
       ${mErr.address?`<span class="m-field-err">Enter where we should deliver</span>`:''}
     </div>
     <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Governorate</div>
@@ -6089,7 +6111,7 @@ function mPaymentInstructions(){
       <button class="m-gov-chip ${state.paymentProofMode==='screenshot'?'active':''}" style="flex:1;text-align:center" onclick="setPaymentProofMode('screenshot')">Screenshot</button>
     </div>
     ${state.paymentProofMode==='reference'
-      ? `<input class="m-input" style="margin-bottom:16px" value="${state.paymentProofReference||''}" oninput="state.paymentProofReference=this.value" placeholder="Transaction ID / reference">`
+      ? `<input class="m-input" style="margin-bottom:16px" value="${state.paymentProofReference||''}" oninput="state.paymentProofReference=this.value" placeholder="Transaction ID / reference" aria-label="Transaction ID / reference">`
       : `<div style="margin-bottom:16px"><input type="file" accept="image/*" onchange="handleProofFileSelect(event)">${state.paymentProofFile?`<div style="font:400 12px/1.4 'Figtree',sans-serif;color:var(--muted);margin-top:6px">${state.paymentProofFile.name}</div>`:''}</div>`}
     <button class="m-btn-primary" style="width:100%" ${state.paymentSubmitting?'disabled':''} onclick="submitPaymentProof('${o._dbId}')">${state.paymentSubmitting?'Submitting...':'Submit Payment Confirmation'}</button>
   </div>`;
@@ -6223,14 +6245,14 @@ function mAccount(){
     </div>
     <div class="m-section-kicker" style="margin:18px 0 10px">Edit profile</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
-      <input class="m-input" id="m-acct-name" value="${(c&&c.name)||''}" placeholder="Full name">
-      <input class="m-input" id="m-acct-phone" value="${(c&&c.phone)||''}" placeholder="Phone number">
+      <input class="m-input" id="m-acct-name" value="${(c&&c.name)||''}" placeholder="Full name" aria-label="Full name" autocomplete="name">
+      <input class="m-input" id="m-acct-phone" value="${(c&&c.phone)||''}" placeholder="Phone number" aria-label="Phone number" autocomplete="tel">
       <button class="m-btn-primary" onclick="mSaveAccountInfo()">Save</button>
     </div>
     <div class="m-section-kicker" style="margin:18px 0 10px">Change password</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
-      <div class="pw-field-wrap"><input class="m-input" id="m-acct-new-pw" type="password" placeholder="New password"><button type="button" class="pw-toggle-btn" onclick="togglePwField('m-acct-new-pw', this)" aria-label="Show/hide">${EYE_CLOSED_SVG}</button></div>
-      <div class="pw-field-wrap"><input class="m-input" id="m-acct-new-pw2" type="password" placeholder="Confirm password"><button type="button" class="pw-toggle-btn" onclick="togglePwField('m-acct-new-pw2', this)" aria-label="Show/hide">${EYE_CLOSED_SVG}</button></div>
+      <div class="pw-field-wrap"><input class="m-input" id="m-acct-new-pw" type="password" placeholder="New password" aria-label="New password"><button type="button" class="pw-toggle-btn" onclick="togglePwField('m-acct-new-pw', this)" aria-label="Show/hide">${EYE_CLOSED_SVG}</button></div>
+      <div class="pw-field-wrap"><input class="m-input" id="m-acct-new-pw2" type="password" placeholder="Confirm password" aria-label="Confirm password"><button type="button" class="pw-toggle-btn" onclick="togglePwField('m-acct-new-pw2', this)" aria-label="Show/hide">${EYE_CLOSED_SVG}</button></div>
       <button class="m-btn-outline" onclick="mSubmitChangePassword()">Change password</button>
     </div>
     <div class="m-section-kicker" style="margin:18px 0 10px">Support</div>
@@ -6254,7 +6276,7 @@ function mAccount(){
     </div>`:''}
     <div class="m-section-kicker" style="margin:18px 0 10px">Newsletter</div>
     <div style="display:flex;gap:8px;margin-bottom:18px">
-      <input class="m-input" id="m-newsletter-email" placeholder="you@email.com" style="flex:1">
+      <input class="m-input" id="m-newsletter-email" type="email" autocomplete="email" aria-label="Newsletter email" placeholder="you@email.com" style="flex:1">
       <button class="m-btn-primary" style="padding:0 20px" onclick="mSubmitNewsletter()">Subscribe</button>
     </div>
     <button class="m-btn-outline" style="width:100%;background:var(--acc);color:#2e1a0a;border-color:var(--acc)" onclick="logout()">Log out</button>
@@ -6304,7 +6326,7 @@ function mChat(){
     </div>
     ${!humanMode?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${suggestions.map(s=>`<button class="chat-chip" onclick="mChatSuggest('${s.replace(/'/g,"\\'")}')" style="background:var(--card);border:1px solid var(--line);color:var(--text)">${s}</button>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;position:sticky;bottom:8px">
-      <input id="m-chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter')mSubmitChat()" ${chatBusy?'disabled':''} style="flex:1;border:1.5px solid var(--line);border-radius:999px;padding:0 16px;font:400 14px/1 'Figtree',sans-serif;background:var(--card);color:var(--text);height:46px"/>
+      <input id="m-chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter')mSubmitChat()" ${chatBusy?'disabled':''} style="flex:1;border:1.5px solid var(--line);border-radius:999px;padding:0 16px;font:400 14px/1 'Figtree',sans-serif;background:var(--card);color:var(--text);height:46px"/ aria-label="Type your question...">
       <button class="m-btn-primary" onclick="mSubmitChat()" ${chatBusy?'disabled':''} style="padding:0 20px;height:46px;border-radius:999px">Send</button>
     </div>
   </div>`;
