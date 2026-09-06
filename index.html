@@ -1581,6 +1581,20 @@ let state = {
   mQty: 1,
 };
 
+/* This app builds every screen as a template literal assigned to innerHTML, so any value that
+   reaches the page unescaped is executable markup, not text. innerHTML will not run an injected
+   <script>, which is why this looked safe for a long time - but it very much does run inline
+   handlers, so `<img src=x onerror=...>` in any field is live code.
+   The sharpest case was a customer-typed payment reference rendering inside the ADMIN's session,
+   where a payload runs with access to cost data, every customer's details, and destructive
+   admin actions. Escape at the point of interpolation, deliberately NOT inside helpers like
+   pname()/catName(), which also feed plain-text contexts (confirm() dialogs, the AI prompt)
+   where entities would show up literally. Safe for both text nodes and quoted attributes. */
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function t(key){ return T[state.lang][key]; }
 function fmt(n){ return '$' + n.toFixed(2); }
 function pname(p){ return state.lang==='ar' ? p.name_ar : p.name_en; }
@@ -2079,7 +2093,7 @@ function buildCatalogContext(){
   return PRODUCTS.map(p=>{
     const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
     const catList = productCats(p).map(id=>{ const c=CATS.find(x=>x.id===id); return c?catName(c):id; }).join(', ');
-    return `- "${pname(p)}" | SKU ${p.sku} | categories: ${catList}${p.was>p.price?' | on offer':''} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.reviews>0?`${p.rating}/5 (${p.reviews} reviews)`:'no reviews yet'} | specs: ${specStr}`;
+    return `- "${esc(pname(p))}" | SKU ${esc(p.sku)} | categories: ${catList}${p.was>p.price?' | on offer':''} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.reviews>0?`${p.rating}/5 (${p.reviews} reviews)`:'no reviews yet'} | specs: ${specStr}`;
   }).join('\n');
 }
 function buildStoreSystemPrompt(){
@@ -2108,9 +2122,9 @@ function buildProductSystemPrompt(p){
   return `You are a product assistant answering questions about ONE specific product on "HABIBI". ${AI_LANG_NOTE[state.lang]}
 Only use the facts about this product listed below. Never invent specifications, materials, dimensions, or capabilities that aren't listed. If asked about something not covered, say plainly that this information isn't available for this product.
 
-PRODUCT: ${pname(p)}
-SKU: ${p.sku}
-Description: ${pdesc(p)}
+PRODUCT: ${esc(pname(p))}
+SKU: ${esc(p.sku)}
+Description: ${esc(pdesc(p))}
 Price: $${p.price}${p.was>p.price?` (was $${p.was})`:''}
 Stock: ${p.stock} units
 Available options: ${(p.variants||[]).join(', ') || 'none'}
@@ -2438,7 +2452,7 @@ async function adminDeleteCustomer(id){
   if(!c) return;
   const isAr = state.lang==='ar';
   if(state.orders.some(o=>o.customerId===id)){ showToast(isAr?'احذف طلبات هذا العميل أولاً':"Delete this customer's orders first"); return; }
-  if(!confirm(isAr?`هل تريد حذف حساب "${c.name}" نهائيًا؟ لا يمكن التراجع عن هذا.`:`Delete "${c.name}"'s account permanently? This can't be undone.`)) return;
+  if(!confirm(isAr?`هل تريد حذف حساب "${esc(c.name)}" نهائيًا؟ لا يمكن التراجع عن هذا.`:`Delete "${esc(c.name)}"'s account permanently? This can't be undone.`)) return;
   try{
     const { error } = await sb.from('customers').delete().eq('id', id);
     if(error) throw error;
@@ -2509,13 +2523,13 @@ function renderHeader(){
     <div class="catbar">
       <div class="container">
         ${/* Categories only. The admin-panel link moved up into .topbar-icons — see the note there. */''}
-        ${CATS.map(c=>`<a href="#" onclick="filterByCat('${c.id}');return false;">${catName(c)}</a>`).join('')}
+        ${CATS.map(c=>`<a href="#" onclick="filterByCat('${c.id}');return false;">${esc(catName(c))}</a>`).join('')}
       </div>
     </div>
     ${state.mobileMenuOpen?`
     <div style="background:var(--cedar-light);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
       <div class="searchbar"><svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input aria-label="${t('search')}" placeholder="${t('search')}"/></div>
-      ${CATS.map(c=>`<a href="#" style="font-size:13.5px;color:rgba(255,255,255,.85)" onclick="toggleMobileMenu(false)">${catName(c)}</a>`).join('')}
+      ${CATS.map(c=>`<a href="#" style="font-size:13.5px;color:rgba(255,255,255,.85)" onclick="toggleMobileMenu(false)">${esc(catName(c))}</a>`).join('')}
     </div>`:''}
   </header>`;
 }
@@ -2666,7 +2680,7 @@ function productCard(p){
   return `
   <div class="prod-card">
     <div class="prod-img ${imgB?'has-alt':''}" style="background:${color}" onclick="openProduct(${p.id})">
-      ${imgA?`<img class="prod-img-a" src="${imgA}" alt="${pname(p)}" loading="lazy" decoding="async">`:ICONS[p.icon]}
+      ${imgA?`<img class="prod-img-a" src="${imgA}" alt="${esc(pname(p))}" loading="lazy" decoding="async">`:ICONS[p.icon]}
       ${/* The second photo only ever appears on hover, so it is pure waste on a phone, which has
             no hover at all — and it used to double the grid's image payload on every load. */''}
       ${imgB?`<img class="prod-img-b" src="${imgB}" alt="" aria-hidden="true" loading="lazy" decoding="async">`:''}
@@ -2681,7 +2695,7 @@ function productCard(p){
     </div>
     <div class="prod-body">
       <div class="prod-cat">${catName(CATS.find(c=>c.id===p.cat))}</div>
-      <div class="prod-name" onclick="openProduct(${p.id})" style="cursor:pointer">${pname(p)}</div>
+      <div class="prod-name" onclick="openProduct(${p.id})" style="cursor:pointer">${esc(pname(p))}</div>
       <div class="prod-rating">
         ${p.reviews>0?`<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>
         ${p.rating} (${p.reviews}) &nbsp;·&nbsp; `:''}<span class="${stockClass}">${stockLabel}</span>
@@ -2781,7 +2795,7 @@ function renderHome(){
       ${liveCats.map(c=>`
         <button class="cat-card" onclick="filterByCat('${c.id}')" style="border:1px solid var(--line)">
           <div class="cat-icon">${ICONS[c.icon]}</div>
-          <span>${catName(c)}</span>
+          <span>${esc(catName(c))}</span>
         </button>`).join('')}
     </div>
   </section>`:''}
@@ -2826,11 +2840,11 @@ function renderHome(){
       ${liveReviews.map(r=>`
         <div class="review-card">
           <div class="review-top">
-            <span class="review-name">${r.name_en}</span>
+            <span class="review-name">${esc(r.name_en)}</span>
             <div class="review-stars">${Array(r.rating).fill('<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>').join('')}</div>
           </div>
-          <p class="review-text">${r.en}</p>
-          <div class="review-meta">${pname(findProduct(r.prod))} · ${r.date}</div>
+          <p class="review-text">${esc(r.en)}</p>
+          <div class="review-meta">${pname(findProduct(r.prod))} · ${esc(r.date)}</div>
         </div>`).join('')}
     </div>
   </section>` : ''}
@@ -2888,7 +2902,7 @@ function renderPhotoGallery(p, idPrefix, fallbackIconHtml){
   return `
   <div class="gallery-track" id="${idPrefix}-track" onscroll="updateGalleryDots('${idPrefix}')">
     ${/* Only the first frame is on screen; the rest are a swipe away, so they load on demand. */''}
-    ${photos.map((url,i)=>`<div class="gallery-slide" style="background:${color}"><img src="${url}" alt="${p.name_en}" ${i===0?'fetchpriority="high"':'loading="lazy"'} decoding="async"></div>`).join('')}
+    ${photos.map((url,i)=>`<div class="gallery-slide" style="background:${color}"><img src="${url}" alt="${esc(p.name_en)}" ${i===0?'fetchpriority="high"':'loading="lazy"'} decoding="async"></div>`).join('')}
   </div>
   ${photos.length>1?`
   <div class="billboard-dots" id="${idPrefix}-dots">
@@ -2934,7 +2948,7 @@ function renderProductPage(){
   return `
   <div class="page container">
     <div class="breadcrumb">
-      <a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${catName(CATS.find(c=>c.id===p.cat))} / ${pname(p)}
+      <a href="#" onclick="goHome();return false;">${t('storeName')}</a> / ${catName(CATS.find(c=>c.id===p.cat))} / ${esc(pname(p))}
     </div>
     <div class="panel" style="padding:0;overflow:hidden">
       <div class="modal-grid">
@@ -2946,16 +2960,16 @@ function renderProductPage(){
             ${p.new?`<span class="badge badge-new">${state.lang==='ar'?'جديد':'New'}</span>`:''}
             ${p.best?`<span class="badge badge-best">${state.lang==='ar'?'الأكثر مبيعًا':'Bestseller'}</span>`:''}
           </div>
-          <h2 class="font-display">${pname(p)}</h2>
+          <h2 class="font-display">${esc(pname(p))}</h2>
           <div class="modal-stars-row">
             ${p.reviews>0?`<svg style="width:14px;height:14px;fill:var(--brass)" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>
-            ${p.rating} · ${p.reviews} ${state.lang==='ar'?'تقييم':'reviews'} · `:''}SKU ${p.sku}
+            ${p.rating} · ${p.reviews} ${state.lang==='ar'?'تقييم':'reviews'} · `:''}SKU ${esc(p.sku)}
           </div>
           <div class="modal-price-row">
             <span class="price-now">${fmt(p.price)}</span>
             ${p.was>p.price?`<span class="price-was">${fmt(p.was)}</span><span class="discount-tag">-${discount}%</span>`:''}
           </div>
-          <p class="modal-desc">${pdesc(p)}</p>
+          <p class="modal-desc">${esc(pdesc(p))}</p>
           <div class="spec-card">
             <div class="row">
               <span class="k"><svg viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1.5"/><path d="M16 10h3.5L22 13v4h-6"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>${t('estDelivery')}</span>
@@ -3022,7 +3036,7 @@ function renderProductPage(){
             </div>
             <div class="ai-log" id="ai-log-${p.id}">
               ${log.length===0?`<div style="font-size:12px;color:var(--ink-soft)">${t('askAbout')}</div>`:
-                log.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+                log.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'bot'}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':esc(m.text)}</div>`).join('')}
             </div>
             <div class="ai-input-row">
               <input id="ai-q-input" type="text" aria-label="${t('askAbout')}" placeholder="${t('askPlaceholder')}" onkeydown="if(event.key==='Enter')submitProductQuestion(${p.id})"/>
@@ -3039,11 +3053,11 @@ function renderProductPage(){
       ${prodReviews.map(r=>`
         <div class="review-card">
           <div class="review-top">
-            <span class="review-name">${r.name_en}</span>
+            <span class="review-name">${esc(r.name_en)}</span>
             <div class="review-stars">${Array(r.rating).fill('<svg viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9"/></svg>').join('')}</div>
           </div>
-          <p class="review-text">${r.en}</p>
-          <div class="review-meta">${r.date}</div>
+          <p class="review-text">${esc(r.en)}</p>
+          <div class="review-meta">${esc(r.date)}</div>
         </div>`).join('')}
     </div>`:''; })()}
 
@@ -3077,9 +3091,9 @@ function renderDrawer(){
           const color = PALETTE[p.color % PALETTE.length];
           return `
           <div class="cart-line" data-line="${i}">
-            <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
+            <div class="cart-thumb" style="background:${color}">${p.imageUrl?`<img src="${p.imageUrl}" alt="${esc(pname(p))}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:ICONS[p.icon]}</div>
             <div class="cart-info">
-              <div class="name">${pname(p)}</div>
+              <div class="name">${esc(pname(p))}</div>
               <div class="variant">${optionLabel(l)}</div>
               <div class="qty-row">
                 <button class="qty-btn" onclick="changeCartQty(${i},-1)">−</button>
@@ -3480,11 +3494,11 @@ function renderCheckout(){
           return `
           <div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--sand-dark)">
             <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:${color};position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
-              ${p.imageUrl?`<img src="${p.imageUrl}" alt="${pname(p)}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
+              ${p.imageUrl?`<img src="${p.imageUrl}" alt="${esc(pname(p))}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:50%;height:50%;color:#fff">${ICONS[p.icon]}</span>`}
             </div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700">
-                <span>${pname(p)} (${optionLabel(l)}) × ${l.qty}</span><span class="font-mono" style="flex-shrink:0">${fmt(p.price*l.qty)}</span>
+                <span>${esc(pname(p))} (${optionLabel(l)}) × ${l.qty}</span><span class="font-mono" style="flex-shrink:0">${fmt(p.price*l.qty)}</span>
               </div>
               <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4">${shortDesc}</div>
             </div>
@@ -3574,7 +3588,7 @@ function renderPaymentInstructions(){
   <div class="page container">
     <div class="panel order-conf" style="max-width:560px;margin:0 auto;text-align:start">
       <h2 class="font-display" style="margin-bottom:6px">${isAr?'أكمل الدفع عبر Wish':'Complete Payment via Wish'}</h2>
-      <p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:18px">${isAr?`حوّل مبلغ ${fmt(o.total)} إلى حساب Wish التالي، ثم أرسل إثبات التحويل أدناه لتأكيد طلبك ${o.num}.`:`Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${o.num}.`}</p>
+      <p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:18px">${isAr?`حوّل مبلغ ${fmt(o.total)} إلى حساب Wish التالي، ثم أرسل إثبات التحويل أدناه لتأكيد طلبك ${esc(o.num)}.`:`Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${esc(o.num)}.`}</p>
       <div style="background:var(--sand);border-radius:12px;padding:16px;margin-bottom:18px">
         <div style="font-size:12px;color:var(--ink-soft);font-weight:700;margin-bottom:4px">${isAr?'اسم الحساب':'Account name'}</div>
         <div style="font-size:15px;font-weight:700;margin-bottom:10px">${s.wishAccountName || (isAr?'—':'—')}</div>
@@ -3640,8 +3654,8 @@ function renderOrderTrackCard(o){
   return `
   <div class="order-card-mini">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div class="font-mono" style="font-weight:700">${o.num}</div>
-      <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+      <div class="font-mono" style="font-weight:700">${esc(o.num)}</div>
+      <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${esc(o.gov)}</div>
       <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
     </div>
     ${paymentBanner || o.items.map((it,i)=>renderItemTrack(it, o.num+'-'+i)).join('')}
@@ -3672,8 +3686,8 @@ function renderConfirm(){
       <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
       <h2 class="font-display">${t('orderConfirmed')}</h2>
       <p style="color:var(--ink-soft);margin-top:6px">${pendingPayment?(isAr?'سنتحقق من دفعتك ونؤكد طلبك قريبًا.':"We'll verify your payment and confirm your order shortly."):t('orderConfirmedSub')}</p>
-      <div class="order-num">${o.num}</div>
-      <div style="font-size:13px;color:var(--ink-soft)">${fmt(o.total)} · ${o.gov} · ${o.date}</div>
+      <div class="order-num">${esc(o.num)}</div>
+      <div style="font-size:13px;color:var(--ink-soft)">${fmt(o.total)} · ${esc(o.gov)} · ${o.date}</div>
       <div style="font-size:13px;color:var(--cedar);font-weight:700;margin-bottom:22px">${t('estDelivery')}: ${o.deliveryMin}-${o.deliveryMax} ${t('days')}</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-cedar" onclick="goMyOrders()">${state.lang==='ar'?'تتبّع الطلب':'Track this order'}</button>
@@ -3956,7 +3970,7 @@ function openProductEditor(id){ state.adminEditingProduct = state.adminEditingPr
 function deleteProduct(id){
   const p = findProduct(id);
   if(!p) return;
-  const msg = state.lang==='ar' ? `هل تريد حذف "${p.name_ar}" نهائيًا؟ لا يمكن التراجع عن هذا.` : `Delete "${p.name_en}" permanently? This can't be undone.`;
+  const msg = state.lang==='ar' ? `هل تريد حذف "${p.name_ar}" نهائيًا؟ لا يمكن التراجع عن هذا.` : `Delete "${esc(p.name_en)}" permanently? This can't be undone.`;
   if(!confirm(msg)) return;
   syncProductField(id, { deleted: true });
   logAdminAction('delete_product', { product_id: id, name_en: p.name_en });
@@ -4784,7 +4798,7 @@ function renderAdminCustomers(){
         <div style="display:flex;align-items:center;gap:12px">
           <div class="cust-avatar" style="width:48px;height:48px;font-size:17px">${(c.name||'?').charAt(0).toUpperCase()}</div>
           <div>
-            <div style="font-weight:700;font-size:16px">${c.name} ${c.blocked?`<span style="color:var(--brick);font-size:10.5px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:2px 6px;margin-inline-start:6px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
+            <div style="font-weight:700;font-size:16px">${esc(c.name)} ${c.blocked?`<span style="color:var(--brick);font-size:10.5px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:2px 6px;margin-inline-start:6px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
             <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span> · ${isAr?'انضم':'joined'} ${c.createdAt}</div>
           </div>
         </div>
@@ -4807,7 +4821,7 @@ function renderAdminCustomers(){
       <h3>${isAr?'سلة العميل الحالية':"Customer's current cart"} (${cart.length})</h3>
       ${cart.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'السلة فارغة':'Cart is empty'}</p>` :
         `<table class="admin-table"><thead><tr><th>${isAr?'المنتج':'Product'}</th><th>${isAr?'الخيار':'Variant'}</th><th>${isAr?'الكمية':'Qty'}</th><th>${isAr?'السعر':'Price'}</th></tr></thead>
-        <tbody>${cart.map(l=>{ const p=findProduct(l.id); return p ? `<tr><td>${pname(p)}</td><td>${optionLabel(l)}</td><td>${l.qty}</td><td class="font-mono">${fmt(p.price*l.qty)}</td></tr>` : ''; }).join('')}</tbody></table>
+        <tbody>${cart.map(l=>{ const p=findProduct(l.id); return p ? `<tr><td>${esc(pname(p))}</td><td>${optionLabel(l)}</td><td>${l.qty}</td><td class="font-mono">${fmt(p.price*l.qty)}</td></tr>` : ''; }).join('')}</tbody></table>
         <div style="text-align:end;margin-top:10px;font-weight:700" class="font-mono">${isAr?'المجموع':'Total'}: ${fmt(cartTotal)}</div>`}
     </div>
 
@@ -4820,8 +4834,8 @@ function renderAdminCustomers(){
         custOrders.map(o=>`
         <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div class="font-mono" style="font-weight:700">${o.num}</div>
-            <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${o.gov}</div>
+            <div class="font-mono" style="font-weight:700">${esc(o.num)}</div>
+            <div style="font-size:12px;color:var(--ink-soft)">${o.date} · ${esc(o.gov)}</div>
             <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
             <button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="deleteOrder('${o._dbId}')">🗑️ ${isAr?'حذف':'Delete'}</button>
           </div>
@@ -4848,7 +4862,7 @@ function renderAdminCustomers(){
         <div class="cust-row-info">
           <div class="cust-avatar">${(c.name||'?').charAt(0).toUpperCase()}</div>
           <div style="min-width:0">
-            <div style="font-weight:700;font-size:13.5px">${c.name} ${c.blocked?`<span style="color:var(--brick);font-size:10px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:1px 5px;margin-inline-start:4px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
+            <div style="font-weight:700;font-size:13.5px">${esc(c.name)} ${c.blocked?`<span style="color:var(--brick);font-size:10px;font-weight:700;border:1px solid var(--brick);border-radius:6px;padding:1px 5px;margin-inline-start:4px">${isAr?'موقوف':'SUSPENDED'}</span>`:''}</div>
             <div class="cust-meta">${c.email||c.phone||''} · <span class="method-tag">${c.method}</span></div>
           </div>
         </div>
@@ -4877,7 +4891,7 @@ function renderAddProductForm(){
         <div style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:9px 0">
           ${CATS.filter(c=>c.id!=='offers').map(c=>`
             <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;cursor:pointer">
-              <input type="checkbox" class="new-cat-check" value="${c.id}"/> ${catName(c)}
+              <input type="checkbox" class="new-cat-check" value="${c.id}"/> ${esc(catName(c))}
             </label>`).join('')}
         </div>
         <p style="font-size:11px;color:var(--ink-soft)">${isAr?'"عروض" تظهر تلقائيًا عند إدخال سعر أصلي أعلى من السعر الحالي.':'"Offers" is automatic — it shows up whenever you set a "Was" price higher than the current price.'}</p>
@@ -4914,7 +4928,7 @@ function renderProductEditorPanel(p){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         ${productPhotos(p).map((url,idx)=>`
         <div style="position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)">
-          <img src="${url}" alt="${p.name_en}" decoding="async" style="width:100%;height:100%;object-fit:cover">
+          <img src="${url}" alt="${esc(p.name_en)}" decoding="async" style="width:100%;height:100%;object-fit:cover">
           <button onclick="removeProductPhoto(${p.id}, ${idx})" title="${isAr?'إزالة':'Remove'}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer">✕</button>
         </div>`).join('')}
         <label style="width:64px;height:64px;border-radius:8px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:24px;flex-shrink:0">
@@ -4946,7 +4960,7 @@ function renderProductEditorPanel(p){
         <label style="font-size:12px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:6px">${isAr?'التقييمات':'Reviews'}</label>
         ${REVIEWS.filter(r=>r.prod===p.id).map(r=>`
           <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;padding:8px 0;border-bottom:1px solid var(--sand-dark)">
-            <div style="font-size:12px"><b>${r.name_en}</b> · ${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}<br><span style="color:var(--ink-soft)">${r.en}</span></div>
+            <div style="font-size:12px"><b>${esc(r.name_en)}</b> · ${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}<br><span style="color:var(--ink-soft)">${esc(r.en)}</span></div>
             <button class="btn btn-ghost btn-sm" style="color:var(--brick);flex-shrink:0" onclick="deleteReview('${r.id}')">🗑️</button>
           </div>`).join('') || `<p style="font-size:12px;color:var(--ink-soft)">${isAr?'لا توجد تقييمات':'No reviews yet'}</p>`}
         <div class="form-row" style="margin-top:10px">
@@ -5016,7 +5030,7 @@ function renderAdmin(){
         </div>
         <div class="panel">
           <h3>${state.lang==='ar'?'الأكثر مبيعًا':'Best Sellers'}</h3>
-          ${PRODUCTS.filter(p=>p.best).map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)"><span>${pname(p)}</span><span class="font-mono">${fmt(p.price)}</span></div>`).join('')}
+          ${PRODUCTS.filter(p=>p.best).map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)"><span>${esc(pname(p))}</span><span class="font-mono">${fmt(p.price)}</span></div>`).join('')}
         </div>
       </div>`:''}
 
@@ -5049,18 +5063,18 @@ function renderAdmin(){
             <tr>
               <td>
                 <div style="width:38px;height:38px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
-                  ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name_en}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
+                  ${p.imageUrl?`<img src="${p.imageUrl}" alt="${esc(p.name_en)}" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<span style="width:18px;height:18px;color:#fff">${ICONS[p.icon]}</span>`}
                 </div>
               </td>
-              <td>${pname(p)}</td>
-              <td><input type="text" class="font-mono" value="${p.sku}" onchange="adminUpdateSku(${p.id}, this.value)" style="width:100px;font-size:11.5px" title="${state.lang==='ar'?'يمكنك استبداله برقم تتبع المورد':'You can overwrite this with your supplier tracking code'}"/></td>
+              <td>${esc(pname(p))}</td>
+              <td><input type="text" class="font-mono" value="${esc(p.sku)}" onchange="adminUpdateSku(${p.id}, this.value)" style="width:100px;font-size:11.5px" title="${state.lang==='ar'?'يمكنك استبداله برقم تتبع المورد':'You can overwrite this with your supplier tracking code'}"/></td>
               <td>
                 ${state.adminExpandedCatRow===p.id ? `
                 <div style="display:flex;flex-direction:column;gap:2px;font-size:11px;min-width:130px">
                   ${CATS.filter(c=>c.id!=='offers').map(c=>`
                     <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap">
                       <input type="checkbox" ${productCats(p).includes(c.id)?'checked':''} onchange="adminToggleCategory(${p.id}, '${c.id}', this.checked)"/>
-                      ${catName(c)}
+                      ${esc(catName(c))}
                     </label>`).join('')}
                   <a href="#" class="view-all" style="font-size:10.5px;margin-top:2px" onclick="state.adminExpandedCatRow=null;render();return false;">${isAr?'× إغلاق':'× Done'}</a>
                 </div>` : `
@@ -5134,8 +5148,8 @@ function renderAdmin(){
           <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
             <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
               <div>
-                <div class="font-mono" style="font-weight:700;font-size:14px">${o.num}</div>
-                <div style="font-size:12px;color:var(--ink-soft)">${o.customer} · ${o.phone} · ${o.gov} · ${o.date}</div>
+                <div class="font-mono" style="font-weight:700;font-size:14px">${esc(o.num)}</div>
+                <div style="font-size:12px;color:var(--ink-soft)">${esc(o.customer)} · ${esc(o.phone)} · ${esc(o.gov)} · ${o.date}</div>
               </div>
               <div style="text-align:end">
                 <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
@@ -5187,13 +5201,13 @@ function renderAdmin(){
           <div style="border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--paper)">
             <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
               <div>
-                <div class="font-mono" style="font-weight:700;font-size:14px">${o.num}</div>
-                <div style="font-size:12px;color:var(--ink-soft)">${o.customer} · ${o.phone} · ${o.date}</div>
+                <div class="font-mono" style="font-weight:700;font-size:14px">${esc(o.num)}</div>
+                <div style="font-size:12px;color:var(--ink-soft)">${esc(o.customer)} · ${esc(o.phone)} · ${o.date}</div>
               </div>
               <div class="font-mono" style="font-weight:700">${fmt(o.total)}</div>
             </div>
             <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${o.paymentSubmittedAt?(isAr?'أُرسل بتاريخ ':'Submitted ')+new Date(o.paymentSubmittedAt).toLocaleString():(isAr?'لم يُرسل أي إثبات بعد — سيُلغى تلقائيًا خلال 24 ساعة من الطلب':'Nothing submitted yet — will auto-cancel 24h after the order was placed')}</div>
-            ${o.paymentReference?`<div style="font-size:13px;margin-bottom:10px"><b>${isAr?'رقم العملية:':'Reference:'}</b> <span class="font-mono">${o.paymentReference}</span></div>`:''}
+            ${o.paymentReference?`<div style="font-size:13px;margin-bottom:10px"><b>${isAr?'رقم العملية:':'Reference:'}</b> <span class="font-mono">${esc(o.paymentReference)}</span></div>`:''}
             ${o.paymentProofPath?(state.adminPaymentProofUrls[o._dbId]
               ? `<img loading="lazy" decoding="async" src="${state.adminPaymentProofUrls[o._dbId]}" alt="${isAr?'إثبات التحويل':'Payment screenshot'}" style="max-width:220px;border-radius:8px;border:1px solid var(--line);display:block;margin-bottom:10px"/>`
               : `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">${isAr?'جارٍ تحميل الصورة...':'Loading screenshot...'}</div>`)
@@ -5254,7 +5268,7 @@ function renderAdmin(){
                 <label>${state.lang==='ar'?'الفئة':'Category'}</label>
                 <select onchange="updateBillboardSlide(${idx},'linkValue',this.value)">
                   <option value="">${state.lang==='ar'?'اختر فئة':'Choose a category'}</option>
-                  ${CATS.map(c=>`<option value="${c.id}" ${s.linkValue===c.id?'selected':''}>${catName(c)}</option>`).join('')}
+                  ${CATS.map(c=>`<option value="${c.id}" ${s.linkValue===c.id?'selected':''}>${esc(catName(c))}</option>`).join('')}
                 </select>
               </div>`:''}
               ${s.linkType==='url'?`
@@ -5304,7 +5318,7 @@ function renderAdmin(){
           <div class="form-field"><label>${state.lang==='ar'?'الفئة':'Category'}</label>
             <select onchange="updatePromoField('linkValue', this.value)">
               <option value="">${state.lang==='ar'?'اختر فئة':'Choose a category'}</option>
-              ${CATS.map(c=>`<option value="${c.id}" ${p.linkValue===c.id?'selected':''}>${catName(c)}</option>`).join('')}
+              ${CATS.map(c=>`<option value="${c.id}" ${p.linkValue===c.id?'selected':''}>${esc(catName(c))}</option>`).join('')}
             </select>
           </div>`:''}
           ${p.linkType==='url'?`
@@ -5415,7 +5429,7 @@ function renderAdmin(){
           <div class="panel">
             <div class="chat-body" style="height:360px;position:static;border:1px solid var(--line);border-radius:10px;margin-bottom:14px">
               ${state.adminChatThread.length===0?`<div class="ai-msg bot">${isAr?'لا توجد رسائل بعد':'No messages yet'}</div>`:
-                state.adminChatThread.map(m=>`<div class="ai-msg ${m.sender==='customer'?'user':'bot'}${m.sender==='admin'?' admin':''}">${m.content}</div>`).join('')}
+                state.adminChatThread.map(m=>`<div class="ai-msg ${m.sender==='customer'?'user':'bot'}${m.sender==='admin'?' admin':''}">${esc(m.content)}</div>`).join('')}
             </div>
             <div style="display:flex;gap:8px">
               <input id="admin-chat-reply" placeholder="${isAr?'اكتب ردًا...':'Type a reply...'}" onkeydown="if(event.key==='Enter')sendAdminChatReply('${convo.id}')" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px"/>
@@ -5617,7 +5631,7 @@ function renderChat(){
     ${chatStatusBanner()}
     <div class="chat-body" id="chat-body-el">
       ${state.chatLog.length===0?`<div class="ai-msg bot">${state.lang==='ar'?'أهلًا! كيف بقدر ساعدك اليوم؟':'Hi! How can I help you today?'}</div>`:
-        state.chatLog.map(m=>`<div class="ai-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+        state.chatLog.map(m=>`<div class="ai-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':esc(m.text)}</div>`).join('')}
     </div>
     ${!chatInHumanMode()?`<div class="chat-suggest">${suggestions.map(s=>`<button class="chat-chip" onclick="chatSuggest('${s.replace(/'/g,"\\'")}')">${s}</button>`).join('')}</div>`:''}
     <div class="chat-foot">
@@ -5801,7 +5815,7 @@ function mCard(p){
       ${badge?`<div class="m-badge">${badge}</div>`:''}
     </div>
     <div class="m-card-body">
-      <div class="m-card-name">${p.name_en}</div>
+      <div class="m-card-name">${esc(p.name_en)}</div>
       <div class="m-card-meta">${p.reviews>0?`★ ${p.rating.toFixed(1)} · ${p.reviews} reviews`:(p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock'))}</div>
       <div class="m-card-price">
         <span><span class="m-price m-mono">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono" style="margin-inline-start:6px">${fmt(p.was)}</span>`:''}</span>
@@ -5813,14 +5827,14 @@ function mCard(p){
 function mProductMediaInner(p){
   const color = PALETTE[p.color % PALETTE.length];
   const svg = `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`;
-  return p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name_en}" loading="lazy" decoding="async" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
+  return p.imageUrl ? `<img src="${p.imageUrl}" alt="${esc(p.name_en)}" loading="lazy" decoding="async" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
 }
 function mRailCard(p){
   return `
   <div class="m-rail-card" onclick="mOpenProduct(${p.id})">
     <div class="m-rail-card-img">${mProductMediaInner(p)}</div>
     <div class="m-rail-card-body">
-      <div class="m-card-name" style="margin-bottom:6px">${p.name_en}</div>
+      <div class="m-card-name" style="margin-bottom:6px">${esc(p.name_en)}</div>
       <div class="m-price m-mono">${fmt(p.price)}</div>
     </div>
   </div>`;
@@ -5831,7 +5845,7 @@ function mListItem(p){
   <div class="m-list-item" onclick="mOpenProduct(${p.id})">
     <div class="m-list-item-img">${mProductMediaInner(p)}</div>
     <div class="m-list-item-body">
-      <div class="m-card-name">${p.name_en}</div>
+      <div class="m-card-name">${esc(p.name_en)}</div>
       <div class="m-card-meta">${p.reviews>0?`★ ${p.rating.toFixed(1)} · `:''}${stockLabel}</div>
       <div class="m-card-price"><span class="m-price m-mono" style="font-size:16px">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono">${fmt(p.was)}</span>`:''}</div>
     </div>
@@ -5963,7 +5977,7 @@ function mProduct(){
     </div>
     <div class="m-product-body">
       <div class="m-kicker" style="margin-bottom:6px">${(CATS.find(c=>c.id===p.cat)||{en:''}).en}</div>
-      <div class="m-disp" style="font-size:24px;line-height:1.2;margin-bottom:10px">${p.name_en}</div>
+      <div class="m-disp" style="font-size:24px;line-height:1.2;margin-bottom:10px">${esc(p.name_en)}</div>
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
         <span class="m-mono" style="font-weight:600;font-size:26px;color:var(--accInk)">${fmt(p.price)}</span>
         ${p.was>p.price?`<span class="m-was m-mono" style="font-size:14px">${fmt(p.was)}</span>`:''}
@@ -5999,10 +6013,10 @@ function mProduct(){
         ${prodReviews.map(r=>`
         <div style="padding:12px 14px;border:1px solid var(--line);border-radius:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font:700 13px/1.3 'Figtree',sans-serif">${r.name_en}</span>
+            <span style="font:700 13px/1.3 'Figtree',sans-serif">${esc(r.name_en)}</span>
             <span style="color:var(--acc);font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
           </div>
-          <p style="font:400 13px/1.5 'Figtree',sans-serif;color:var(--muted)">${r.en}</p>
+          <p style="font:400 13px/1.5 'Figtree',sans-serif;color:var(--muted)">${esc(r.en)}</p>
         </div>`).join('')}
       </div>`:''; })()}
       <!-- Sticky at the foot of the screen: on a phone the price and the buy button should never
@@ -6023,7 +6037,7 @@ function mCart(){
     <div class="m-cart-line" data-line="${i}">
       <div class="m-cart-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
       <div style="flex:1;min-width:0">
-        <div class="m-card-name">${p.name_en}</div>
+        <div class="m-card-name">${esc(p.name_en)}</div>
         <div class="m-card-meta" style="margin-bottom:8px">${optionLabel(l)}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="changeCartQty(${i},-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
@@ -6098,7 +6112,7 @@ function mPaymentInstructions(){
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
     <div class="m-disp" style="font-size:21px;margin:6px 0 10px">Complete Payment via Wish</div>
-    <div style="font:400 13px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:16px">Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${o.num}.</div>
+    <div style="font:400 13px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:16px">Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${esc(o.num)}.</div>
     <div style="background:var(--surf);border-radius:16px;padding:16px;margin-bottom:16px">
       <div style="font:700 11px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:4px">Account name</div>
       <div style="font:700 15px/1.3 'Figtree',sans-serif;margin-bottom:10px">${s.wishAccountName || '—'}</div>
@@ -6151,7 +6165,7 @@ function mOrders(){
         return `
         <div class="m-order-card" onclick="mOpenOrder('${o._dbId}')">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <span class="m-mono" style="font-weight:600;font-size:13px">${o.num}</span>
+            <span class="m-mono" style="font-weight:600;font-size:13px">${esc(o.num)}</span>
             <span class="m-status-pill" style="background:${bg};color:${fg}">${statusLabel}</span>
           </div>
           <div style="font:500 13px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:12px">${itemSummary}</div>
@@ -6187,7 +6201,7 @@ function mTrack(){
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
       ${mBackBtn('mBack()')}
-      <div><div class="m-disp" style="font-size:20px;line-height:1.2">Tracking</div><div class="m-mono" style="font:600 12px/1;color:var(--muted)">${o.num}</div></div>
+      <div><div class="m-disp" style="font-size:20px;line-height:1.2">Tracking</div><div class="m-mono" style="font:600 12px/1;color:var(--muted)">${esc(o.num)}</div></div>
     </div>
     <div class="m-track-hero">
       <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-bottom:6px">Right now</div>
@@ -6322,7 +6336,7 @@ function mChat(){
     ${humanMode?`<div class="m-chat-status">${state.chatConversation.status==='human'?'🟢 Connected to our team':"📨 We've got your message — our team will reply shortly"}</div>`:''}
     <div id="m-chat-body-el" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
       ${state.chatLog.length===0?`<div class="m-msg bot">Hi! How can I help you today?</div>`:
-        state.chatLog.map(m=>`<div class="m-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':m.text}</div>`).join('')}
+        state.chatLog.map(m=>`<div class="m-msg ${m.role}${m.kind==='admin'?' admin':''}">${m.loading?'<span class="typing-dots"><span></span><span></span><span></span></span>':esc(m.text)}</div>`).join('')}
     </div>
     ${!humanMode?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${suggestions.map(s=>`<button class="chat-chip" onclick="mChatSuggest('${s.replace(/'/g,"\\'")}')" style="background:var(--card);border:1px solid var(--line);color:var(--text)">${s}</button>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;position:sticky;bottom:8px">
@@ -6365,7 +6379,7 @@ function mSheet(){
       <div class="m-sheet-thumb" style="background:${color}">${mProductMediaInner(p)}</div>
       <div style="flex:1;min-width:0">
         <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2Ink)">Added to basket</div>
-        <div style="font:600 14.5px/1.35 'Figtree',sans-serif">${p.name_en}</div>
+        <div style="font:600 14.5px/1.35 'Figtree',sans-serif">${esc(p.name_en)}</div>
       </div>
     </div>
     <div style="display:flex;gap:10px">
