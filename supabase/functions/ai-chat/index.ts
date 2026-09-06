@@ -31,7 +31,28 @@ const MODEL = "claude-opus-5";
 const MAX_TOKENS = 1024;
 const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 const client = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
-const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+/* Resolves the caller from their own bearer token, the same way submit-payment-proof does.
+   This function talks to the database with the SERVICE ROLE key, which bypasses RLS entirely,
+   so it is the only thing standing between a request and another customer's data - and until
+   now it checked nothing at all: `mode:"support"` took customerId straight from the request
+   body. Anyone with the public anon key (it ships in the page source, by design) could write
+   messages into any conversation whose customer uuid they knew, and either mode could be
+   called by anyone at all to spend the store's Anthropic credits.
+   Returns null when the token is missing, invalid or expired. */
+async function callerEmailFrom(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.toLowerCase().startsWith("bearer ")) return null;
+  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data, error } = await callerClient.auth.getUser();
+  if (error || !data?.user?.email) return null;
+  return data.user.email;
+}
 
 const HANDOFF_MESSAGE = {
   en: "That's outside what I can help with directly — I've flagged this for our team and they'll jump in shortly!",
@@ -96,6 +117,12 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Invalid JSON" }, 400, cors);
   }
 
+  /* Both modes are gated: "product" because an open endpoint that calls a paid model is a
+     standing invitation to run up the bill, and "support" because it writes to the database.
+     Every page of this site already requires a login, so no legitimate caller is anonymous. */
+  const callerEmail = await callerEmailFrom(req);
+  if (!callerEmail) return jsonResponse({ error: "Not authenticated" }, 401, cors);
+
   if (body.mode === "product") {
     const system = body.system;
     const messages = body.messages;
@@ -116,14 +143,23 @@ Deno.serve(async (req: Request) => {
   }
 
   if (body.mode === "support") {
-    const customerId = body.customerId;
-    const customerName = typeof body.customerName === "string" ? body.customerName : null;
     const system = body.system;
     const message = body.message;
     const useAr = body.lang === "ar";
-    if (typeof customerId !== "string" || typeof system !== "string" || typeof message !== "string" || message.length === 0 || message.length > 4000) {
+    if (typeof system !== "string" || typeof message !== "string" || message.length === 0 || message.length > 4000) {
       return jsonResponse({ error: "Invalid request body" }, 400, cors);
     }
+    /* body.customerId and body.customerName are deliberately ignored now: identity is whoever
+       holds the token, looked up here, so a caller can only ever reach their own thread. */
+    const { data: me, error: meErr } = await admin
+      .from("customers").select("id, name").eq("email", callerEmail).maybeSingle();
+    if (meErr) {
+      console.error("Customer lookup failed:", meErr);
+      return jsonResponse({ error: "Lookup failed" }, 500, cors);
+    }
+    if (!me) return jsonResponse({ error: "No account for this session" }, 403, cors);
+    const customerId = me.id as string;
+    const customerName = (me.name as string | null) ?? null;
 
     try {
       let { data: convo, error: convoErr } = await admin
