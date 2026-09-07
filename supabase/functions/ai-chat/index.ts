@@ -96,6 +96,18 @@ async function callerEmailFrom(req: Request): Promise<string | null> {
   return data.user.email;
 }
 
+/* Which language the canned lines come back in. These are the few strings the model does not
+   write - the handoff notice and the no-answer fallback - so they cannot mirror the customer
+   the way the prompt does; they need deciding here.
+   body.lang is the site's UI language, which is hardcoded to "en", so relying on it alone
+   meant a customer writing Arabic got escalated with an English notice. Detecting Arabic
+   script in what they actually typed fixes that. Arabizi ("shu 3ayez") deliberately falls
+   through to English: it is Latin script, and someone writing it reads English fine. */
+function prefersArabic(message: string, uiLang: unknown): boolean {
+  if (/[\u0600-\u06FF]/.test(message)) return true;
+  return uiLang === "ar";
+}
+
 const HANDOFF_MESSAGE = {
   en: "That's outside what I can help with directly — I've flagged this for our team and they'll jump in shortly!",
   ar: "هذا خارج ما يمكنني مساعدتك به مباشرة — لقد أبلغت فريقنا وسيتواصلون معك قريبًا!",
@@ -251,7 +263,7 @@ Deno.serve(async (req: Request) => {
   if (body.mode === "support") {
     const system = body.system;
     const message = body.message;
-    const useAr = body.lang === "ar";
+    const useAr = prefersArabic(typeof body.message === "string" ? body.message : "", body.lang);
     if (typeof system !== "string" || typeof message !== "string" || message.length === 0 || message.length > 4000) {
       return jsonResponse({ error: "Invalid request body" }, 400, cors);
     }
