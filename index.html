@@ -89,6 +89,16 @@ body{
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
 }
+/* Stops a stray sideways swipe doing anything on a phone. Measured first: the document,
+   the body and .m-scr are all exactly viewport-width, so the PAGE never had anything to
+   pan - what actually moved was the browser's own edge-swipe back-navigation and the
+   elastic horizontal rubber-band, both of which overscroll-behavior-x governs.
+   Deliberately NOT touch-action:pan-y here, even though that is what .login-wrap uses.
+   touch-action intersects down the ancestor chain, so blocking horizontal pan on a
+   container also blocks it for everything inside - it would kill the product photo
+   gallery, the home rails and the order tracker. The login screen can use it safely
+   only because it contains no horizontal scroller. */
+html, body{ overscroll-behavior-x:none; }
 [dir="rtl"] body, [dir="rtl"] .font-body{font-family:'Tajawal',system-ui,sans-serif}
 .font-display{font-family:'Fraunces',serif;font-optical-sizing:auto}
 [dir="rtl"] .font-display{font-family:'Tajawal',system-ui,sans-serif;font-weight:800}
@@ -347,7 +357,9 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .gallery-main svg{width:38%;height:38%;stroke:rgba(255,255,255,.9);fill:none;stroke-width:1.2}
 /* Swipeable product photo gallery — native scroll-snap, no hand-rolled touch JS, shared by
    the desktop .gallery-main and mobile .m-product-hero via renderPhotoGallery(). */
-.gallery-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+/* contain, not none: these SHOULD still swipe - it only stops the leftover movement at
+   the end of the track being handed outwards to the page or the browser's back gesture. */
+.gallery-track{display:flex;width:100%;height:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
 .gallery-track::-webkit-scrollbar{display:none}
 .gallery-slide{flex:0 0 100%;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
 .gallery-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -532,7 +544,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 
 /* ---------- ORDER TRACKING ---------- */
 .order-card-mini{border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;background:var(--paper)}
-.order-track{display:flex;align-items:flex-start;gap:2px;margin:20px 0 6px;overflow-x:auto;padding-bottom:4px}
+.order-track{display:flex;align-items:flex-start;gap:2px;margin:20px 0 6px;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:4px}
 .track-step{flex:1;min-width:76px;text-align:center;position:relative}
 .track-step::after{content:'';position:absolute;top:11px;left:50%;width:100%;height:2px;background:var(--line);z-index:1}
 .track-step:last-child::after{display:none}
@@ -634,7 +646,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
   --shadow:0 3px 10px rgba(0,0,0,.4);--shadowLg:0 14px 34px rgba(0,0,0,.5);
 }
 .mstore *{box-sizing:border-box}
-.mstore .m-scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:112px}
+.mstore .m-scr{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior-x:none;-webkit-overflow-scrolling:touch;padding-bottom:112px}
 .mstore .m-disp{font-family:'Fraunces',serif;font-weight:700}
 .mstore .m-mono{font-family:'IBM Plex Mono',monospace}
 .mstore button{font-family:inherit}
@@ -684,7 +696,7 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
 .m-billboard-sub{font:500 13px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.85);margin-bottom:10px}
 .m-billboard-cta{display:inline-block;font:700 12px/1 'Figtree',sans-serif;background:var(--acc);color:#2e1a0a;padding:9px 16px;border-radius:999px}
 
-.m-rail{display:flex;gap:9px;overflow-x:auto;padding:0 20px 18px;scrollbar-width:none}
+.m-rail{display:flex;gap:9px;overflow-x:auto;overscroll-behavior-x:contain;padding:0 20px 18px;scrollbar-width:none}
 .m-rail::-webkit-scrollbar{display:none}
 .m-cat-chip{flex:none;display:flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer;color:var(--text);font:600 13px/1 'Figtree',sans-serif}
 .m-cat-chip svg{width:15px;height:15px;fill:none;stroke:var(--accInk);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
