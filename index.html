@@ -1837,20 +1837,26 @@ async function sendAdminChatReply(id){
   try{
     const { error: msgErr } = await sb.from('chat_messages').insert({ conversation_id:id, customer_id:convo.customer_id, sender:'admin', content });
     if(msgErr) throw msgErr;
-    const { error: updErr } = await sb.from('chat_conversations').update({ status:'human', updated_at:new Date().toISOString() }).eq('id', id);
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await sb.from('chat_conversations').update({ status:'human', updated_at:nowIso, human_since:nowIso }).eq('id', id);
     if(updErr) throw updErr;
     await loadAdminChats();
   } catch(e){ console.error('Reply failed:', e); showToast(state.lang==='ar'?'تعذر الإرسال':'Could not send'); }
 }
+/* human_since is the clock the Edge Function's auto-resume rule reads: a conversation the
+   admin has taken over returns to the AI once it has been quiet for a day, so a customer
+   helped by hand once is not locked out of the bot forever. Taking over (re)starts it, and
+   every admin reply below refreshes it, so an actively-worked chat stays the admin's. */
 async function takeOverChat(id){
   try{
-    await sb.from('chat_conversations').update({ status:'human', updated_at:new Date().toISOString() }).eq('id', id);
+    const now = new Date().toISOString();
+    await sb.from('chat_conversations').update({ status:'human', updated_at:now, human_since:now }).eq('id', id);
     await loadAdminChats();
   } catch(e){ console.error('Take over failed:', e); }
 }
 async function resolveChat(id){
   try{
-    await sb.from('chat_conversations').update({ status:'resolved', updated_at:new Date().toISOString() }).eq('id', id);
+    await sb.from('chat_conversations').update({ status:'resolved', updated_at:new Date().toISOString(), human_since:null }).eq('id', id);
     await loadAdminChats();
     closeAdminChat();
   } catch(e){ console.error('Resolve failed:', e); }
