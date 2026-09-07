@@ -2132,7 +2132,13 @@ function toggleWishlist(id){
 /* ============ AI AGENT (REAL — calls the Claude API) ============ */
 function specsFor(p){ return state.lang==='ar' ? p.specs.ar : p.specs.en; }
 const AI_MAX_INPUT = 400;
-const AI_LANG_NOTE = { ar:'أجب دائمًا باللغة العربية، بإيجاز ووضوح (جملة إلى ثلاث جمل).', en:'Always answer in English, briefly and clearly (one to three sentences).' };
+/* The agent mirrors the CUSTOMER's language rather than the site's. The old version keyed
+   off state.lang, which is hardcoded to 'en' in two places since the site went English-only,
+   so the Arabic half was unreachable and the agent was literally told "always answer in
+   English" no matter what a customer wrote. Mirroring also covers Arabizi ("shu 3ayez",
+   "kifak") - Arabic written in Latin letters, extremely common in Lebanon - which no
+   language toggle could ever have handled, since it is neither of the two options. */
+const AI_LANG_NOTE = `Reply in the SAME language the customer wrote in: Arabic if they wrote Arabic, English if they wrote English, and if they wrote Arabizi (Lebanese Arabic in Latin letters, e.g. "shu ba3mel", "kifak", "3ayez"), reply in that same style rather than switching them to formal Arabic. Keep it brief and clear - one to three sentences. Product names stay exactly as written in the catalog below; do not translate them.`;
 
 /* Every field here is re-sent to the model on EVERY message of every conversation, so this
    is the single biggest lever on what the chat costs to run. Empty fields are therefore
@@ -2171,7 +2177,7 @@ function buildStoreSystemPrompt(){
   const orderLine = lastOrder
     ? `The current customer has one order on file: #${lastOrder.num}, status "${ORDER_STATUS_LABELS.en[lastOrder.status]}", total $${lastOrder.total.toFixed(2)}, placed ${lastOrder.date}, estimated delivery ${state.settings.deliveryMin}-${state.settings.deliveryMax} days from order date.`
     : `The current customer has no orders on file yet.`;
-  return `You are the customer support agent for "HABIBI", an online store serving Lebanon. ${AI_LANG_NOTE[state.lang]}
+  return `You are the customer support agent for "HABIBI", an online store serving Lebanon. ${AI_LANG_NOTE}
 Ground every answer strictly in the store data listed below. Never invent or guess prices, stock levels, delivery fees, specifications, or order details that aren't listed here — if something isn't covered, say plainly that the information isn't available and suggest contacting support.
 You only have access to the current customer's own order — never claim to know about any other customer's orders or data.
 You only handle questions about the HABIBI store itself (products, prices, stock, categories, shipping, delivery time, coupons, returns, or the customer's own order). If the customer asks about anything else, use the escalate_to_human tool instead of answering.
@@ -2189,7 +2195,7 @@ ${orderLine}`;
 }
 function buildProductSystemPrompt(p){
   const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
-  return `You are a product assistant answering questions about ONE specific product on "HABIBI". ${AI_LANG_NOTE[state.lang]}
+  return `You are a product assistant answering questions about ONE specific product on "HABIBI". ${AI_LANG_NOTE}
 Only use the facts about this product listed below. Never invent specifications, materials, dimensions, or capabilities that aren't listed. If asked about something not covered, say plainly that this information isn't available for this product.
 
 PRODUCT: ${pname(p)}
