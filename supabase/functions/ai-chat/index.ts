@@ -51,6 +51,26 @@ const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 300;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_MESSAGES_PER_DAY = 40;
+
+/* A conversation used to stay in human mode FOREVER once an admin replied once or a single
+   failure escalated it - the AI never spoke to that customer again, they were never told
+   why, and the only way out was a button in the admin panel. For a one-person store that
+   means someone helped by hand in September gets no AI help in October.
+   After this long with no admin activity, the AI resumes. "Admin activity" is the later of
+   the last admin message and the moment the conversation entered human mode, so a chat the
+   owner is actively working stays theirs, and a forgotten one comes back on its own. */
+const AI_RESUMES_AFTER_HOURS = 24;
+
+/* A single Anthropic hiccup should not retire a customer from the bot permanently. A
+   transient failure (rate limit, overload, 5xx, dropped connection) is retried once before
+   escalating; a permanent one (a bad request, no credit balance) escalates immediately,
+   because retrying it only wastes a second call and delays the handoff. */
+const RETRY_DELAY_MS = 700;
+function isTransient(e: unknown): boolean {
+  const status = (e as { status?: number })?.status;
+  if (typeof status !== "number") return true;      // network/timeout: no status at all
+  return status === 408 || status === 409 || status === 429 || status >= 500;
+}
 const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 const client = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -90,6 +110,19 @@ const ESCALATE_TOOL = {
     required: ["reason"],
   },
 };
+
+/* Calls the model, retrying once on a transient failure. Anything that fails twice, or
+   fails permanently the first time, is thrown for the caller to escalate. */
+async function callAnthropicWithRetry(system: string, messages: { role: string; content: string }[], withEscalation: boolean) {
+  try {
+    return await callAnthropic(system, messages, withEscalation);
+  } catch (e) {
+    if (!isTransient(e)) throw e;
+    console.warn("Anthropic call failed transiently, retrying once:", e);
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    return await callAnthropic(system, messages, withEscalation);
+  }
+}
 
 async function callAnthropic(system: string, messages: { role: string; content: string }[], withEscalation: boolean) {
   const response = await client!.messages.create({
@@ -146,9 +179,32 @@ async function handOffToHuman(conversationId: string, customerId: string, useAr:
   await admin.from("chat_messages").insert({
     conversation_id: conversationId, customer_id: customerId, sender: "ai", content: canned,
   });
+  const now = new Date().toISOString();
+  // human_since starts the clock the auto-resume rule reads. Only stamped on the way IN to
+  // human mode, so repeated escalations of an already-human chat do not keep pushing it back.
   await admin.from("chat_conversations")
-    .update({ status: "needs_human", updated_at: new Date().toISOString() })
+    .update({ status: "needs_human", updated_at: now, human_since: now })
     .eq("id", conversationId);
+}
+
+/* Decides whether a human-mode conversation has gone quiet long enough for the AI to take it
+   back. The reference point is the LATER of the last admin message and human_since, so an
+   owner actively replying keeps the bot out no matter how long the chat has been open. */
+async function humanModeHasGoneStale(convo: { id: string; human_since: string | null }) {
+  const { data: lastAdmin } = await admin
+    .from("chat_messages")
+    .select("created_at")
+    .eq("conversation_id", convo.id)
+    .eq("sender", "admin")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const stamps = [convo.human_since, lastAdmin?.created_at]
+    .filter(Boolean)
+    .map((t) => new Date(t as string).getTime());
+  // No stamp at all means a row from before this rule existed; let the AI have it.
+  if (!stamps.length) return true;
+  return Date.now() - Math.max(...stamps) > AI_RESUMES_AFTER_HOURS * 60 * 60 * 1000;
 }
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
@@ -184,7 +240,7 @@ Deno.serve(async (req: Request) => {
     }
     if (!client) return jsonResponse({ error: "AI not configured" }, 500, cors);
     try {
-      const { text } = await callAnthropic(system, messages, false);
+      const { text } = await callAnthropicWithRetry(system, messages, false);
       return jsonResponse({ text }, 200, cors);
     } catch (e) {
       console.error("Anthropic request failed (product mode):", e);
@@ -259,8 +315,16 @@ Deno.serve(async (req: Request) => {
       }
 
       if (convo.status === "needs_human" || convo.status === "human") {
-        await admin.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convo.id);
-        return jsonResponse({ handoff: true }, 200, cors);
+        if (await humanModeHasGoneStale(convo)) {
+          const { data: resumed } = await admin
+            .from("chat_conversations")
+            .update({ status: "ai", human_since: null })
+            .eq("id", convo.id).select().single();
+          if (resumed) convo = resumed;
+        } else {
+          await admin.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convo.id);
+          return jsonResponse({ handoff: true }, 200, cors);
+        }
       }
 
       if (!client) {
@@ -282,7 +346,7 @@ Deno.serve(async (req: Request) => {
       let escalated = false;
       let text = "";
       try {
-        ({ escalated, text } = await callAnthropic(system, mergeHistory(historyRows || []), true));
+        ({ escalated, text } = await callAnthropicWithRetry(system, mergeHistory(historyRows || []), true));
       } catch (aiErr) {
         console.error("Anthropic call failed, handing the conversation to a human:", aiErr);
         await handOffToHuman(convo.id, customerId, useAr);
@@ -296,7 +360,7 @@ Deno.serve(async (req: Request) => {
 
       const answer = text || (useAr ? "عذرًا، لم أتمكن من إيجاد إجابة مناسبة." : "Sorry, I couldn't find a good answer.");
       await admin.from("chat_messages").insert({ conversation_id: convo.id, customer_id: customerId, sender: "ai", content: answer });
-      await admin.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convo.id);
+      await admin.from("chat_conversations").update({ updated_at: new Date().toISOString(), human_since: null }).eq("id", convo.id);
       return jsonResponse({ text: answer, handoff: false }, 200, cors);
     } catch (e) {
       console.error("Support chat failed:", e);
