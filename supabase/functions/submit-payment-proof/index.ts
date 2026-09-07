@@ -38,15 +38,23 @@ function jsonResponse(body: unknown, status: number, cors: Record<string, string
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
 
+// order.num and order.customer_name are customer-typed and land in HTML a mail client
+// renders, so they get the same escaping the storefront applies (CLAUDE.md item 51).
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function buildAdminEmailHtml(vars: { orderNum: string; customerName: string; total: string; timestamp: string; confirmationType: string }) {
   return `<p>Hi Hadi,</p>
 <p>A new order is waiting for payment verification on Habibi Store.</p>
 <p>
-Order #: ${vars.orderNum}<br>
-Customer: ${vars.customerName}<br>
-Amount: ${vars.total}<br>
-Submitted: ${vars.timestamp}<br>
-Confirmation type: ${vars.confirmationType}
+Order #: ${esc(vars.orderNum)}<br>
+Customer: ${esc(vars.customerName)}<br>
+Amount: ${esc(vars.total)}<br>
+Submitted: ${esc(vars.timestamp)}<br>
+Confirmation type: ${esc(vars.confirmationType)}
 </p>
 <p>Please check the admin dashboard to review and verify this payment before it auto-cancels in 24 hours.</p>
 <p><a href="${DASHBOARD_LINK}">View Order</a></p>`;
@@ -113,7 +121,17 @@ Deno.serve(async (req: Request) => {
     const { error: updErr } = await admin.from("orders").update(update).eq("id", orderId);
     if (updErr) throw updErr;
 
-    if (RESEND_API_KEY) {
+    /* The email is deliberately not allowed to fail the request - the proof is already
+       stored and the customer should not be told their payment confirmation bounced
+       because of a mail problem. But it is no longer swallowed either: a failure is
+       written to orders.payment_notify_error so a silent drop is visible in the database
+       instead of only in this function's log. The new-order email (notify-new-order) is
+       the reliable one, with its own retry sweeper; this is the second, softer ping. */
+    let notifyError: string | null = null;
+    if (!RESEND_API_KEY) {
+      notifyError = "RESEND_API_KEY secret is not set on this project";
+      console.error(notifyError);
+    } else {
       try {
         const html = buildAdminEmailHtml({
           orderNum: order.num,
@@ -132,13 +150,18 @@ Deno.serve(async (req: Request) => {
             html,
           }),
         });
-        if (!emailRes.ok) console.error("Resend request failed:", emailRes.status, await emailRes.text());
+        if (!emailRes.ok) {
+          notifyError = `${emailRes.status} ${(await emailRes.text()).slice(0, 400)}`;
+          console.error("Resend request failed:", notifyError);
+        }
       } catch (e) {
+        notifyError = String(e).slice(0, 400);
         console.error("Admin email failed:", e);
       }
     }
+    await admin.from("orders").update({ payment_notify_error: notifyError }).eq("id", orderId);
 
-    return jsonResponse({ ok: true }, 200, cors);
+    return jsonResponse({ ok: true, email_sent: notifyError === null }, 200, cors);
   } catch (e) {
     console.error("submit-payment-proof failed:", e);
     return jsonResponse({ error: "Could not submit payment confirmation" }, 502, cors);
