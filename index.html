@@ -2128,11 +2128,35 @@ function specsFor(p){ return state.lang==='ar' ? p.specs.ar : p.specs.en; }
 const AI_MAX_INPUT = 400;
 const AI_LANG_NOTE = { ar:'أجب دائمًا باللغة العربية، بإيجاز ووضوح (جملة إلى ثلاث جمل).', en:'Always answer in English, briefly and clearly (one to three sentences).' };
 
+/* Every field here is re-sent to the model on EVERY message of every conversation, so this
+   is the single biggest lever on what the chat costs to run. Empty fields are therefore
+   omitted rather than emitted blank: products added through the supplier-link workflow have
+   no specs at all and no reviews yet, so the old version spent tokens on a literal
+   "rating: no reviews yet | specs: " for all five products, every turn, forever.
+   Colours, sizes and weight are new: without them the agent could not answer "do you have
+   the slides in 43?" or "what colours does the bag come in?", which are the two most likely
+   questions a customer actually asks. */
 function buildCatalogContext(){
   return PRODUCTS.map(p=>{
-    const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
+    // NOT esc()-ed: this string is sent to the model as plain text, never inserted into the
+    // DOM, so HTML-escaping it makes the model read "Men&#39;s" and echo that back at
+    // customers. CLAUDE.md item 51 called this out as the reason esc() belongs at the point
+    // of HTML interpolation rather than inside pname() - the AI prompt is exactly the
+    // plain-text context it warned about. The model's REPLY is escaped where it is rendered.
+    const bits = [`- "${pname(p)}"`, `SKU ${p.sku}`];
     const catList = productCats(p).map(id=>{ const c=CATS.find(x=>x.id===id); return c?catName(c):id; }).join(', ');
-    return `- "${esc(pname(p))}" | SKU ${esc(p.sku)} | categories: ${catList}${p.was>p.price?' | on offer':''} | price: $${p.price}${p.was>p.price?` (was $${p.was})`:''} | stock: ${p.stock} units | rating: ${p.reviews>0?`${p.rating}/5 (${p.reviews} reviews)`:'no reviews yet'} | specs: ${specStr}`;
+    if(catList) bits.push(catList);
+    bits.push(p.was>p.price ? `$${p.price} (was $${p.was}, on offer)` : `$${p.price}`);
+    bits.push(p.stock>0 ? `${p.stock} in stock` : 'OUT OF STOCK');
+    const colours = (p.variants||[]).filter(v=>v && v!=='Standard');
+    if(colours.length) bits.push(`colours: ${colours.join(', ')}`);
+    const sizes = productSizes(p);
+    bits.push(sizes.length ? `sizes: ${sizes.join(', ')}` : 'one size (no size choice)');
+    if(p.weight != null) bits.push(`weight: ${p.weight} kg`);
+    if(p.reviews>0) bits.push(`rated ${p.rating}/5 (${p.reviews})`);
+    const specStr = Object.entries(specsFor(p)).map(([k,v])=>`${k}: ${v}`).join(', ');
+    if(specStr) bits.push(specStr);
+    return bits.join(' | ');
   }).join('\n');
 }
 function buildStoreSystemPrompt(){
@@ -2152,6 +2176,7 @@ ${buildCatalogContext()}
 
 DELIVERY FEES BY GOVERNORATE: ${govLines}. Free delivery on orders over $${FREE_DELIVERY_MIN}.
 ESTIMATED DELIVERY TIME: ${state.settings.deliveryMin}-${state.settings.deliveryMax} business days from order confirmation.
+PAYMENT: Payment is by Wish balance transfer BEFORE the order ships — there is no cash on delivery. After placing an order the customer is shown the store's Wish account details, sends the transfer, then submits either the transaction reference number or a screenshot of the transfer. The store checks it by hand and the order ships once it is verified. If nothing is submitted within 24 hours the order is cancelled automatically.
 RETURN POLICY: Items can be returned within 7 days of delivery if still in original condition.
 COUPONS: ${(state.settings.coupons||[]).filter(c=>c.active!==false).map(c=>`code "${c.code}" gives ${c.type==='pct'?c.value+'% off':'$'+c.value+' off'}`).join('; ') || 'no active coupons right now'}.
 ${orderLine}`;
@@ -2161,9 +2186,9 @@ function buildProductSystemPrompt(p){
   return `You are a product assistant answering questions about ONE specific product on "HABIBI". ${AI_LANG_NOTE[state.lang]}
 Only use the facts about this product listed below. Never invent specifications, materials, dimensions, or capabilities that aren't listed. If asked about something not covered, say plainly that this information isn't available for this product.
 
-PRODUCT: ${esc(pname(p))}
-SKU: ${esc(p.sku)}
-Description: ${esc(pdesc(p))}
+PRODUCT: ${pname(p)}
+SKU: ${p.sku}
+Description: ${pdesc(p)}
 Price: $${p.price}${p.was>p.price?` (was $${p.was})`:''}
 Stock: ${p.stock} units
 Available options: ${(p.variants||[]).join(', ') || 'none'}

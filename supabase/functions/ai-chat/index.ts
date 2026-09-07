@@ -27,8 +27,30 @@ function corsHeaders(origin: string | null) {
   };
 }
 
-const MODEL = "claude-opus-5";
-const MAX_TOKENS = 1024;
+/* COST CONTROLS. The store owner asked for this to be cheap to run, and every one of these
+   is a lever on the bill rather than on quality:
+
+   MODEL — Haiku, not Opus. This agent answers "do you have size 43", "what's delivery to
+   Saida", "where is my order", grounded in a system prompt that already contains every fact
+   it is allowed to use. That is not work that needs the most expensive model; Opus was
+   roughly 15x the cost for no practical gain here.
+
+   MAX_TOKENS — the system prompt asks for one to three sentences, so 1024 was a ceiling the
+   model would never legitimately reach. Output tokens cost several times input, so this caps
+   the damage if it ever starts rambling.
+
+   MAX_HISTORY_MESSAGES — the whole conversation is re-sent on every turn, so an unbounded
+   history makes cost grow with the SQUARE of the conversation length. Keeping the last few
+   exchanges preserves context for a support chat while making a long conversation cost
+   linearly instead.
+
+   MAX_MESSAGES_PER_DAY — the real protection against a surprise bill. The endpoint requires
+   a login, so this is per customer account, and it caps what any single account can spend in
+   a day. Well above normal use; only a loop or deliberate abuse reaches it. */
+const MODEL = "claude-haiku-4-5-20251001";
+const MAX_TOKENS = 300;
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_MESSAGES_PER_DAY = 40;
 const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 const client = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -92,13 +114,38 @@ async function callAnthropic(system: string, messages: { role: string; content: 
 // consecutive rows that map to the same role, so adjacent same-role turns are merged.
 function mergeHistory(rows: { sender: string; content: string }[]) {
   const merged: { role: string; content: string }[] = [];
-  for (const r of rows) {
+  // Only the most recent turns are sent. Anthropic also requires the first message to be
+  // from the user, so a slice that happens to start on an assistant turn is nudged forward.
+  let recent = rows.slice(-MAX_HISTORY_MESSAGES);
+  while (recent.length && recent[0].sender !== "customer") recent = recent.slice(1);
+  for (const r of recent) {
     const role = r.sender === "customer" ? "user" : "assistant";
     const last = merged[merged.length - 1];
     if (last && last.role === role) last.content += "\n" + r.content;
     else merged.push({ role, content: r.content });
   }
   return merged;
+}
+
+/* Moves a conversation into the admin's Chats inbox and leaves the customer a reply that
+   promises a human, rather than an error. Used for the escalate tool, for the daily cap, and
+   - importantly - whenever Anthropic itself fails.
+
+   WHY THAT LAST ONE MATTERS: before this, an Anthropic failure showed the customer a generic
+   error and left the conversation marked "ai", so it never appeared in the admin's inbox and
+   nobody knew a customer had asked anything. That was not hypothetical - it had already
+   happened: at the time this was written the store had 8 customer messages, 0 AI replies,
+   and one conversation with 4 unanswered messages still sitting in "ai" status, invisible.
+   A chat with no credits, or during an outage, should degrade into a normal human support
+   inbox - not into a dead end. */
+async function handOffToHuman(conversationId: string, customerId: string, useAr: boolean) {
+  const canned = useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en;
+  await admin.from("chat_messages").insert({
+    conversation_id: conversationId, customer_id: customerId, sender: "ai", content: canned,
+  });
+  await admin.from("chat_conversations")
+    .update({ status: "needs_human", updated_at: new Date().toISOString() })
+    .eq("id", conversationId);
 }
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
@@ -193,12 +240,30 @@ Deno.serve(async (req: Request) => {
       });
       if (msgErr) throw msgErr;
 
+      /* Spend guard. Counted AFTER storing the message so nothing a customer types is ever
+         lost, and BEFORE any call to Anthropic so hitting the cap costs nothing. Passing the
+         cap hands the conversation to a human rather than refusing the customer. */
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: dayCount } = await admin
+        .from("chat_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", customerId)
+        .eq("sender", "customer")
+        .gte("created_at", since);
+      if ((dayCount ?? 0) > MAX_MESSAGES_PER_DAY) {
+        await handOffToHuman(convo.id, customerId, useAr);
+        return jsonResponse({ text: useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en, handoff: true }, 200, cors);
+      }
+
       if (convo.status === "needs_human" || convo.status === "human") {
         await admin.from("chat_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convo.id);
         return jsonResponse({ handoff: true }, 200, cors);
       }
 
-      if (!client) return jsonResponse({ error: "AI not configured" }, 500, cors);
+      if (!client) {
+        await handOffToHuman(convo.id, customerId, useAr);
+        return jsonResponse({ text: useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en, handoff: true }, 200, cors);
+      }
 
       const { data: historyRows, error: histErr } = await admin
         .from("chat_messages")
@@ -207,13 +272,23 @@ Deno.serve(async (req: Request) => {
         .order("created_at", { ascending: true });
       if (histErr) throw histErr;
 
-      const { escalated, text } = await callAnthropic(system, mergeHistory(historyRows || []), true);
+      /* An Anthropic failure (no credit balance, an outage, a rate limit) must not become a
+         dead end for the customer. Hand the conversation to a human so it lands in the
+         admin's Chats inbox with its badge count, and answer with the same promise the
+         escalate tool gives, rather than an error the customer can do nothing with. */
+      let escalated = false;
+      let text = "";
+      try {
+        ({ escalated, text } = await callAnthropic(system, mergeHistory(historyRows || []), true));
+      } catch (aiErr) {
+        console.error("Anthropic call failed, handing the conversation to a human:", aiErr);
+        await handOffToHuman(convo.id, customerId, useAr);
+        return jsonResponse({ text: useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en, handoff: true }, 200, cors);
+      }
 
       if (escalated) {
-        const canned = useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en;
-        await admin.from("chat_messages").insert({ conversation_id: convo.id, customer_id: customerId, sender: "ai", content: canned });
-        await admin.from("chat_conversations").update({ status: "needs_human", updated_at: new Date().toISOString() }).eq("id", convo.id);
-        return jsonResponse({ text: canned, handoff: true }, 200, cors);
+        await handOffToHuman(convo.id, customerId, useAr);
+        return jsonResponse({ text: useAr ? HANDOFF_MESSAGE.ar : HANDOFF_MESSAGE.en, handoff: true }, 200, cors);
       }
 
       const answer = text || (useAr ? "عذرًا، لم أتمكن من إيجاد إجابة مناسبة." : "Sorry, I couldn't find a good answer.");
