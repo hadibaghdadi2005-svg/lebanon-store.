@@ -97,7 +97,10 @@ async function callAnthropic(system: string, messages: { role: string; content: 
     max_tokens: MAX_TOKENS,
     system,
     messages: messages as Anthropic.MessageParam[],
-    output_config: { effort: "low" },
+    /* No output_config/effort here: that is an Opus-family control and Haiku rejects the
+       request outright with 400 "This model does not support the effort parameter". It was
+       left behind when the model was switched to Haiku for cost, and every call failed until
+       it was removed. Re-add it only alongside a model that supports it. */
     ...(withEscalation ? { tools: [ESCALATE_TOOL] } : {}),
   });
   const escalated = response.content.some((b) => b.type === "tool_use" && b.name === "escalate_to_human");
