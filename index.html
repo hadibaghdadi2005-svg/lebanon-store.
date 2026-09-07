@@ -3,6 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Content Security Policy. Read this before changing it.
+     WHAT IT DOES HERE: it cannot stop injected script from RUNNING. This app builds every
+     screen as a template literal assigned to innerHTML and carries ~200 inline onclick
+     handlers plus the whole application in an inline <script>, so script-src must keep
+     'unsafe-inline' or the site does not boot at all. What the policy does instead is close
+     the routes stolen data can leave by: connect-src pins every fetch/XHR/WebSocket to this
+     origin and the store's own Supabase project, object-src kills plugin embeds, base-uri
+     stops a <base> tag re-pointing every relative URL, and form-action stops a planted form
+     posting a customer's details somewhere else. Escaping (see esc()) is still the real
+     defence; this is the net under it.
+     img-src deliberately allows any https: host, because Admin -> Products has an "Add image
+     URL" button for photos hosted elsewhere and pinning img-src to Supabase would silently
+     break it. Top-level navigation cannot be restricted by CSP anyway, so a strict img-src
+     would have bought less than it cost.
+     frame-ancestors (clickjacking) is IGNORED inside a <meta> tag - it only works as a real
+     HTTP response header, which GitHub Pages does not let us set. Same for report-uri.
+     If a resource ever silently fails to load, check the browser console for a CSP violation
+     before assuming the URL is wrong. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com data:;
+  img-src 'self' data: https:;
+  media-src 'self' https://vsmihhipjmrapwcupmcx.supabase.co;
+  connect-src 'self' https://vsmihhipjmrapwcupmcx.supabase.co wss://vsmihhipjmrapwcupmcx.supabase.co;
+  object-src 'none';
+  frame-src 'none';
+  base-uri 'self';
+  form-action 'self';
+">
 <title>HABIBI — Everything, with love</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23C4972A'/%3E%3Cg transform='translate(2 2) scale(0.83)' fill='none' stroke='%230F3D2E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="description" content="HABIBI — everything, with love. Shop electronics, home &amp; kitchen, fashion, beauty and more with fast delivery across every region in Lebanon.">
@@ -28,7 +59,7 @@
 <!-- Deliberately NOT crossorigin: the supabase-js <script> below is a plain same-mode request,
      and a preconnect only pre-warms a socket the browser will actually reuse if the CORS mode
      matches. Marked crossorigin, this opened a second connection nobody used. -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<!-- supabase-js is served from this repo now, so there is no third-party CDN to warm. -->
 <!-- Tajawal (4 weights) is deliberately absent: it is only ever applied under [dir="rtl"], and
      the Arabic UI has been unreachable since the language toggle was removed — setLang() has no
      call site left. Arabic strings still in the data render in the system Arabic fallback, exactly
@@ -1208,7 +1239,15 @@ body.first-load .hero-photo,.hero-photo.bb-swap{animation:bbIn .7s var(--ease-ou
      state change (and background timers call it), which would restart the promo video mid-play. -->
 <div id="promo-root"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Self-hosted rather than pulled from cdn.jsdelivr.net. The old tag requested the floating
+     `@2` tag with no integrity hash, so every visitor executed whatever that URL returned at the
+     moment they loaded the page, with full access to their own session - a compromised CDN or a
+     bad 2.x publish would have run in every customer's browser. This exact file came from the npm
+     registry and its tarball was checked against npm's published sha512 before being committed,
+     so the bytes are reviewable in git rather than fetched fresh on every page load.
+     To update: download a new version, verify the tarball integrity, replace the file, bump the
+     src below. Same-origin, so no SRI attribute is needed. -->
+<script src="vendor/supabase-js-2.115.0.min.js"></script>
 <script>
 /* ============ DATABASE CONNECTION ============ */
 const SUPABASE_URL = 'https://vsmihhipjmrapwcupmcx.supabase.co';
