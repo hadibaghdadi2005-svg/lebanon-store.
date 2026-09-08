@@ -447,64 +447,180 @@ footer.site{background:var(--cedar);color:rgba(255,255,255,.82);padding:48px 0 2
 .pay-option.active{border-color:var(--cedar);background:var(--sand)}
 
 /* ---------- LOGIN ---------- */
-.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--cedar);padding:32px 20px;position:relative;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-x:none}
-.login-wrap::before{content:'';position:absolute;inset-inline-end:-12%;top:-18%;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(196,151,42,.22), transparent 70%);pointer-events:none}
-.login-wrap::after{content:'';position:absolute;inset-inline-start:-14%;bottom:-16%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle, rgba(194,84,45,.16), transparent 70%);pointer-events:none}
-.login-shell{position:relative;display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:900px;background:var(--paper);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)}
-.login-brand{
-  background:linear-gradient(158deg, var(--cedar) 0%, var(--cedar-light) 62%, #0c2e22 100%);
-  color:var(--paper);padding:44px 40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
-}
-.login-brand::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle, rgba(224,181,74,.35) 1px, transparent 1.6px);background-size:22px 22px;opacity:.35}
-.login-brand-top{position:relative;z-index:1}
-.login-brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:34px}
-.login-brand-logo .logo-mark{background:var(--brass)}
-.login-brand-logo .logo-mark svg{stroke:#2b1c05}
-.login-brand-wordmark{font-size:20px;font-weight:800;letter-spacing:.02em}
-.login-brand-title{font-size:28px;line-height:1.25;margin-bottom:14px;max-width:280px}
-.login-brand-sub{font-size:14px;line-height:1.6;color:rgba(255,253,248,.78);max-width:280px}
-.login-brand-feats{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px;margin-top:30px}
-.login-brand-feat{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:rgba(255,253,248,.9)}
-.login-brand-feat svg{width:18px;height:18px;flex-shrink:0;stroke:var(--brass-light);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
-.login-panel{padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
-.login-title{font-size:24px;margin-bottom:6px}
-.login-sub{font-size:13.5px;color:var(--ink-soft);margin-bottom:26px}
-.login-form-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.login-form-field label{font-size:12px;font-weight:700;color:var(--ink-soft)}
-.login-input-wrap{position:relative;display:flex;align-items:center}
-.login-input-wrap svg{position:absolute;inset-inline-start:13px;width:16px;height:16px;stroke:var(--ink-soft);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;z-index:1}
-.login-form-field input{width:100%;padding:12px 44px 12px 38px;border:1.4px solid var(--line);border-radius:10px;font-size:16px;outline:none;background:var(--paper);transition:border-color .15s ease,box-shadow .15s ease}
-[dir="rtl"] .login-form-field input{padding:12px 38px 12px 44px}
-[dir="rtl"] .login-input-wrap svg{inset-inline-start:auto;inset-inline-end:13px}
-.login-form-field input:focus{border-color:var(--cedar);box-shadow:0 0 0 3px rgba(15,61,46,.1)}
-/* Full-height, generously-sized tap target (not just the icon's own bounds) positioned clear
-   of the input's own padding, so it's never obscured by or fighting with typed text/autofill
-   UI, and z-index:2 keeps it clickable above the input on every browser. */
-.login-pw-toggle{position:absolute;inset-inline-end:2px;top:2px;bottom:2px;width:40px;background:none;border:none;padding:0;margin:0;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;-webkit-tap-highlight-color:transparent}
-[dir="rtl"] .login-pw-toggle{inset-inline-end:auto;inset-inline-start:2px}
-.login-pw-toggle svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+/* ============================================================================
+   THE CEDAR GATE LOGIN
+   The sign-in / sign-up pair stands in a grove of Lebanese cedars. The backdrop
+   lives in #cedar-root, a SIBLING of #app - render() replaces #app's innerHTML
+   on every state change, so a <canvas> inside it would lose its WebGL context
+   and rebuild the whole scene on every keystroke. Same reasoning as #promo-root.
+   ========================================================================= */
+#cedar-root{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:linear-gradient(170deg,#17513C 0%,#0F3D2E 46%,#081D16 100%);
+  opacity:0;visibility:hidden;transition:opacity .5s ease,visibility .5s}
+#cedar-root.on{opacity:1;visibility:visible}
+#cedar-gl{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .9s ease}
+#cedar-gl.ready{opacity:1}
+/* The painted ridge is not a consolation prize - it is what every visitor sees
+   first, and all a phone ever sees (see .cedar-far below). The WebGL grove fades
+   in over the top of it only if and when three.js has arrived. */
+/* It sits AFTER the canvas in DOM order, so it paints on top of it - it must fade
+   out once the grove is live or it hides the very trees it stands in for, and all
+   you see is the painted ridge with a flat field where the cedars should be. */
+#cedar-gl.ready ~ .cedar-far{opacity:0}
+.cedar-far{position:absolute;inset-inline:0;bottom:0;height:62%;transition:opacity .9s ease;
+  background:
+    linear-gradient(to bottom,transparent,rgba(8,26,19,.55)),
+    conic-gradient(from 141deg at 22% 100%,transparent 0 25%,#0d3527 0 50%,transparent 0),
+    conic-gradient(from 141deg at 74% 100%,transparent 0 25%,#0b2e22 0 50%,transparent 0),
+    linear-gradient(to bottom,#123f2e,#0a2419)}
+.cedar-haze{position:absolute;inset:0;background:radial-gradient(120% 62% at 50% 78%,rgba(196,151,42,.22),transparent 62%)}
+.cedar-vig{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,transparent 42%,rgba(4,14,10,.55) 100%)}
+
+/* Every one of these overlays MUST stay pointer-events:none. A decorative layer
+   without it silently ate taps over whatever part of the login card it happened
+   to overlap, which took two sessions to track down the first time. */
+#cedar-root,#cedar-root>*{pointer-events:none}
+
+/* 100dvh, not 100vh: vh does not account for the mobile address bar, and the
+   taller sign-up form could end up clipped with no way to scroll to it.
+   touch-action/overscroll keep a stray sideways swipe from moving the page. */
+.login-wrap{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+  padding:32px 20px;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior-x:none}
+.login-stack{position:relative;width:100%;max-width:404px;perspective:1400px}
+.login-card{position:relative;background:var(--paper);border-radius:20px;padding:30px 28px 24px;
+  box-shadow:0 34px 80px rgba(0,0,0,.5),0 2px 0 rgba(255,255,255,.55) inset;
+  /* No backface-visibility:hidden. Combined with preserve-3d, Chromium stops painting
+     the card's children the moment it rotates, so the entire form vanishes mid-turn
+     and you get a blank white slab. It never turns past 90deg, so there is no back. */
+  transform-style:preserve-3d}
+.login-face{animation:lgFaceIn .55s var(--ease-out) both}
+@keyframes lgFaceIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* Switching between sign in and sign up turns the whole card on its edge. The form
+   is swapped at the halfway point, while the card is edge-on and unreadable, so the
+   change is never visible and only one form is ever in the DOM (tab order stays sane). */
+:root{--lg-turn-out:340ms; --lg-turn-in:460ms}
+.login-card.turn-out{animation:lgTurnOut var(--lg-turn-out) cubic-bezier(.55,0,.75,.2) both}
+.login-card.turn-in{animation:lgTurnIn var(--lg-turn-in) cubic-bezier(.18,.9,.28,1) both}
+.login-card.turn-in .login-face{animation:none}
+@keyframes lgTurnOut{from{transform:rotateY(0) translateZ(0) scale(1)}
+  to{transform:rotateY(calc(var(--lg-dir,1) * -90deg)) translateZ(-70px) scale(.94)}}
+@keyframes lgTurnIn{from{transform:rotateY(calc(var(--lg-dir,1) * 90deg)) translateZ(-70px) scale(.94)}
+  to{transform:rotateY(0) translateZ(0) scale(1)}}
+/* A band of shade rakes across as it turns. Deliberately a shadow and not a highlight:
+   the card is near-white paper, so a screen/additive blend blows the whole face out
+   to blank white. A white card turning away from the light gets darker. */
+.login-card::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:6;
+  opacity:0;background:linear-gradient(100deg,transparent 26%,rgba(24,36,29,.40) 50%,transparent 74%);
+  background-size:230% 100%;background-position:118% 0}
+.login-card.turn-out::before{animation:lgSheen var(--lg-turn-out) linear both}
+.login-card.turn-in::before{animation:lgSheen var(--lg-turn-in) linear reverse both}
+@keyframes lgSheen{from{opacity:0;background-position:118% 0}45%{opacity:1}to{opacity:0;background-position:-32% 0}}
+
+.login-crest{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:16px}
+.login-crest .logo-mark{background:var(--brass);width:48px;height:48px;border-radius:14px;
+  box-shadow:0 8px 22px rgba(196,151,42,.42);display:grid;place-items:center}
+.login-crest .logo-mark svg{stroke:#2b1c05;width:25px;height:25px}
+.login-wordmark{font-size:14px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
+.login-title{font-size:25px;line-height:1.2;color:var(--ink);text-align:center;margin:0}
+.login-sub{font-size:13px;color:var(--ink-soft);text-align:center;margin:5px 0 0}
+.login-fields{display:flex;flex-direction:column;gap:11px;margin-top:20px}
+
+/* ---- the animated fields ---- */
+.lfield{position:relative}
+.lf-wrap{position:relative;display:flex;align-items:center}
+.lf-wrap>svg:not(.lf-ok){position:absolute;inset-inline-start:13px;width:17px;height:17px;stroke:var(--ink-soft);
+  fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;z-index:1;
+  transition:stroke .2s ease,transform .3s var(--ease-out)}
+.lfield:focus-within .lf-wrap>svg:not(.lf-ok){stroke:var(--cedar);transform:scale(1.12)}
+/* 16px font-size on the input is deliberate: anything smaller makes iOS Safari
+   zoom the page in the moment the field is focused. */
+.lfield input{width:100%;min-height:46px;padding:12px 46px 12px 40px;border:1.4px solid var(--line);
+  border-radius:12px;font-size:16px;font-family:inherit;color:var(--ink);background:var(--paper);outline:none;
+  transition:border-color .2s ease,box-shadow .2s ease}
+[dir="rtl"] .lfield input{padding:12px 40px 12px 46px}
+[dir="rtl"] .lf-wrap>svg:not(.lf-ok){inset-inline-start:auto;inset-inline-end:13px}
+.lfield input:focus{border-color:var(--cedar);box-shadow:0 0 0 3px rgba(15,61,46,.13)}
+/* A real floating label, not a placeholder: it stays readable once there is text
+   in the field, where a placeholder disappears exactly when it is still needed. */
+.lf-label{position:absolute;inset-inline-start:40px;top:23px;transform:translateY(-50%);pointer-events:none;
+  font-size:15px;font-weight:500;color:var(--ink-soft);background:var(--paper);padding:0 6px;
+  transition:top .3s var(--ease-out),font-size .3s var(--ease-out),color .22s ease,font-weight .22s ease;
+  white-space:nowrap;max-width:calc(100% - 80px);overflow:hidden;text-overflow:ellipsis}
+.lfield:focus-within .lf-label,.lfield.filled .lf-label{top:0;font-size:11.5px;font-weight:800;
+  inset-inline-start:34px;color:var(--cedar)}
+.lfield input::placeholder{color:transparent;transition:color .2s ease}
+.lfield:focus-within input::placeholder{color:#A9AFA6}
+/* the envelope flap opens and the padlock shackle lifts when the field is focused */
+.lf-flap{transform-box:fill-box;transform-origin:50% 8%;transition:transform .34s var(--ease-out)}
+.lfield:focus-within .lf-flap{transform:scaleY(-.92) translateY(1px)}
+.lf-shackle{transform-box:fill-box;transform-origin:50% 100%;transition:transform .34s var(--ease-out)}
+.lfield:focus-within .lf-shackle{transform:translateY(-2.4px) rotate(-9deg)}
+/* a tick draws itself once the email actually looks like an email */
+.lf-ok{position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%) scale(.6);
+  width:18px;height:18px;opacity:0;pointer-events:none;
+  transition:opacity .26s ease,transform .34s var(--ease-out)}
+.lf-ok path{stroke:#1B7A4F;fill:none;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:22;stroke-dashoffset:22;transition:stroke-dashoffset .38s var(--ease-out)}
+.lfield.valid .lf-ok{opacity:1;transform:translateY(-50%) scale(1)}
+.lfield.valid .lf-ok path{stroke-dashoffset:0}
+/* password strength */
+.lf-meter{display:flex;gap:4px;margin-top:7px;height:4px;opacity:0;transform:translateY(-3px);
+  transition:opacity .26s ease,transform .3s var(--ease-out)}
+.lfield.filled .lf-meter{opacity:1;transform:none}
+.lf-meter i{flex:1;border-radius:3px;background:var(--line);transition:background .3s ease}
+.lf-meter[data-lv="1"] i.on{background:#C2542D}
+.lf-meter[data-lv="2"] i.on{background:#D08A2A}
+.lf-meter[data-lv="3"] i.on{background:#8AA33C}
+.lf-meter[data-lv="4"] i.on{background:#1B7A4F}
+.lf-note{font-size:11px;color:var(--ink-soft);margin:5px 0 0;height:0;opacity:0;transition:opacity .26s ease}
+.lfield.filled .lf-note{opacity:1;height:auto}
+/* the eye blinks when toggled, and the revealed characters settle in */
+.login-pw-toggle.blink svg{animation:lgBlink .34s var(--ease-out)}
+@keyframes lgBlink{0%{transform:scaleY(1)}38%{transform:scaleY(.08)}100%{transform:scaleY(1)}}
+.login-pw-toggle .lf-pupil{transform-box:fill-box;transform-origin:center;transition:transform .28s var(--ease-out)}
+.login-pw-toggle[aria-pressed="true"] .lf-pupil{transform:scale(.45)}
+.lfield input.revealed{animation:lgReveal .34s var(--ease-out)}
+@keyframes lgReveal{from{filter:blur(3px);letter-spacing:.08em}to{filter:none;letter-spacing:normal}}
+
+/* Full-height, generously sized tap target clear of the input's own padding, so it is
+   never obscured by typed text or the browser's own autofill UI, and z-index keeps it
+   clickable above the input everywhere. */
+.login-pw-toggle{position:absolute;inset-inline-end:3px;top:3px;bottom:3px;width:44px;background:none;border:none;
+  padding:0;margin:0;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  z-index:2;-webkit-tap-highlight-color:transparent}
+[dir="rtl"] .login-pw-toggle{inset-inline-end:auto;inset-inline-start:3px}
+.login-pw-toggle svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.1;
+  stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.login-pw-toggle .lf-slash{stroke-dasharray:30;stroke-dashoffset:0;transition:stroke-dashoffset .3s var(--ease-out)}
+.login-pw-toggle[aria-pressed="true"] .lf-slash{stroke-dashoffset:30}
 input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:none}
-/* Reusable show/hide toggle for any other password field (account pages, reset-password
-   screen) — same generously-sized, clearly-positioned tap target as the login screen's,
-   toggled directly via togglePwField() rather than a re-render so focus/typing is never
-   interrupted. */
+
+/* Reusable show/hide toggle for other password fields (account pages, reset screen) —
+   toggled via togglePwField() rather than a re-render so typing is never interrupted. */
 .pw-field-wrap{position:relative;display:flex;align-items:center}
 .pw-field-wrap input{padding-inline-end:42px}
 .pw-toggle-btn{position:absolute;inset-inline-end:2px;top:2px;bottom:2px;width:38px;background:none;border:none;padding:0;margin:0;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;-webkit-tap-highlight-color:transparent}
 .pw-toggle-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .mstore .pw-toggle-btn{color:var(--muted)}
-.login-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--ink-soft)}
-.login-switch a{color:var(--cedar);font-weight:700;border-bottom:1.5px solid var(--brass);margin-inline-start:4px}
+
+.login-cta{width:100%;margin-top:18px}
+.login-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--ink-soft)}
+.login-switch button{background:none;border:none;font-family:inherit;font-size:13px;color:var(--cedar);
+  font-weight:800;border-bottom:1.5px solid var(--brass);margin-inline-start:5px;cursor:pointer;padding:0}
+.login-forgot{text-align:end;margin-top:7px}
+.login-forgot button{background:none;border:none;font-family:inherit;font-size:12px;color:var(--ink-soft);
+  cursor:pointer;padding:0;text-decoration:underline}
+.login-trust{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:18px;padding-top:14px;
+  border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-soft);line-height:1.5;text-align:center}
+.login-trust svg{width:14px;height:14px;stroke:var(--cedar);fill:none;stroke-width:2.1;flex-shrink:0}
 .login-back{font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:14px;display:inline-flex;align-items:center;gap:4px}
-.login-note{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:22px;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:6px}
-.login-note svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;flex-shrink:0}
-@media (max-width:760px){
-  .login-wrap{padding:0}
-  .login-shell{grid-template-columns:1fr;max-width:460px;border-radius:0;min-height:100dvh;box-shadow:none}
-  .login-brand{padding:32px 28px 26px}
-  .login-brand-feats{display:none}
-  .login-brand-title{font-size:23px}
-  .login-panel{padding:32px 28px 40px}
+
+@media (max-width:520px){ .login-wrap{padding:22px 14px} .login-card{padding:26px 20px 20px} .login-title{font-size:22px} }
+@media (prefers-reduced-motion:reduce){
+  .login-face,.login-card,.login-card::before,.login-card.turn-out,.login-card.turn-in{animation:none!important}
+  .lf-label,.lf-flap,.lf-shackle,.lf-ok,.lf-ok path,.lf-meter,.lf-meter i,.login-pw-toggle svg,
+  .login-pw-toggle .lf-pupil,.lfield input.revealed,#cedar-gl{animation:none!important;transition:none!important}
 }
 
 /* ---------- IMPERSONATION BANNER ---------- */
@@ -1245,6 +1361,16 @@ body.first-load .hero-photo,.hero-photo.bb-swap{animation:bbIn .7s var(--ease-ou
 </head>
 <body>
 <div class="overlay" id="overlay"></div>
+<!-- The login backdrop. A sibling of #app for the same reason as #promo-root below:
+     render() replaces #app's innerHTML on every state change, which would destroy the
+     WebGL context and rebuild the whole grove on every keystroke. The painted ridge
+     shows immediately; the canvas fades in over it only if three.js actually loads. -->
+<div id="cedar-root" aria-hidden="true">
+  <canvas id="cedar-gl"></canvas>
+  <div class="cedar-far"></div>
+  <div class="cedar-haze"></div>
+  <div class="cedar-vig"></div>
+</div>
 <div id="app"></div>
 <div class="toast" id="toast"></div>
 <!-- Deliberately a sibling of #app, like the toast: render() replaces #app's innerHTML on every
@@ -1703,10 +1829,106 @@ function loadCustomerCart(c){
   state.cart = c.cart || [];
   state.wishlist = c.wishlist || new Set();
 }
-function setAuthMode(m){ state.authMode = m; state.loginForm = {}; render(); }
-function toggleLoginPw(){
-  state.loginPwShown = !state.loginPwShown;
-  render();
+/* Sign in <-> sign up turns the card; forgot/recovery are a detour off that pair,
+   so they swap plainly. The turning flag matters: a second click mid-turn would
+   start an overlapping timer chain that repaints the form and clears the classes
+   out from under the first, leaving the card stranded on its edge. */
+let _authTurning = false;
+function lgTurnMs(name){
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const n = v.slice(-2) === 'ms' ? parseFloat(v) : parseFloat(v) * 1000;
+  return isFinite(n) ? n : 340;
+}
+function setAuthMode(m){
+  if(m === state.authMode || _authTurning) return;
+  const pair = (a, b) => (a === 'signin' || a === 'signup') && (b === 'signin' || b === 'signup');
+  const card = document.getElementById('login-card');
+  const turn = card && pair(state.authMode, m) && !prefersReducedMotion();
+
+  if(!turn){ state.authMode = m; state.loginForm = {}; render(); return; }
+
+  _authTurning = true;
+  swingCedar(m === 'signup' ? 1 : -1);
+  card.style.setProperty('--lg-dir', m === 'signup' ? 1 : -1);
+  card.classList.remove('turn-in');
+  void card.offsetWidth;
+  card.classList.add('turn-out');
+  setTimeout(() => {
+    // swapped while the card is edge-on, so the change itself is never visible
+    state.authMode = m; state.loginForm = {};
+    render();
+    const c = document.getElementById('login-card');
+    if(!c){ _authTurning = false; return; }
+    c.style.setProperty('--lg-dir', m === 'signup' ? 1 : -1);
+    c.classList.remove('turn-out');
+    void c.offsetWidth;
+    c.classList.add('turn-in');
+    setTimeout(() => { c.classList.remove('turn-in'); _authTurning = false; }, lgTurnMs('--lg-turn-in'));
+  }, lgTurnMs('--lg-turn-out'));
+}
+/* Flips the field's type in the DOM rather than re-rendering. A render() here would
+   rebuild the card, throw away the blink animation mid-flight and drop the caret. */
+function toggleLoginPw(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp || !btn) return;
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  btn.setAttribute('aria-pressed', String(!showing));
+  /* Worded as the action, not the current state: the icon shows what you would
+     switch TO, so the label has to agree with it. */
+  btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+  if(!prefersReducedMotion()){
+    btn.classList.remove('blink'); void btn.offsetWidth; btn.classList.add('blink');
+    inp.classList.remove('revealed'); void inp.offsetWidth; inp.classList.add('revealed');
+  }
+}
+
+function prefersReducedMotion(){
+  try{ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch(e){ return false; }
+}
+
+/* ---- the login field animations ----
+   All of this is DOM state that has to survive a render(), so it is reapplied by
+   wireLoginFields() after every login paint rather than living only in the DOM. */
+const LG_STRENGTH = ['', 'Too short', 'Getting there', 'Good', 'Strong'];
+function scorePassword(v){
+  if(!v || v.length < 6) return v ? 1 : 0;
+  let n = 0;
+  if(v.length >= 8) n++;
+  if(v.length >= 12) n++;
+  if(/[A-Z]/.test(v) && /[a-z]/.test(v)) n++;
+  if(/\d/.test(v)) n++;
+  if(/[^A-Za-z0-9]/.test(v)) n++;
+  return Math.max(1, Math.min(4, n));
+}
+function syncLoginField(fld){
+  const inp = fld.querySelector('input');
+  if(!inp) return;
+  const v = inp.value || '';
+  fld.classList.toggle('filled', v.length > 0);
+  if(inp.type === 'email' || fld.dataset.lf === 'lg-email'){
+    fld.classList.toggle('valid', /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v));
+  }
+  const meter = fld.querySelector('.lf-meter');
+  if(meter){
+    const lv = scorePassword(v);
+    meter.dataset.lv = String(lv);
+    meter.querySelectorAll('i').forEach((bar, i) => bar.classList.toggle('on', i < lv));
+    const note = fld.querySelector('.lf-note');
+    if(note) note.textContent = LG_STRENGTH[lv];
+  }
+}
+function wireLoginFields(){
+  document.querySelectorAll('.login-card .lfield').forEach(fld => {
+    const inp = fld.querySelector('input');
+    if(!inp || inp.dataset.lfWired) return;
+    inp.dataset.lfWired = '1';
+    const sync = () => syncLoginField(fld);
+    inp.addEventListener('input', sync);
+    inp.addEventListener('blur', sync);
+    sync();   // reflect a value restored from state.loginForm on this render
+  });
 }
 function updateLoginForm(field, val){ state.loginForm[field] = val; }
 const EYE_OPEN_SVG = '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -2623,133 +2845,363 @@ function renderHeader(){
 }
 
 /* ============ RENDER: LOGIN ============ */
+/* ===========================================================================
+   THE CEDAR GROVE (login backdrop)
+   Procedural, not a downloaded model: the trees, the ridge and the ground are
+   built from primitives, so there is no .glb to host or wait for. three.js is
+   self-hosted in vendor/ (script-src is 'self'; a CDN tag would be blocked by
+   the CSP, and pinning a third-party script is what item 52 removed).
+
+   It is loaded LATE and CONDITIONALLY. ~149KB gzipped is not free, so:
+     - never before the login screen has already painted;
+     - never on a slow/metered connection;
+     - never under prefers-reduced-motion;
+     - never below 760px, because the card is full width there and covers the
+       scene completely - measured, not assumed. Paying 149KB of mobile data
+       for something no phone can actually see would be indefensible.
+   Until (or unless) it arrives, .cedar-far paints the ridge in pure CSS.
+   ======================================================================== */
+const CEDAR_SRC = 'vendor/three-0.128.0.min.js';
+let _cedar = null;          // {renderer, scene, cam, raf, swayables, ...}
+let _cedarLoading = false;
+
+function cedarShouldRender(){
+  if(prefersReducedMotion()) return false;
+  if(window.innerWidth < 760) return false;
+  try{
+    const c = navigator.connection;
+    if(c && (c.saveData || /(^|-)(2g|3g)$/.test(c.effectiveType || ''))) return false;
+  }catch(e){}
+  return true;
+}
+
+function showCedarBackdrop(on){
+  const root = document.getElementById('cedar-root');
+  if(!root) return;
+  root.classList.toggle('on', !!on);
+  if(on){ if(cedarShouldRender()) ensureCedarScene(); }
+  else teardownCedarScene();
+}
+
+function ensureCedarScene(){
+  if(_cedar || _cedarLoading) { cedarLoop(); return; }
+  if(window.THREE){ buildCedarScene(); return; }
+  _cedarLoading = true;
+  const sc = document.createElement('script');
+  sc.src = CEDAR_SRC; sc.async = true;
+  sc.onload = () => { _cedarLoading = false;
+    // the visitor may have signed in while this was in flight
+    if(state.currentUserId || !cedarShouldRender()) return;
+    buildCedarScene(); };
+  sc.onerror = () => { _cedarLoading = false; };   // painted ridge stays; nothing to do
+  document.head.appendChild(sc);
+}
+
+/* Deterministic per-tree randomness: a grove that reshuffles on every refresh
+   reads as a glitch rather than as nature. */
+function cedarRng(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const CEDAR_GREENS = [0x17543C, 0x114630, 0x1B5E44, 0x0E3A28, 0x145039];
+
+/* A cedar of Lebanon is not a cone. It carries broad HORIZONTAL plates of foliage
+   on a thick, often forked trunk, and the plates flatten toward the top - so this
+   is built from squashed pads on tier armatures, not stacked cones. Each tier is
+   its own Group so the wind can move the upper plates more than the lower ones. */
+function makeCedar(seed){
+  const T = window.THREE;
+  const r = cedarRng(seed || 1), g = new T.Group();
+  const mat = (c, flat) => new T.MeshLambertMaterial({ color: c, flatShading: flat !== 0 });
+  g.userData.tiers = [];
+
+  let ty = 0, tr = .34;
+  for(let i = 0; i < 6; i++){
+    const h = .42 + r() * .14;
+    const seg = new T.Mesh(new T.CylinderGeometry(tr * .86, tr, h, 7), mat(i < 3 ? 0x4A3520 : 0x3B2A17));
+    seg.position.set((r() - .5) * .12, ty + h / 2, (r() - .5) * .12);
+    seg.rotation.z = (r() - .5) * .10; seg.rotation.x = (r() - .5) * .08;
+    seg.castShadow = true; g.add(seg);
+    ty += h * .94; tr *= .88;
+  }
+  [[-1, .55], [1, .42]].forEach(fk => {   // forks near the crown, typical of an old cedar
+    const fork = new T.Mesh(new T.CylinderGeometry(.09, .17, 1.05, 6), mat(0x3B2A17));
+    fork.position.set(fk[0] * .28, ty + .42, (r() - .5) * .2);
+    fork.rotation.z = -fk[0] * fk[1]; fork.castShadow = true; g.add(fork);
+  });
+
+  /* The first tier starts high on the trunk on purpose: starting it low buries the
+     trunk under the lowest pads and every cedar reads as a shrub. */
+  [[1.95, 2.15, 9], [2.50, 1.85, 8], [2.98, 1.48, 7], [3.38, 1.08, 6], [3.70, .68, 5], [3.96, .34, 4]]
+    .forEach((t, ti) => {
+      const tier = new T.Group(); tier.position.y = t[0];
+      const n = t[2], spread = t[1];
+      for(let k = 0; k < n; k++){
+        const a = (k / n) * Math.PI * 2 + r() * .5;
+        const rad = spread * (.42 + r() * .58);
+        const pad = new T.Mesh(new T.SphereGeometry(.42 + r() * .34, 6, 4), mat(CEDAR_GREENS[(k + ti) % CEDAR_GREENS.length]));
+        pad.position.set(Math.cos(a) * rad, (r() - .5) * .16, Math.sin(a) * rad);
+        pad.scale.set(1.25 + r() * .5, .30 + r() * .10, 1.25 + r() * .5);
+        pad.rotation.y = r() * Math.PI; pad.castShadow = true;
+        tier.add(pad);
+      }
+      const core = new T.Mesh(new T.SphereGeometry(spread * .5, 6, 4), mat(CEDAR_GREENS[ti % CEDAR_GREENS.length], 1));
+      core.scale.y = .34; core.castShadow = true; tier.add(core);
+      g.userData.tiers.push(tier); g.add(tier);
+    });
+  return g;
+}
+
+function buildCedarScene(){
+  const T = window.THREE;
+  const canvas = document.getElementById('cedar-gl');
+  if(!T || !canvas || _cedar) return;
+  let renderer;
+  try{ renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+  catch(e){ return; }   // no WebGL: the painted ridge is already showing
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+
+  const scene = new T.Scene();
+  scene.fog = new T.Fog(0x09241B, 18, 50);
+  const cam = new T.PerspectiveCamera(40, 1, .1, 140);
+  const mat = (c, flat) => new T.MeshLambertMaterial({ color: c, flatShading: flat !== 0 });
+
+  /* These intensities sum to well under 1 on purpose. The first version ran a .66
+     hemisphere plus a 1.35 key and the greens blew out to mint - nothing like the
+     cedar palette the rest of the site uses. */
+  scene.add(new T.HemisphereLight(0xE7C775, 0x08170F, .30));
+  const key = new T.DirectionalLight(0xF7E2AE, .80); key.position.set(-6, 9, 5);
+  key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+  key.shadow.camera.top = 12; key.shadow.camera.bottom = -12;
+  key.shadow.camera.near = 1; key.shadow.camera.far = 34; key.shadow.bias = -0.0016;
+  scene.add(key);
+  const rim = new T.DirectionalLight(0xC2542D, .34); rim.position.set(7, 3, -6); scene.add(rim);
+  const fill = new T.DirectionalLight(0x8FBF9E, .12); fill.position.set(3, 2, 7); scene.add(fill);
+
+  const swayables = [];
+  /* Composition matters more than the model. A single hero tree at the origin is
+     invisible, because the card is centred and covers exactly that spot. So two big
+     cedars stand either side of it, close enough that their crowns clear the card,
+     and the rest of the grove recedes into fog. y is just above the ground plane at
+     -2.55: any lower and the trunks are buried.  [x, y, z, scale, seed] */
+  [[-5.6,-2.5,-1.5,1.16,7],[6.0,-2.5,-2.4,1.04,23],
+   [-9.2,-2.5,-7,.80,11],[9.4,-2.5,-8,.74,47],
+   [-4.0,-2.5,-13,.54,31],[4.4,-2.5,-14,.50,53],
+   [-11.5,-2.5,-17,.42,67],[11.0,-2.5,-18,.38,71],[0,-2.5,-21,.32,83]]
+    .forEach(p => { const tr = makeCedar(p[4]); tr.position.set(p[0], p[1], p[2]);
+      tr.scale.setScalar(p[3]); scene.add(tr); swayables.push(tr); });
+
+  [[-2.6,-2.42,1.6,.34,3],[2.9,-2.44,1.1,.26,5],[-1.4,-2.46,2.6,.2,9],[1.6,-2.45,2.9,.16,13]]
+    .forEach(k => { const rock = new T.Mesh(new T.DodecahedronGeometry(k[3], 0), mat(0x3E4A3C, 1));
+      rock.position.set(k[0], k[1], k[2]); rock.rotation.set(k[4], k[4] * .7, k[4] * .3);
+      rock.castShadow = true; rock.receiveShadow = true; scene.add(rock); });
+
+  /* y is the cone's CENTRE, so it has to sit about half its height above the ground
+     plane or the ridge never breaks the horizon and no mountains show at all. */
+  [[-2,1.4,-30,19,9.5,0x0E3A2B],[-19,.9,-34,15,8.2,0x0B2E22],[18,1.1,-36,17,8.8,0x0A2A1F]]
+    .forEach(r => { const m = new T.Mesh(new T.ConeGeometry(r[3], r[4], 5), mat(r[5], 1));
+      m.position.set(r[0], r[1], r[2]); m.rotation.y = r[0] * .1; scene.add(m); });
+
+  const ground = new T.Mesh(new T.CircleGeometry(56, 7), mat(0x11402F, 1));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -2.55;
+  ground.receiveShadow = true; scene.add(ground);
+
+  _cedar = { renderer, scene, cam, swayables, raf: null,
+             angle: 0, camTarget: 0, treeTarget: 0, clock: 0,
+             gust: 0, gustDir: 1, dolly: 0, dollyTarget: 0 };
+  resizeCedar();
+  window.addEventListener('resize', resizeCedar);
+  canvas.classList.add('ready');
+  cedarLoop();
+}
+
+function resizeCedar(){
+  if(!_cedar) return;
+  const root = document.getElementById('cedar-root');
+  const w = root.clientWidth || window.innerWidth, h = root.clientHeight || window.innerHeight;
+  _cedar.renderer.setSize(w, h, false);
+  _cedar.cam.aspect = w / h; _cedar.cam.updateProjectionMatrix();
+}
+
+/* Called when the form switches: the camera swings and pulls back, and the grove
+   catches a gust of wind, so the switch has somewhere to happen rather than being
+   a change of text on a still backdrop. */
+function swingCedar(dir){
+  if(!_cedar) return;
+  _cedar.treeTarget += dir * 0.9;
+  _cedar.dollyTarget = 1;
+  _cedar.gust = 1; _cedar.gustDir = dir || 1;
+  cedarLoop();
+}
+
+function cedarFrame(){
+  const c = _cedar;
+  if(!c) return;
+  c.raf = null;
+  c.angle += 0.0011; c.clock += 0.016;
+  c.gust *= 0.94; if(c.gust < 0.0008) c.gust = 0;
+  for(let i = 0; i < c.swayables.length; i++){
+    const tiers = c.swayables[i].userData.tiers || [];
+    for(let j = 0; j < tiers.length; j++){
+      // upper plates move more than lower ones, which is what makes a tree look alive
+      const amp = 0.006 + j * 0.0055;
+      const lean = c.gust * c.gustDir * amp * 7;
+      tiers[j].rotation.z = Math.sin(c.clock * 0.7 + j * 0.6 + i) * amp * (1 + c.gust * 3) + lean;
+      tiers[j].rotation.x = Math.cos(c.clock * 0.53 + j * 0.4 + i * 1.7) * amp * 0.7;
+    }
+  }
+  c.camTarget += (c.treeTarget - c.camTarget) * 0.045;
+  c.dollyTarget *= 0.93; c.dolly += (c.dollyTarget - c.dolly) * 0.09;
+  if(c.dolly < 0.0008 && c.dollyTarget < 0.0008){ c.dolly = 0; c.dollyTarget = 0; }
+  /* Framed against a full-height viewport, not the preview's short stage: the camera
+     sits back far enough that the two front cedars are not cropped at the edges, and
+     tilts up so the empty foreground field does not take the bottom third. */
+  const a = c.angle + c.camTarget, rad = 18.5 + c.dolly * 3.6;
+  c.cam.position.set(Math.sin(a) * rad, 3.4 + Math.sin(c.angle * 1.7) * .30 + c.dolly * 1.2, Math.cos(a) * rad);
+  c.cam.lookAt(0, 1.7, 0);
+  c.renderer.render(c.scene, c.cam);
+  if(!document.hidden) cedarLoop();
+}
+function cedarLoop(){ if(_cedar && !_cedar.raf) _cedar.raf = requestAnimationFrame(cedarFrame); }
+
+/* Signing in must actually stop the scene, not just hide it: a rAF loop left running
+   behind the storefront burns battery on every page the customer visits afterwards. */
+function teardownCedarScene(){
+  if(!_cedar) return;
+  if(_cedar.raf) cancelAnimationFrame(_cedar.raf);
+  window.removeEventListener('resize', resizeCedar);
+  try{
+    _cedar.scene.traverse(o => {
+      if(o.geometry) o.geometry.dispose();
+      if(o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+    });
+    _cedar.renderer.dispose();
+  }catch(e){}
+  const canvas = document.getElementById('cedar-gl');
+  if(canvas) canvas.classList.remove('ready');
+  _cedar = null;
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden) cedarLoop(); });
+
+/* ---------------------------------------------------------------------------
+   THE LOGIN SCREEN
+   Four modes share one card: signin, signup, forgot, recovery. Switching between
+   signin and signup turns the card on its edge (setAuthMode); forgot/recovery
+   swap plainly, because they are a detour rather than a peer of the other form.
+   ------------------------------------------------------------------------ */
+const LG_ICON = {
+  mail: '<path d="M4 5h16v14H4z"/><path class="lf-flap" d="m4 6 8 7 8-7"/>',
+  lock: '<rect x="4" y="10" width="16" height="10" rx="2"/><path class="lf-shackle" d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'
+};
+const LG_TICK  = '<svg class="lf-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 6 6 10-12"/></svg>';
+const LG_METER = '<div class="lf-meter" data-lv="0" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="lf-note"></p>';
+/* One eye, drawn once. The slash is a separate path so it can retract on reveal
+   rather than the whole icon being swapped out, which would kill the animation. */
+const LG_EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/>'
+  + '<circle class="lf-pupil" cx="12" cy="12" r="3"/><path class="lf-slash" d="M4 4l16 16"/></svg>';
+
+/* opts: {id,label,type,icon,ac,value,oninput,onkeydown,pw,strength,ph} */
+function loginField(o){
+  const ph = o.ph || '';
+  return `
+  <div class="lfield${o.value?' filled':''}" data-lf="${o.id}">
+    <div class="lf-wrap">
+      <svg viewBox="0 0 24 24" aria-hidden="true">${LG_ICON[o.icon]}</svg>
+      <input id="${o.id}" type="${o.type}" autocomplete="${o.ac}" value="${esc(o.value||'')}"
+        placeholder="${esc(ph)}" aria-label="${esc(o.label)}"
+        ${o.oninput?`oninput="${o.oninput}"`:''} ${o.onkeydown?`onkeydown="${o.onkeydown}"`:''}>
+      <label class="lf-label" for="${o.id}">${esc(o.label)}</label>
+      ${o.type==='email'?LG_TICK:''}
+      ${o.pw?`<button type="button" class="login-pw-toggle" aria-label="Show password" aria-pressed="false"
+        onclick="toggleLoginPw('${o.id}',this)">${LG_EYE}</button>`:''}
+    </div>
+    ${o.strength?LG_METER:''}
+  </div>`;
+}
+
+function loginShell(inner){
+  return `
+  <div class="login-wrap">
+    <div class="login-stack">
+      <div class="login-card" id="login-card">
+        <div class="login-face">${inner}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function loginCrest(){
+  return `<div class="login-crest">
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+    <div class="login-wordmark">${t('storeName')}</div>
+  </div>`;
+}
+function loginTrust(isAr){
+  return `<div class="login-trust">
+    <svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+    ${isAr?'يتم التحقق من كل دفعة قبل الشحن':'Every payment is verified by us before anything ships'}
+  </div>`;
+}
+
 function renderLogin(){
   const f = state.loginForm;
   const isAr = state.lang==='ar';
   const isSignup = state.authMode === 'signup';
-  const pwShown = state.loginPwShown;
 
   if(state.authMode==='forgot'){
-    const body = `
-    <div class="login-form-field">
-      <label>${t('email')}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
-        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com" onkeydown="if(event.key==='Enter')submitForgotPassword()"/ aria-label="name@example.com">
+    return loginShell(`
+      ${loginCrest()}
+      <h2 class="login-title font-display">${isAr?'نسيت كلمة المرور؟':'Forgot your password?'}</h2>
+      <p class="login-sub">${isAr?'أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيينها':"Enter your email and we'll send you a reset link"}</p>
+      <div class="login-fields">
+        ${loginField({id:'lg-email',label:t('email'),type:'email',icon:'mail',ac:'email',value:f.email,
+          ph:'name@example.com',oninput:"updateLoginForm('email',this.value)",
+          onkeydown:"if(event.key==='Enter')submitForgotPassword()"})}
       </div>
-    </div>
-    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitForgotPassword()">${isAr?'إرسال رابط إعادة التعيين':'Send reset link'}</button>
-    <div class="login-switch"><a href="#" onclick="setAuthMode('signin');return false;">${isAr?'← رجوع لتسجيل الدخول':'← Back to sign in'}</a></div>`;
-    return `
-    <div class="login-wrap"><div class="login-shell">
-      <div class="login-brand">
-        <div class="login-brand-top">
-          <div class="login-brand-logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><span class="login-brand-wordmark">${t('storeName')}</span></div>
-          <div class="login-brand-title font-display">${isAr?'كل شيء، بمحبة':'Everything, with love'}</div>
-        </div>
-      </div>
-      <div class="login-panel">
-        <div class="login-title font-display">${isAr?'نسيت كلمة المرور؟':'Forgot your password?'}</div>
-        <div class="login-sub">${isAr?'أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيينها':"Enter your email and we'll send you a reset link"}</div>
-        ${body}
-      </div>
-    </div></div>`;
+      <button class="btn btn-primary btn-block login-cta" ${state.authBusy?'disabled':''} onclick="submitForgotPassword()">${isAr?'إرسال رابط إعادة التعيين':'Send reset link'}</button>
+      <div class="login-switch"><button type="button" onclick="setAuthMode('signin')">${isAr?'← رجوع لتسجيل الدخول':'← Back to sign in'}</button></div>
+      ${loginTrust(isAr)}`);
   }
+
   if(state.authMode==='recovery'){
-    const body = `
-    <div class="login-form-field">
-      <label>${isAr?'كلمة مرور جديدة':'New password'}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="recovery-pw1" type="password" autocomplete="new-password" placeholder="••••••••"/ aria-label="••••••••">
-        <button type="button" class="login-pw-toggle" onclick="togglePwField('recovery-pw1', this)" aria-label="${isAr?'إظهار/إخفاء':'Show/hide'}">${EYE_CLOSED_SVG}</button>
+    return loginShell(`
+      ${loginCrest()}
+      <h2 class="login-title font-display">${isAr?'تعيين كلمة مرور جديدة':'Set a new password'}</h2>
+      <p class="login-sub">${isAr?'اختر كلمة مرور جديدة لحسابك':'Choose a new password for your account'}</p>
+      <div class="login-fields">
+        ${loginField({id:'recovery-pw1',label:isAr?'كلمة مرور جديدة':'New password',type:'password',icon:'lock',
+          ac:'new-password',pw:true,strength:true,ph:'••••••••'})}
+        ${loginField({id:'recovery-pw2',label:isAr?'تأكيد كلمة المرور':'Confirm password',type:'password',icon:'lock',
+          ac:'new-password',pw:true,ph:'••••••••',onkeydown:"if(event.key==='Enter')submitRecoveryPassword()"})}
       </div>
-    </div>
-    <div class="login-form-field">
-      <label>${isAr?'تأكيد كلمة المرور':'Confirm password'}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="recovery-pw2" type="password" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitRecoveryPassword()"/ aria-label="••••••••">
-        <button type="button" class="login-pw-toggle" onclick="togglePwField('recovery-pw2', this)" aria-label="${isAr?'إظهار/إخفاء':'Show/hide'}">${EYE_CLOSED_SVG}</button>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitRecoveryPassword()">${isAr?'تحديث كلمة المرور':'Set new password'}</button>`;
-    return `
-    <div class="login-wrap"><div class="login-shell">
-      <div class="login-brand">
-        <div class="login-brand-top">
-          <div class="login-brand-logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><span class="login-brand-wordmark">${t('storeName')}</span></div>
-        </div>
-      </div>
-      <div class="login-panel">
-        <div class="login-title font-display">${isAr?'تعيين كلمة مرور جديدة':'Set a new password'}</div>
-        ${body}
-      </div>
-    </div></div>`;
+      <button class="btn btn-primary btn-block login-cta" ${state.authBusy?'disabled':''} onclick="submitRecoveryPassword()">${isAr?'تحديث كلمة المرور':'Set new password'}</button>
+      ${loginTrust(isAr)}`);
   }
 
-  const body = `
-    ${isSignup ? `
-    <div class="login-form-field">
-      <label>${t('fullName')}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <input type="text" autocomplete="name" value="${f.name||''}" oninput="updateLoginForm('name',this.value)" placeholder="${isAr?'اسمك الكامل':'Your full name'}"/>
-      </div>
-    </div>` : ''}
-    <div class="login-form-field">
-      <label>${t('email')}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
-        <input type="email" autocomplete="email" value="${f.email||''}" oninput="updateLoginForm('email',this.value)" placeholder="name@example.com"/ aria-label="name@example.com">
-      </div>
-    </div>
-    <div class="login-form-field">
-      <label>${t('password')}</label>
-      <div class="login-input-wrap">
-        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <input id="login-pw-input" type="${pwShown?'text':'password'}" autocomplete="${isSignup?'new-password':'current-password'}" value="${f.password||''}" oninput="updateLoginForm('password',this.value)" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth()"/ aria-label="••••••••">
-        <button type="button" class="login-pw-toggle" onclick="toggleLoginPw()" aria-label="${pwShown?'Hide password':'Show password'}">
-          ${pwShown
-            ? `<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`
-            : `<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-6.5 0-10-8-10-8a18.6 18.6 0 0 1 4.22-5.06M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`}
-        </button>
-      </div>
-      ${!isSignup?`<div style="text-align:end;margin-top:6px"><a href="#" style="font-size:12px" onclick="setAuthMode('forgot');return false;">${isAr?'نسيت كلمة المرور؟':'Forgot password?'}</a></div>`:''}
-    </div>
-    <button class="btn btn-primary btn-block" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
-    <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<a href="#" onclick="setAuthMode('${isSignup?'signin':'signup'}');return false;">${isSignup ? t('signIn') : t('createAccount')}</a></div>
-  `;
+  const fields = `
+    ${isSignup ? loginField({id:'lg-name',label:t('fullName'),type:'text',icon:'user',ac:'name',value:f.name,
+      ph:isAr?'اسمك الكامل':'Your full name',oninput:"updateLoginForm('name',this.value)"}) : ''}
+    ${loginField({id:'lg-email',label:t('email'),type:'email',icon:'mail',ac:'email',value:f.email,
+      ph:'name@example.com',oninput:"updateLoginForm('email',this.value)"})}
+    ${loginField({id:'lg-pw',label:t('password'),type:'password',icon:'lock',
+      ac:isSignup?'new-password':'current-password',value:f.password,pw:true,strength:isSignup,ph:'••••••••',
+      oninput:"updateLoginForm('password',this.value)",onkeydown:"if(event.key==='Enter')submitAuth()"})}
+    ${!isSignup?`<div class="login-forgot"><button type="button" onclick="setAuthMode('forgot')">${isAr?'نسيت كلمة المرور؟':'Forgot password?'}</button></div>`:''}`;
 
-  return `
-  <div class="login-wrap">
-    <div class="login-shell">
-      <div class="login-brand">
-        <div class="login-brand-top">
-          <div class="login-brand-logo">
-            <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
-            <span class="login-brand-wordmark">${t('storeName')}</span>
-          </div>
-          <div class="login-brand-title font-display">${isAr?'كل شيء، بمحبة':'Everything, with love'}</div>
-          <div class="login-brand-sub">${isAr?'تسوّق بثقة مع توصيل سريع لجميع المناطق اللبنانية':'Shop with confidence — fast delivery across every region in Lebanon.'}</div>
-        </div>
-        <div class="login-brand-feats">
-          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'منتجات مضمونة الجودة':'Quality-checked products'}</div>
-          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'توصيل لجميع المناطق':'Delivery to every governorate'}</div>
-          <div class="login-brand-feat"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>${isAr?'دفع آمن عند الاستلام':'Secure checkout, every time'}</div>
-        </div>
-      </div>
-      <div class="login-panel">
-        <div class="login-title font-display">${isSignup ? (isAr?'إنشاء حساب':'Create your account') : (isAr?'مرحبًا بعودتك':'Welcome back')}</div>
-        <div class="login-sub">${isSignup ? (isAr?'انضم إلينا وابدأ التسوّق':'Join us and start shopping in minutes') : (isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store')}</div>
-        ${body}
-        <div class="login-note">
-          <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          ${isAr?'معلوماتك محمية ولا تُشارك مع أي طرف ثالث':'Your information is protected and never shared'}
-        </div>
-      </div>
-    </div>
-  </div>`;
+  return loginShell(`
+    ${loginCrest()}
+    <h2 class="login-title font-display">${isSignup ? (isAr?'إنشاء حساب':'Create your account') : (isAr?'مرحبًا بعودتك':'Welcome back')}</h2>
+    <p class="login-sub">${isSignup ? (isAr?'انضم إلينا وابدأ التسوّق':'A minute now, then shop in seconds') : (isAr?'سجّل الدخول للمتابعة إلى متجرك':'Sign in to continue to your store')}</p>
+    <div class="login-fields">${fields}</div>
+    <button class="btn btn-primary btn-block login-cta" ${state.authBusy?'disabled':''} onclick="submitAuth()">${isSignup ? t('createAccount') : t('signIn')}</button>
+    <div class="login-switch">${isSignup ? t('haveAccount') : t('noAccount')}<button type="button" data-authgo="${isSignup?'signin':'signup'}" onclick="setAuthMode('${isSignup?'signin':'signup'}')">${isSignup ? t('signIn') : t('createAccount')}</button></div>
+    ${loginTrust(isAr)}`);
 }
 
 /* ============ RENDER: HOME ============ */
@@ -6508,8 +6960,13 @@ function render(){
   if(state.view==='login' || !state.currentUserId){
     app.innerHTML = renderLogin();
     document.getElementById('overlay').classList.remove('open');
+    /* The field state (floating labels, the email tick, the strength meter) is DOM
+       state, so it has to be reapplied after every paint, not set once. */
+    wireLoginFields();
+    showCedarBackdrop(true);
     return;
   }
+  showCedarBackdrop(false);
 
   if(showMobileApp){
     app.innerHTML = renderMobileApp() + renderShippingModal();
