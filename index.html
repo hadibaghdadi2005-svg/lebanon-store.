@@ -1077,6 +1077,11 @@ input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:non
   background:linear-gradient(90deg,transparent,var(--brass-light),transparent);opacity:.75;
   animation:promoRule 1.1s cubic-bezier(.16,1,.3,1) .35s both}
 @keyframes promoRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.login-browse{display:block;margin:14px auto 0;background:none;border:none;cursor:pointer;
+  font:600 12px/1 'Figtree',sans-serif;letter-spacing:.02em;color:rgba(255,255,255,.62);
+  padding:8px 10px;border-radius:8px;transition:color .18s ease}
+.login-browse:hover{color:#fff}
+.login-browse:focus-visible{outline:2px solid var(--brass-light);outline-offset:2px}
 .promo-close{position:absolute;top:12px;inset-inline-end:12px;z-index:4;width:36px;height:36px;border-radius:50%;
   border:1px solid rgba(255,255,255,.18);background:rgba(10,16,12,.55);color:#fff;font-size:17px;line-height:1;cursor:pointer;
   display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
@@ -1718,6 +1723,14 @@ let state = {
   paymentProofFile: null,
   paymentProofReference: '',
   paymentSubmitting: false,
+  /* Which order the Wish payment screen is showing. Set both by placeOrder() and by the
+     "Complete payment" button on any unpaid order, so the screen is re-enterable. */
+  paymentOrderId: null,
+  /* A visitor browsing without an account. The catalogue, categories, settings and reviews are
+     all readable by `anon` under RLS, so the shop renders for them; only the account-bound
+     actions (checkout, orders, wishlist, chat, account) ask them to sign in. */
+  guest: false,
+  authNextAction: null,
   adminPaymentProofUrls: {},
   orders: [], // {num, date, items:[...], total, gov, customer, phone, status, customerId, customerName}
   settings: { deliveryMin: 10, deliveryMax: 15, billboardEnabled: true, billboardSlides: [
@@ -1816,6 +1829,29 @@ function showToast(msg, ms){
 
 /* ============ ACCOUNTS / LOGIN ============ */
 function currentCustomer(){ return state.customers.find(c=>c.id===state.currentUserId) || null; }
+/* The store is browsable without an account; only the account-bound actions need one. Call this
+   at the top of any such action - it returns false and diverts to the sign-in card, remembering
+   what the visitor was trying to do so completeLogin() can resume it. */
+function requireAuth(nextAction, msg){
+  if(state.currentUserId) return true;
+  state.authNextAction = nextAction || null;
+  state.authMode = 'signin';
+  state.view = 'login';
+  window.scrollTo(0,0);
+  render();
+  showToast(msg || (state.lang==='ar' ? 'سجّل دخولك للمتابعة' : 'Sign in to continue'));
+  return false;
+}
+/* Lets a guest leave the sign-in card and go back to browsing. Without it the login screen is a
+   dead end for anyone who reached it by tapping Orders or Account out of curiosity. */
+function backToShopping(){
+  state.guest = true;
+  state.authNextAction = null;
+  state.view = 'home';
+  state.mScreen = 'home';
+  window.scrollTo(0,0);
+  render();
+}
 function isAdminUser(c){ return !!c && !!c.email && c.email.toLowerCase()===ADMIN_EMAIL.toLowerCase(); }
 function syncCustomerCart(){
   const c = currentCustomer();
@@ -2106,7 +2142,24 @@ function completeLogin(c){
     return;
   }
   state.currentUserId = c.id;
+  /* A guest basket must survive signing in - it is the whole point of letting them fill one
+     before we ask who they are. Merge rather than replace: the account may hold a basket from
+     another device, and dropping either side would silently lose a chosen item. */
+  const guestCart = state.guest ? state.cart.slice() : [];
+  const guestWish = state.guest ? Array.from(state.wishlist) : [];
+  state.guest = false;
   loadCustomerCart(c);
+  if(guestCart.length){
+    guestCart.forEach(g=>{
+      const hit = state.cart.find(l=>sameCartLine(l, g.id, g.variant, g.size));
+      if(hit) hit.qty += g.qty; else state.cart.push(g);
+    });
+  }
+  if(guestWish.length){
+    if(!(state.wishlist instanceof Set)) state.wishlist = new Set(state.wishlist||[]);
+    guestWish.forEach(id=>state.wishlist.add(id));
+  }
+  if(guestCart.length || guestWish.length) syncCustomerCart();
   state.authMode = 'signin';
   state.loginForm = {};
   state.formData.fullName = c.name || '';
@@ -2121,11 +2174,20 @@ function completeLogin(c){
   state.formData.notes = c.notes || '';
   state.selectedGov = c.gov || null;
   state.view = 'home';
+  /* Resume whatever sent them to the sign-in card, so signing in finishes the job they started
+     instead of dropping them on the homepage to find their way back. */
+  const next = state.authNextAction;
+  state.authNextAction = null;
   subscribeCustomerOrders(c.id);
   subscribeCustomerChat(c.id);
   if(isAdminUser(c)){ subscribeAdminChats(); loadAdminChats(); }
   window.scrollTo(0,0);
   render();
+  if(next==='checkout' && state.cart.length){ if(isMobileViewport()) mGo('checkout'); else goCheckout(); }
+  else if(next==='orders') goMyOrders();
+  else if(next==='account') goAccount();
+  else if(next==='wishlist') goWishlist();
+  else if(next==='chat' && isMobileViewport()) mGoChat();
   /* Let the home page paint first — the popup sits over it, so showing it in the same frame
      makes the store look like it loaded as an ad rather than as a shop.
      The wait is also a bandwidth decision, not just a visual one: the promo media is the
@@ -2357,6 +2419,7 @@ function cartTotal(){
   return Math.max(0, cartSubtotal() - discountAmount() + deliveryFee());
 }
 function toggleWishlist(id){
+  if(!requireAuth('wishlist', state.lang==='ar'?'سجّل دخولك لحفظ المفضلة':'Sign in to save favourites')) return;
   if(state.wishlist.has(id)){ state.wishlist.delete(id); showToast(t('removedFromWish')); }
   else { state.wishlist.add(id); showToast(t('addedToWish')); }
   syncCustomerCart();
@@ -2492,10 +2555,17 @@ function clearSearch(){
   window.scrollTo(0,0);
   render();
 }
-function goWishlist(){ state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render(); }
+function goWishlist(){
+  if(!requireAuth('wishlist', state.lang==='ar'?'سجّل دخولك لحفظ المفضلة':'Sign in to keep a wishlist')) return;
+  state.listFilter={type:'wishlist'}; state.view='home'; window.scrollTo(0,0); render();
+}
 function openProduct(id){ state.view='product'; state.productId=id; state.modalVariant=null; state.modalSize=null; state.galleryIndex=0; window.scrollTo(0,0); render(); }
 function goCheckout(){
   if(state.cart.length===0) return;
+  /* Deliberately the LAST gate in the journey: a guest fills a basket freely and is only asked to
+     sign in once they have decided to buy. The basket survives the detour - completeLogin() merges
+     it into the account. */
+  if(!requireAuth('checkout', state.lang==='ar'?'سجّل دخولك لإتمام الطلب':'Sign in to complete your order')) return;
   state.view='checkout'; window.scrollTo(0,0); render();
 }
 /* Shared by both the public (cost/supplier-free) and admin (full) product fetches */
@@ -2596,6 +2666,7 @@ async function refreshAdminData(){
   }
 }
 async function goMyOrders(){
+  if(!requireAuth('orders', state.lang==='ar'?'سجّل دخولك لعرض طلباتك':'Sign in to see your orders')) return;
   if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen='orders'; }
   else { state.view='orders'; }
   window.scrollTo(0,0); render();
@@ -2609,6 +2680,7 @@ async function goMyOrders(){
   } catch(e){ console.error('Could not load orders:', e); }
 }
 function goAccount(){
+  if(!requireAuth('account')) return;
   if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen='account'; }
   else { state.view='account'; }
   window.scrollTo(0,0); render();
@@ -3146,7 +3218,8 @@ function loginTrust(isAr){
   return `<div class="login-trust">
     <svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
     ${isAr?'يتم التحقق من كل دفعة قبل الشحن':'Every payment is verified by us before anything ships'}
-  </div>`;
+  </div>
+  <button type="button" class="login-browse" onclick="backToShopping()">${isAr?'← تابع التسوّق بدون حساب':'← Keep browsing without an account'}</button>`;
 }
 
 function renderLogin(){
@@ -3778,7 +3851,13 @@ async function placeOrder(){
     num, order_date: new Date().toISOString().slice(0,10), items,
     total: cartTotal(), gov: state.selectedGov, customer_name: f.fullName, phone: f.phone,
     status: 'confirmed', delivery_min: state.settings.deliveryMin, delivery_max: state.settings.deliveryMax,
-    payment_status: 'pending_verification'
+    payment_status: 'pending_verification',
+    /* Sent so the server can recompute the discount itself. The BEFORE INSERT trigger on `orders`
+       recalculates every line price, the delivery fee and the total from the database, so `total`
+       above is only what we SHOW the customer - the stored figure is the server's own. Without a
+       code here the server would have no legitimate way to honour a coupon and would price the
+       order higher than the customer was quoted. */
+    coupon_code: state.coupon ? state.coupon.code : null
   };
   showToast(state.lang==='ar' ? 'جارٍ إرسال الطلب...' : 'Placing your order...');
   let order;
@@ -3805,6 +3884,7 @@ async function placeOrder(){
     sb.from('customers').update(addrFields).eq('id', c.id)
       .then(({error})=>{ if(error) console.error('Address save failed:', error); });
   }
+  state.paymentOrderId = order._dbId;
   if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen = 'paymentInstructions'; }
   else { state.view = 'paymentInstructions'; }
   window.scrollTo(0,0);
@@ -4119,9 +4199,33 @@ async function submitPaymentProof(dbId){
     render();
   }
 }
+/* The order whose payment screen we are on. Resolved explicitly rather than assumed to be the
+   most recent order: the screen is now reachable from My Orders at any later time, so "the last
+   order in the list" is frequently the wrong one (and was already wrong for anyone who ordered
+   twice before paying once). */
+function paymentOrder(){
+  if(state.paymentOrderId){
+    const found = state.orders.find(o=>o._dbId===state.paymentOrderId);
+    if(found) return found;
+  }
+  return state.orders[state.orders.length-1] || null;
+}
+/* Re-entry point for an order that was placed but never paid. Without this, leaving the payment
+   screen lost the Wish account details permanently - the screen was only ever reachable in the
+   single render immediately after placeOrder(). */
+function goPayment(dbId){
+  state.paymentOrderId = dbId || null;
+  state.paymentProofMode = state.paymentProofMode || 'reference';
+  state.paymentProofReference = '';
+  state.paymentProofFile = null;
+  if(isMobileViewport()){ state.mPrev = state.mScreen; state.mScreen = 'paymentInstructions'; }
+  else { state.view = 'paymentInstructions'; }
+  window.scrollTo(0,0);
+  render();
+}
 function renderPaymentInstructions(){
   const isAr = state.lang==='ar';
-  const o = state.orders[state.orders.length-1];
+  const o = paymentOrder();
   if(!o) { goHome(); return ''; }
   const s = state.settings;
   return `
@@ -4129,6 +4233,7 @@ function renderPaymentInstructions(){
     <div class="panel order-conf" style="max-width:560px;margin:0 auto;text-align:start">
       <h2 class="font-display" style="margin-bottom:6px">${isAr?'أكمل الدفع عبر Wish':'Complete Payment via Wish'}</h2>
       <p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:18px">${isAr?`حوّل مبلغ ${fmt(o.total)} إلى حساب Wish التالي، ثم أرسل إثبات التحويل أدناه لتأكيد طلبك ${esc(o.num)}.`:`Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${esc(o.num)}.`}</p>
+      <div style="background:#FCEFCB;color:#8c5a0a;border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-bottom:18px">${isAr?'أرسل إثبات التحويل خلال 24 ساعة، وإلا سيُلغى هذا الطلب تلقائيًا. يمكنك العودة إلى هذه الصفحة في أي وقت من "طلباتي".':'Submit your transfer proof within 24 hours or this order is released automatically. You can come back to this page any time from My Orders.'}</div>
       <div style="background:var(--sand);border-radius:12px;padding:16px;margin-bottom:18px">
         <div style="font-size:12px;color:var(--ink-soft);font-weight:700;margin-bottom:4px">${isAr?'اسم الحساب':'Account name'}</div>
         <div style="font-size:15px;font-weight:700;margin-bottom:10px">${s.wishAccountName || (isAr?'—':'—')}</div>
@@ -4186,8 +4291,13 @@ function renderItemTrack(it, key){
 }
 function renderOrderTrackCard(o){
   const isAr = state.lang==='ar';
+  /* A pending order always carries its own way back to the Wish details. The payment screen used
+     to be reachable only in the single render right after placeOrder(), so a customer who closed
+     the tab, reloaded, or simply tapped My Orders lost the account number and could never pay. */
+  const payAgain = `<div style="margin-top:10px"><button class="btn btn-cedar btn-sm" onclick="goPayment('${o._dbId}')">${isAr?'إكمال الدفع':'Complete payment'}</button>
+      <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px">${isAr?'أرسل إثبات التحويل خلال 24 ساعة وإلا سيُلغى الطلب.':'Send your transfer and submit the proof within 24 hours, or this order is released.'}</div></div>`;
   const paymentBanner = o.paymentStatus==='pending_verification'
-    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FCEFCB;color:#8c5a0a">${isAr?'بانتظار التحقق من الدفع':'Awaiting payment verification'}</span></div>`
+    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FCEFCB;color:#8c5a0a">${isAr?'بانتظار التحقق من الدفع':'Awaiting payment verification'}</span>${payAgain}</div>`
     : (o.paymentStatus==='rejected' || o.paymentStatus==='auto_cancelled')
     ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FBDACB;color:var(--brick)">${isAr?'لم يتم تأكيد الدفع — تم إلغاء الطلب':'Payment not confirmed — order cancelled'}</span></div>`
     : '';
@@ -6089,6 +6199,8 @@ function unsubscribeCustomerChat(){
 }
 async function sendChatMessage(text){
   if(!text || chatBusy) return;
+  /* Support threads are stored per customer account, so a guest has nowhere to write to. */
+  if(!requireAuth('chat', state.lang==='ar'?'سجّل دخولك للدردشة معنا':'Sign in to chat with us')) return;
   if(text.length > AI_MAX_INPUT){ showToast(state.lang==='ar' ? 'السؤال طويل جدًا' : 'Question is too long'); return; }
   const humanMode = chatInHumanMode();
   state.chatLog.push({role:'user', text});
@@ -6221,7 +6333,17 @@ function mGo(s){ state.mPrev = state.mScreen; state.mScreen = s; window.scrollTo
 function mBack(){ mGo(state.mPrev==='product' ? 'list' : state.mPrev); }
 function mGoHome(){ state.listFilter = null; mGo('home'); }
 function mGoShopAll(){ state.listFilter = null; mGo('list'); }
-function mGoChat(){ mGo('chat'); if(!state.chatHistoryLoaded) loadChatHistory(); scrollChat(); }
+/* Phone basket -> checkout. Goes through the same gate as the desktop button so a guest is asked
+   to sign in here, at the point of buying, rather than on arrival. */
+function mGoCheckout(){
+  if(!state.cart.length) return;
+  if(!requireAuth('checkout', state.lang==='ar'?'سجّل دخولك لإتمام الطلب':'Sign in to complete your order')) return;
+  mGo('checkout');
+}
+function mGoChat(){
+  if(!requireAuth('chat', state.lang==='ar'?'سجّل دخولك للدردشة معنا':'Sign in to chat with us')) return;
+  mGo('chat'); if(!state.chatHistoryLoaded) loadChatHistory(); scrollChat();
+}
 function mToggleTheme(){
   const mstore = document.querySelector('.mstore');
   const isDark = state.mTheme === 'light'; // switching TO dark
@@ -6604,7 +6726,7 @@ function mCart(){
       <div class="m-summary-row"><span>Subtotal</span><span class="m-mono">${fmt(sub)}</span></div>
       <div class="m-summary-row"><span>Delivery</span><span class="m-mono">${state.selectedGov ? (fee===0?'Free':fmt(fee)) : '—'}</span></div>
       <div class="m-summary-total"><span>Total</span><span class="m-mono" style="color:var(--accInk)">${fmt(cartTotal())}</span></div>
-      <button class="m-btn-primary" style="width:100%;margin-top:14px" onclick="mGo('checkout')">Checkout</button>
+      <button class="m-btn-primary" style="width:100%;margin-top:14px" onclick="mGoCheckout()">Checkout</button>
     </div>`}
   </div>`;
 }
@@ -6646,13 +6768,14 @@ function mCheckout(){
   </div>`;
 }
 function mPaymentInstructions(){
-  const o = state.orders[state.orders.length-1];
+  const o = paymentOrder();
   if(!o) { mGoHome(); return ''; }
   const s = state.settings;
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
     <div class="m-disp" style="font-size:21px;margin:6px 0 10px">Complete Payment via Wish</div>
     <div style="font:400 13px/1.6 'Figtree',sans-serif;color:var(--muted);margin-bottom:16px">Transfer ${fmt(o.total)} to the Wish account below, then submit your proof to confirm order ${esc(o.num)}.</div>
+    <div style="background:#fcefcb;color:#8c5a0a;border-radius:12px;padding:11px 13px;font:400 12.5px/1.5 'Figtree',sans-serif;margin-bottom:16px">Submit your transfer proof within 24 hours or this order is released automatically. You can come back here any time from Orders.</div>
     <div style="background:var(--surf);border-radius:16px;padding:16px;margin-bottom:16px">
       <div style="font:700 11px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:4px">Account name</div>
       <div style="font:700 15px/1.3 'Figtree',sans-serif;margin-bottom:10px">${s.wishAccountName || '—'}</div>
@@ -6714,6 +6837,10 @@ function mOrders(){
             <span>${state.settings.deliveryMin}–${state.settings.deliveryMax} day delivery</span>
             <span class="m-mono" style="color:var(--accInk);font-weight:600">${fmt(o.total)}</span>
           </div>
+          ${o.paymentStatus==='pending_verification'?`
+          <button class="m-btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:999px"
+            onclick="event.stopPropagation();goPayment('${o._dbId}')">Complete payment</button>
+          <div style="font:400 11px/1.45 'Figtree',sans-serif;color:var(--muted);margin-top:7px;text-align:center">Submit your transfer proof within 24 hours or this order is released.</div>`:''}
         </div>`;
       }).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">No orders yet</div></div>`}
     </div>
@@ -6748,6 +6875,12 @@ function mTrack(){
       <div class="m-disp" style="font-size:22px;line-height:1.25;margin-bottom:8px">${PAYMENT_STATUS_LABELS[status] || ORDER_STATUS_LABELS.en[status] || status}</div>
       <div style="font:400 13px/1.55 'Figtree',sans-serif;opacity:.85">${paymentPending ? "We'll update this the moment your payment is checked." : `Estimated delivery in ${state.settings.deliveryMin}–${state.settings.deliveryMax} days from order date.`}</div>
     </div>
+    ${o.paymentStatus==='pending_verification'?`
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0">
+      <div style="font:500 13px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:10px">Haven't sent the transfer yet? The Wish account details are still here.</div>
+      <button class="m-btn-primary" style="width:100%;padding:13px;border-radius:999px" onclick="goPayment('${o._dbId}')">Complete payment</button>
+      <div style="font:400 11px/1.45 'Figtree',sans-serif;color:var(--muted);margin-top:8px;text-align:center">Submit your proof within 24 hours or this order is released.</div>
+    </div>`:''}
     ${o.items.some(it=>it.shippingCost!=null)?`<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin:12px 0">
       <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">China shipping cost</div>
       ${o.items.filter(it=>it.shippingCost!=null).map(it=>`
@@ -6894,7 +7027,7 @@ function mTabBar(){
     {k:'cart', label:'Basket', d:"M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0", go:"mGo('cart')"},
     {k:'orders', label:'Orders', d:"M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8", go:'goMyOrders()'},
     {k:'chat', label:'Chat', d:"M4 4h16v11H4zM8 19h4l3 3v-3", go:'mGoChat()'},
-    {k:'account', label:'You', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:"mGo('account')"}
+    {k:'account', label:'You', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:'goAccount()'}
   ];
   return `
   <div class="m-tabbar">
@@ -6951,13 +7084,15 @@ function renderMobileApp(){
 
 function render(){
   const app = document.getElementById('app');
-  const showMobileApp = state.currentUserId && state.view!=='admin' && state.view!=='login' && isMobileViewport();
+  /* A guest browsing on a phone gets the phone UI too - gating this on currentUserId alone meant
+     a signed-out visitor on a 390px screen was served the desktop layout. */
+  const showMobileApp = (state.currentUserId || state.guest) && state.view!=='admin' && state.view!=='login' && isMobileViewport();
   if(showMobileApp) state.lang = 'en'; // mobile UI is English-only; set before dir/lang below
 
   document.documentElement.lang = state.lang;
   document.documentElement.dir = state.lang==='ar' ? 'rtl' : 'ltr';
 
-  if(state.view==='login' || !state.currentUserId){
+  if(state.view==='login' || (!state.currentUserId && !state.guest)){
     app.innerHTML = renderLogin();
     document.getElementById('overlay').classList.remove('open');
     /* The field state (floating labels, the email tick, the strength meter) is DOM
@@ -7181,7 +7316,17 @@ async function initApp(){
      withheld until all four finished anyway, which meant a first-time visitor (the person most
      likely to give up) waited on a catalogue they could not yet see. Paint it now; the data
      carries on loading behind the form and is ready by the time they finish typing. */
-  if(!session){ render(); await dataReady; return; }
+  /* No session: browse as a guest rather than meeting a login wall. The first render paints the
+     shell straight away (header, hero frame, footer) so nothing waits on Tokyo; the second paints
+     the catalogue the moment the parallel loads land. Sign-in is asked for at checkout instead. */
+  if(!session){
+    state.guest = true;
+    state.view = 'home';
+    render();
+    await dataReady;
+    render();
+    return;
+  }
   if(isRecoveryLink){ state.authMode = 'recovery'; render(); return; }
   await dataReady;   // the home page, unlike the login screen, genuinely needs the catalogue
   try{
@@ -7219,7 +7364,7 @@ window.addEventListener('scroll', updateHeaderShrink, {passive:true});
    the page — the bug this codebase has hit twice before, see CLAUDE.md items 19-20. It also stands
    down while the tab is hidden, and entirely when the visitor has asked for reduced motion. */
 let _billboardTimer = setInterval(()=>{
-  if(!state.currentUserId) return; // the hero only exists once logged in
+  if(!state.currentUserId && !state.guest) return; // no hero on the sign-in card
   if(document.hidden) return;      // no point animating a tab nobody is looking at
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const slides = state.settings.billboardSlides;
@@ -7238,7 +7383,7 @@ window.addEventListener('resize', refitHeroLayers, {passive:true});
    and only while sitting on the plain home view with no field focused, so this can't steal focus
    or wipe an in-progress form the way past render()-in-a-timer bugs did (see billboard timer above). */
 let _productsRefreshTimer = setInterval(()=>{
-  if(!state.currentUserId || state.view!=='home') return;
+  if((!state.currentUserId && !state.guest) || state.view!=='home') return;
   const el = document.activeElement;
   if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.isContentEditable)) return;
   const before = PRODUCTS.length;
