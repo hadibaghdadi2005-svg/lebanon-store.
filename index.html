@@ -64,7 +64,7 @@
      the Arabic UI has been unreachable since the language toggle was removed — setLang() has no
      call site left. Arabic strings still in the data render in the system Arabic fallback, exactly
      as they already did, since the Tajawal rules were never in force on an English page anyway. -->
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --cedar:#0F3D2E;
@@ -1222,6 +1222,150 @@ section{padding:64px 0}
   padding:11px 20px;display:flex;gap:11px;align-items:center}
 .m-buybar .m-btn-primary{flex:1;padding:15px}
 .m-product-body{padding-bottom:96px} /* room for the pinned buy bar */
+
+/* ============================================================
+   SOUK GOLD — phone redesign (Claude Design project "HABIBI Souk Gold", Organic DS tokens).
+   Layered over the rules above rather than replacing them, so every screen that isn't
+   restyled here keeps working unchanged. Phone (<760px, .mstore) only.
+   ============================================================ */
+.mstore{--acc200:#ffe1d0;--acc600:#b2622d;--acc800:#643312;--n200:#eee7db;--n300:#dcd3c4;--n500:#a19786;--n700:#645c50;
+  --shadowSm:0 1px 2px rgba(46,43,37,.14),0 4px 14px rgba(46,43,37,.07)}
+.mstore[data-theme="dark"]{--acc200:#4a2a15;--acc600:#d9844d;--acc800:#5a2d10;--n200:#2c2723;--n300:#3a332d;--n500:#8f8474;--n700:#c0b6a5;
+  --shadowSm:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.25)}
+.mstore .sk-disp{font-family:'Caprasimo',serif;font-weight:400}
+
+/* Header */
+.mstore .m-header{padding:16px 20px 14px}
+.mstore .m-logo-mark{width:42px;height:42px;box-shadow:0 4px 16px rgba(198,113,57,.35)}
+.mstore .m-logo-mark svg{width:21px;height:21px;stroke:#fff;stroke-width:2.5}
+.sk-brand{flex:1;min-width:0}
+.sk-brand-name{font:800 17px/1 'Figtree',sans-serif;color:var(--text);letter-spacing:.04em}
+.sk-brand-tag{font:500 10px/1.3 'Figtree',sans-serif;color:var(--muted);letter-spacing:.06em;margin-top:3px}
+.mstore .m-iconbtn{width:40px;height:40px;background:var(--card)}
+.mstore .m-header .m-iconbtn{position:relative}
+.sk-badge-dot{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--acc);color:#fff;font:700 9px/16px 'Figtree',sans-serif;text-align:center}
+
+/* Search */
+.mstore .m-search{margin:4px 20px 18px;box-shadow:none;background:var(--card)}
+
+/* Hero — a rounded terracotta card; the admin's billboard photo (or newest product) fills it. */
+.mstore .m-hero{margin:0 20px 20px;border-radius:28px;height:220px;
+  background:linear-gradient(135deg,var(--acc800),var(--acc600) 50%,var(--acc));box-shadow:var(--shadowSm)}
+.mstore .m-hero::before{background:linear-gradient(180deg,rgba(100,51,18,.05) 0%,rgba(100,51,18,.35) 45%,rgba(60,28,8,.88) 100%)}
+.mstore .m-hero::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.15),transparent 60%)}
+.mstore .m-hero-inner{padding:0 22px 22px}
+.mstore .m-hero-ey{color:rgba(255,255,255,.8);letter-spacing:.12em;margin-bottom:8px}
+.mstore .m-hero-title{font-family:'Caprasimo',serif;font-weight:400;font-size:26px;line-height:1.1;margin-bottom:6px}
+.mstore .m-hero-sub{font:400 13px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.8);margin-bottom:14px}
+.mstore .m-hero-cta{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#643312;font:700 12px/1 'Figtree',sans-serif;padding:11px 20px;border:0}
+
+/* Categories — round icon tiles */
+.sk-cats{display:flex;gap:10px;padding:0 20px 20px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.sk-cats::-webkit-scrollbar{display:none}
+.sk-cat{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;width:72px;background:none;border:0;padding:0;cursor:pointer;transition:transform .18s ease}
+.sk-cat:active{transform:scale(.94)}
+.sk-cat-circle{width:56px;height:56px;border-radius:999px;background:var(--card);border:1.5px solid var(--line);display:grid;place-items:center}
+.sk-cat-circle svg{width:24px;height:24px;fill:none;stroke:var(--acc);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sk-cat-label{font:600 11px/1.2 'Figtree',sans-serif;color:var(--text);text-align:center}
+
+/* Section heads */
+.mstore .m-section-head{padding:0 20px 12px}
+.mstore .m-section-title{font-family:'Caprasimo',serif;font-weight:400;font-size:22px;line-height:1.2}
+.mstore .m-seeall{color:var(--acc);border-bottom-color:var(--acc200)}
+
+/* Product cards on horizontal rails */
+.sk-rail{display:flex;gap:12px;padding:0 20px 24px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.sk-rail::-webkit-scrollbar{display:none}
+.sk-pcard{flex:none;width:160px;background:var(--card);border-radius:22px;overflow:hidden;box-shadow:var(--shadowSm);cursor:pointer;display:flex;flex-direction:column;transition:transform .18s ease}
+.sk-pcard:active{transform:scale(.97)}
+.sk-pcard-img{height:140px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--n300),var(--n200))}
+.sk-pcard-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sk-pcard-img svg{width:56px;height:56px;fill:none;stroke:rgba(255,255,255,.75);stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.sk-pcard-badge{position:absolute;top:10px;left:10px;z-index:1;font:700 9px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--card);color:var(--acc)}
+.sk-pcard-wish{position:absolute;top:8px;right:8px;z-index:1;width:32px;height:32px;border-radius:999px;border:0;padding:0;background:rgba(255,253,248,.9);display:grid;place-items:center;cursor:pointer}
+.sk-pcard-wish svg{width:14px;height:14px;fill:none;stroke:#c67139;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sk-pcard-wish.on svg{fill:#c67139}
+.sk-pcard-body{padding:12px 13px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.sk-pcard-name{font:600 13px/1.3 'Figtree',sans-serif;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sk-pcard-row{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.sk-pcard-price{font:600 15px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
+.sk-pcard-old{font:500 11px/1 'IBM Plex Mono',monospace;color:var(--n500);text-decoration:line-through;margin-left:6px}
+.sk-pcard-add{width:30px;height:30px;border-radius:999px;border:0;padding:0;background:var(--acc);color:#fff;font:700 17px/1 'Figtree',sans-serif;cursor:pointer;flex:none;display:grid;place-items:center}
+.sk-pcard-add.added{background:var(--acc2)}
+.sk-pcard-add:disabled{opacity:.45;cursor:default}
+
+/* Product detail */
+.mstore .m-product-hero{height:380px;background:linear-gradient(135deg,var(--n300),var(--n200))}
+.mstore .m-product-hero .m-iconbtn{top:16px;border:0}
+.mstore .m-product-hero .m-iconbtn svg{width:20px;height:20px;stroke:#201e1d;stroke-width:2.4}
+.mstore .m-product-hero .billboard-dots{bottom:34px}
+.mstore .m-product-hero .billboard-dot{width:7px;height:7px;border-radius:999px;background:rgba(0,0,0,.18);border:0}
+.mstore .m-product-hero .billboard-dot.active{width:20px;background:var(--acc)}
+.mstore .m-product-body{padding-top:22px}
+.sk-pd-name{font-family:'Caprasimo',serif;font-weight:400;font-size:24px;line-height:1.2;color:var(--text);margin-bottom:6px}
+.sk-pd-price{font:600 22px/1 'IBM Plex Mono',monospace;color:var(--accInk)}
+.sk-pd-rating{display:flex;align-items:center;gap:6px;margin:8px 0 16px;font:500 13px/1 'Figtree',sans-serif;color:var(--muted)}
+.sk-pd-rating svg{width:14px;height:14px;fill:var(--acc);stroke:none}
+.sk-pd-label{font:700 12px/1 'Figtree',sans-serif;color:var(--n700);margin-bottom:10px}
+.mstore .m-color-swatch{width:38px;height:38px}
+.mstore .m-color-swatch.active{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--acc)}
+.mstore .m-variant-chip{min-width:44px;height:40px;border-radius:12px;padding:0 12px;background:var(--bg);font:600 13px/1 'Figtree',sans-serif}
+.mstore .m-variant-chip.active{color:#fff}
+.mstore .m-buybar{background:linear-gradient(rgba(245,234,216,0),var(--bg) 26%);border-top:0;box-shadow:none;padding:18px 20px 12px}
+.mstore[data-theme="dark"] .m-buybar{background:linear-gradient(rgba(28,26,24,0),var(--bg) 26%)}
+.mstore .m-buybar .m-qty{background:var(--card);border:1.5px solid var(--line)}
+.mstore .m-buybar .m-btn-primary{font:700 14px/1 'Figtree',sans-serif;color:#fff;box-shadow:0 6px 20px rgba(198,113,57,.3)}
+
+/* Buttons: the design's primary is white-on-terracotta Figtree */
+.mstore .m-btn-primary{font-family:'Figtree',sans-serif;font-weight:700;color:#fff}
+.mstore .m-card-add{background:var(--acc)}
+
+/* Basket */
+.sk-page-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.sk-page-title{font-family:'Caprasimo',serif;font-weight:400;font-size:26px;line-height:1.2;color:var(--text);flex:1}
+.sk-page-count{font:600 13px/1 'Figtree',sans-serif;color:var(--muted)}
+.mstore .m-cart-line{border:0;border-radius:20px;padding:12px;box-shadow:var(--shadowSm)}
+.mstore .m-cart-thumb{width:76px;height:76px}
+.sk-qbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif;padding:0}
+.mstore .m-summary{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadowSm)}
+.mstore .m-summary-total .m-mono{color:var(--accInk)}
+.mstore .m-summary .m-btn-primary{box-shadow:0 6px 20px rgba(198,113,57,.3)}
+
+/* Chat */
+.sk-chat-head{display:flex;align-items:center;gap:12px;padding:6px 0 14px;margin-bottom:14px;border-bottom:1px solid var(--n200)}
+.sk-chat-avatar{width:40px;height:40px;border-radius:999px;background:var(--acc);display:grid;place-items:center;flex:none}
+.sk-chat-avatar svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sk-chat-name{font:700 15px/1.2 'Figtree',sans-serif;color:var(--text)}
+.sk-chat-status{font:500 11px/1.3 'Figtree',sans-serif;color:var(--acc2Ink);display:flex;align-items:center;gap:5px;margin-top:2px}
+.sk-chat-status::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--acc2);flex:none}
+.mstore .m-msg{padding:12px 16px;border-radius:20px}
+.mstore .m-msg.user{background:var(--acc);color:#fff;border-bottom-right-radius:6px}
+.mstore .m-msg.bot{background:var(--card);border:0;border-bottom-left-radius:6px;box-shadow:var(--shadowSm)}
+.sk-chat-send{width:48px;height:46px;border-radius:999px;border:0;background:var(--acc);display:grid;place-items:center;box-shadow:0 4px 12px rgba(198,113,57,.3);flex:none;cursor:pointer;padding:0}
+.sk-chat-send svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sk-chat-send:disabled{opacity:.5;cursor:default}
+
+/* Luxury dock — a floating glass pill. The active tab fills with terracotta and reveals its
+   label. .m-tabbar stays the fixed full-width wrapper so syncMobileBuybarOffset() still measures
+   the right box; only the inner pill takes taps. */
+.mstore .m-tabbar{background:none;border-top:0;box-shadow:none;pointer-events:none;justify-content:center;
+  padding:10px 20px calc(14px + env(safe-area-inset-bottom))}
+.sk-dock{pointer-events:auto;display:flex;align-items:center;gap:4px;padding:6px;border-radius:999px;
+  background:rgba(255,253,248,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.55);box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.6)}
+.mstore[data-theme="dark"] .sk-dock{background:rgba(39,35,32,.78);border-color:rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.45)}
+.mstore .sk-dock .m-tab{flex:none;flex-direction:row;gap:6px;padding:10px 12px;border-radius:999px;color:var(--n500);
+  transition:background .4s cubic-bezier(.34,1.56,.64,1),padding .4s cubic-bezier(.34,1.56,.64,1),color .25s ease,transform .18s ease}
+.mstore .sk-dock .m-tab::after{display:none}
+.mstore .sk-dock .m-tab svg{width:20px;height:20px;stroke-width:2.4;filter:none;transform:none}
+.mstore .sk-dock .m-tab-label{font:600 11px/1 'Figtree',sans-serif;max-width:0;overflow:hidden;opacity:0;white-space:nowrap;transform:none;
+  transition:max-width .4s cubic-bezier(.34,1.56,.64,1),opacity .3s ease}
+.mstore .sk-dock .m-tab.active{background:var(--acc);color:#fff;padding:10px 16px;box-shadow:0 4px 16px rgba(198,113,57,.35)}
+.mstore .sk-dock .m-tab.active svg{transform:scale(1.08);stroke-width:2.6;filter:none}
+.mstore .sk-dock .m-tab.active .m-tab-label{max-width:64px;opacity:1;font-weight:600}
+.mstore .sk-dock .m-tab-badge{top:2px;right:4px;min-width:16px;height:16px;padding:0 4px;background:var(--acc);font:700 9px/16px 'Figtree',sans-serif;box-shadow:0 0 0 2px rgba(255,253,248,.9)}
+.mstore .sk-dock .m-tab.active .m-tab-badge{background:#fff;color:var(--accInk)}
+@media (prefers-reduced-motion:reduce){ .mstore .sk-dock .m-tab,.mstore .sk-dock .m-tab-label{transition:none} }
 
 /* ---------- MOTION PASS (site-wide animation additions) ---------- */
 :root{ --ease-out: cubic-bezier(.16,1,.3,1); --err:#B0402A; }
@@ -6468,20 +6612,23 @@ function mThemeToggleBtn(){
   return `<button class="m-iconbtn" onclick="mToggleTheme()" aria-label="${label}" aria-pressed="${state.mTheme==='dark'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"></path></svg></button>`;
 }
 
+/* Souk Gold rail card: photo with badge + wishlist heart, name, price, round quick-add. */
 function mCard(p){
-  const badge = p.new ? 'New' : (p.best ? 'Best seller' : '');
+  const badge = p.new ? 'New' : (p.best ? 'Best' : '');
+  const wished = state.wishlist.has(p.id);
+  const added = state.justAddedId===p.id;
   return `
-  <div class="m-card" onclick="mOpenProduct(${p.id})">
-    <div class="m-card-img">
+  <div class="sk-pcard" onclick="mOpenProduct(${p.id})">
+    <div class="sk-pcard-img">
       ${mProductMediaInner(p)}
-      ${badge?`<div class="m-badge">${badge}</div>`:''}
+      ${badge?`<div class="sk-pcard-badge">${badge}</div>`:''}
+      <button class="sk-pcard-wish ${wished?'on':''}" onclick="event.stopPropagation();toggleWishlist(${p.id})" aria-pressed="${wished}" aria-label="${wished?'Remove from wishlist':'Add to wishlist'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.3-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.7 12 20 12 20z"></path></svg></button>
     </div>
-    <div class="m-card-body">
-      <div class="m-card-name">${esc(p.name_en)}</div>
-      <div class="m-card-meta">${p.reviews>0?`★ ${p.rating.toFixed(1)} · ${p.reviews} reviews`:(p.stock===0?'Out of stock':(p.stock<=5?`Only ${p.stock} left`:'In stock'))}</div>
-      <div class="m-card-price">
-        <span><span class="m-price m-mono">${fmt(p.price)}</span>${p.was>p.price?`<span class="m-was m-mono" style="margin-inline-start:6px">${fmt(p.was)}</span>`:''}</span>
-        <button class="m-card-add" ${p.stock===0?'disabled style="opacity:.45"':''} onclick="event.stopPropagation();quickAdd(${p.id})">${state.justAddedId===p.id?'✓ Added':'Add'}</button>
+    <div class="sk-pcard-body">
+      <div class="sk-pcard-name">${esc(p.name_en)}</div>
+      <div class="sk-pcard-row">
+        <span><span class="sk-pcard-price">${fmt(p.price)}</span>${p.was>p.price?`<span class="sk-pcard-old">${fmt(p.was)}</span>`:''}</span>
+        <button class="sk-pcard-add ${added?'added':''}" ${p.stock===0?'disabled':''} onclick="event.stopPropagation();quickAdd(${p.id})" aria-label="${p.stock===0?'Out of stock':(added?'Added to basket':'Add to basket')}">${added?'✓':'+'}</button>
       </div>
     </div>
   </div>`;
@@ -6490,16 +6637,6 @@ function mProductMediaInner(p){
   const color = PALETTE[p.color % PALETTE.length];
   const svg = `<svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[p.icon]||''}"></path></svg>`;
   return p.imageUrl ? `<img src="${p.imageUrl}" alt="${esc(p.name_en)}" loading="lazy" decoding="async" style="background:${color}">` : `<div style="width:100%;height:100%;background:${color};display:flex;align-items:center;justify-content:center">${svg}</div>`;
-}
-function mRailCard(p){
-  return `
-  <div class="m-rail-card" onclick="mOpenProduct(${p.id})">
-    <div class="m-rail-card-img">${mProductMediaInner(p)}</div>
-    <div class="m-rail-card-body">
-      <div class="m-card-name" style="margin-bottom:6px">${esc(p.name_en)}</div>
-      <div class="m-price m-mono">${fmt(p.price)}</div>
-    </div>
-  </div>`;
 }
 function mListItem(p){
   const stockLabel = p.stock===0 ? 'Out of stock' : (p.stock<8 ? 'Low stock' : 'In stock');
@@ -6532,12 +6669,14 @@ function mHome(){
   <div style="animation:fadeIn .3s ease">
     <div class="m-header" id="m-header-sec">
       <div class="m-logo-mark" onclick="this.classList.add('m-logo-bounce');setTimeout(()=>this.classList.remove('m-logo-bounce'),600)"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
-      <div style="flex:1;min-width:0">
-        <div class="m-kicker">ya halaa ya halaa</div>
-        <div class="m-title">HABIBI</div>
+      <div class="sk-brand">
+        <div class="sk-brand-name">HABIBI</div>
+        <div class="sk-brand-tag">Everything, with love</div>
       </div>
       ${mThemeToggleBtn()}
+      <button class="m-iconbtn" onclick="mGo('cart')" aria-label="Basket${cartCount()?`, ${cartCount()} items`:''}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0"></path></svg>${cartCount()?`<span class="sk-badge-dot">${cartCount()}</span>`:''}</button>
     </div>
+    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
     ${hero.url ? `
     <div class="m-hero" id="m-billboard-sec">
       <div class="m-hero-media hero-photo-media" id="m-hero-media">${heroLayerHtml(hero, state.billboardIndex, true)}</div>
@@ -6552,7 +6691,10 @@ function mHome(){
         ${hero.slides.map((_,idx)=>`<button class="m-hero-dot ${idx===(state.billboardIndex % hero.slides.length)?'active':''}" onclick="event.stopPropagation();goBillboardSlide(${idx})" aria-label="Slide ${idx+1}"></button>`).join('')}
       </div>`:''}
     </div>` : ''}
-    <button class="m-search" onclick="mSearchTap()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><span>Shu 3ayez....</span></button>
+    ${liveCats.length>1?`
+    <div class="sk-cats">
+      ${liveCats.map(c=>`<button class="sk-cat" onclick="mFilterByCat('${c.id}')"><span class="sk-cat-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg></span><span class="sk-cat-label">${esc(c.en)}</span></button>`).join('')}
+    </div>`:''}
     ${deal ? `
     <div class="m-feature m-reveal" id="m-deal-sec" onclick="mOpenProduct(${deal.id})">
       <div class="m-feature-img" style="background:${PALETTE[deal.color % PALETTE.length]}">
@@ -6568,24 +6710,25 @@ function mHome(){
         </div>
       </div>
     </div>` : ''}
-    ${liveCats.length>1?`
-    <div class="m-rail">
-      ${liveCats.map(c=>`<button class="m-cat-chip" onclick="mFilterByCat('${c.id}')"><svg viewBox="0 0 24 24"><path d="${M_ICON_PATHS[c.icon]||''}"></path></svg>${c.en}</button>`).join('')}
-    </div>`:''}
     ${featured.length ? `
     <div class="m-reveal" id="m-picked-sec">
-      <div class="m-section-head"><div class="m-section-title">Picked for you</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
-      <div class="m-grid m-grid-wide">${featured.slice(0,6).map(mCard).join('')}</div>
+      <div class="m-section-head"><div class="m-section-title">Just for you</div><button class="m-seeall" onclick="mFilterByFlag('featured')">See all</button></div>
+      <div class="sk-rail">${featured.slice(0,8).map(mCard).join('')}</div>
     </div>` : ''}
     ${best.length ? `
-    <div class="m-reveal" id="m-best-sec" style="padding:0 0 22px">
-      <div class="m-section-head"><div><div class="m-section-kicker">Bought again and again</div><div class="m-section-title">Best sellers</div></div><button class="m-seeall" onclick="mFilterByFlag('best')">See all</button></div>
-      <div class="m-rail" style="padding:6px 20px 4px">${best.slice(0,5).map(mRailCard).join('')}</div>
+    <div class="m-reveal" id="m-best-sec">
+      <div class="m-section-head"><div class="m-section-title">Best sellers</div><button class="m-seeall" onclick="mFilterByFlag('best')">See all</button></div>
+      <div class="sk-rail">${best.slice(0,8).map(mCard).join('')}</div>
     </div>` : ''}
     ${news.length ? `
-    <div class="m-reveal" id="m-new-sec" style="padding:0 0 22px">
-      <div class="m-section-head"><div><div class="m-section-kicker">Just landed</div><div class="m-section-title">New arrivals</div></div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
-      <div class="m-grid m-grid-wide">${news.slice(0,6).map(mCard).join('')}</div>
+    <div class="m-reveal" id="m-new-sec">
+      <div class="m-section-head"><div class="m-section-title">New arrivals</div><button class="m-seeall" onclick="mFilterByFlag('new')">See all</button></div>
+      <div class="sk-rail">${news.slice(0,8).map(mCard).join('')}</div>
+    </div>` : ''}
+    ${!featured.length && !best.length && !news.length && PRODUCTS.length ? `
+    <div class="m-reveal" id="m-all-sec">
+      <div class="m-section-head"><div class="m-section-title">All products</div><button class="m-seeall" onclick="mGoShopAll()">See all</button></div>
+      <div class="sk-rail">${PRODUCTS.slice(0,8).map(mCard).join('')}</div>
     </div>` : ''}
   </div>`;
 }
@@ -6639,15 +6782,15 @@ function mProduct(){
     </div>
     <div class="m-product-body">
       <div class="m-kicker" style="margin-bottom:6px">${(CATS.find(c=>c.id===p.cat)||{en:''}).en}</div>
-      <div class="m-disp" style="font-size:24px;line-height:1.2;margin-bottom:10px">${esc(p.name_en)}</div>
-      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
-        <span class="m-mono" style="font-weight:600;font-size:26px;color:var(--accInk)">${fmt(p.price)}</span>
-        ${p.was>p.price?`<span class="m-was m-mono" style="font-size:14px">${fmt(p.was)}</span>`:''}
-        ${p.reviews>0?`<span style="margin-left:auto;font:600 12px/1 'Figtree',sans-serif;color:var(--acc2Ink)">★ ${p.rating.toFixed(1)} (${p.reviews})</span>`:''}
+      <div class="sk-pd-name">${esc(p.name_en)}</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:${p.reviews>0?'0':'16px'}">
+        <span class="sk-pd-price">${fmt(p.price)}</span>
+        ${p.was>p.price?`<span class="m-was m-mono" style="font-size:13px">${fmt(p.was)}</span>`:''}
       </div>
+      ${p.reviews>0?`<div class="sk-pd-rating">${'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.9 7.5.6-5.7 4.9 1.8 7.3L12 17.8 5.4 21.7l1.8-7.3L1.5 9.5 9 8.9z"></path></svg>'.repeat(Math.round(p.rating))}<span>${p.rating.toFixed(1)} · ${p.reviews} review${p.reviews===1?'':'s'}</span></div>`:''}
       <div style="font:400 14px/1.65 'Figtree',sans-serif;color:var(--muted);margin-bottom:18px">${p.desc_en}</div>
       ${p.variants.length>1?`
-      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Color: <b style="color:var(--text)">${variant}</b></div>
+      <div class="sk-pd-label">Color: <span style="font-weight:600;color:var(--text)">${esc(variant)}</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">
         ${p.variants.map((v,i)=>{
           const photo = productPhotos(p)[i];
@@ -6656,7 +6799,7 @@ function mProduct(){
         }).join('')}
       </div>`:''}
       ${sizes.length?`
-      <div style="font:600 12px/1 'Figtree',sans-serif;color:var(--muted);margin-bottom:9px">Choose a size</div>
+      <div class="sk-pd-label">Size</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
         ${sizes.map(sz=>`<button class="m-variant-chip ${sz===selSize?'active':''}" onclick="pickSize(${JSON.stringify(sz).replace(/"/g,'&quot;')})">${sz}</button>`).join('')}
       </div>
@@ -6702,9 +6845,9 @@ function mCart(){
         <div class="m-card-name">${esc(p.name_en)}</div>
         <div class="m-card-meta" style="margin-bottom:8px">${optionLabel(l)}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="changeCartQty(${i},-1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">−</button>
-          <span class="m-mono m-qty-val ${state.qtyBumpLine===i?'bump':''}" style="font-weight:600;font-size:13px;min-width:14px;text-align:center">${l.qty}</span>
-          <button onclick="changeCartQty(${i},1)" style="width:26px;height:26px;border-radius:999px;border:0;background:var(--surf);color:var(--text);cursor:pointer;font:600 14px/1 'Figtree',sans-serif">+</button>
+          <button class="sk-qbtn" onclick="changeCartQty(${i},-1)" aria-label="Decrease quantity">−</button>
+          <span class="m-mono m-qty-val ${state.qtyBumpLine===i?'bump':''}" style="font-weight:600;font-size:14px;min-width:18px;text-align:center">${l.qty}</span>
+          <button class="sk-qbtn" onclick="changeCartQty(${i},1)" aria-label="Increase quantity">+</button>
           <span class="m-mono" style="margin-left:auto;font-weight:600;color:var(--accInk)">${fmt(p.price*l.qty)}</span>
         </div>
       </div>
@@ -6713,7 +6856,7 @@ function mCart(){
   const sub = cartSubtotal(), fee = deliveryFee();
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">${mBackBtn('mBack()')}<div class="m-list-title">Your basket</div></div>
+    <div class="sk-page-head">${mBackBtn('mBack()')}<div class="sk-page-title">Your basket</div>${cartCount()?`<div class="sk-page-count">${cartCount()} item${cartCount()===1?'':'s'}</div>`:''}</div>
     ${state.cart.length===0 ? `
     <div class="m-empty">
       <div class="m-empty-icon"><svg viewBox="0 0 24 24"><path d="M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0"></path></svg></div>
@@ -6912,12 +7055,16 @@ function mAccount(){
   const initial = name.trim().charAt(0).toUpperCase() || 'Y';
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 26px">
-    <div class="m-disp" style="font-size:23px;margin:6px 0 16px">Account</div>
+    <div class="sk-page-title" style="margin:6px 0 16px">Account</div>
     <div class="m-account-card">
       <div class="m-avatar">${initial}</div>
       <div><div style="font:700 15px/1.3 'Figtree',sans-serif;color:#fff">${name}</div><div style="font:400 12.5px/1.4 'Figtree',sans-serif;color:rgba(255,255,255,.8)">${(c&&c.phone)||''}${c&&c.phone&&c&&c.email?' · ':''}${(c&&c.email)||''}</div></div>
     </div>
     <div class="m-panel">
+      <div class="m-panel-row" role="button" tabindex="0" style="cursor:pointer" onclick="goMyOrders()">
+        <div style="font:600 14px/1.3 'Figtree',sans-serif">My orders</div>
+        <div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${(state.orders||[]).length ? (state.orders||[]).length+' ' : ''}›</div>
+      </div>
       <div class="m-panel-row" style="cursor:pointer" onclick="mGoWishlist()">
         <div style="font:600 14px/1.3 'Figtree',sans-serif">Wishlist</div>
         <div style="font:500 13px/1 'Figtree',sans-serif;color:var(--muted)">${state.wishlist.size} ›</div>
@@ -7004,8 +7151,10 @@ function mChat(){
   const humanMode = chatInHumanMode();
   return `
   <div style="animation:fadeIn .25s ease;padding:8px 20px 20px">
-    <div class="m-disp" style="font-size:23px;margin:6px 0 4px">Chat</div>
-    <div style="font:400 12.5px/1.4 'Figtree',sans-serif;color:var(--muted);margin-bottom:14px">Ask us anything about HABIBI</div>
+    <div class="sk-chat-head">
+      <div class="sk-chat-avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+      <div><div class="sk-chat-name">HABIBI Support</div><div class="sk-chat-status">Ask us anything about HABIBI</div></div>
+    </div>
     ${humanMode?`<div class="m-chat-status">${state.chatConversation.status==='human'?'🟢 Connected to our team':"📨 We've got your message — our team will reply shortly"}</div>`:''}
     <div id="m-chat-body-el" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
       ${state.chatLog.length===0?`<div class="m-msg bot">Hi! How can I help you today?</div>`:
@@ -7014,29 +7163,38 @@ function mChat(){
     ${!humanMode?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${suggestions.map(s=>`<button class="chat-chip" onclick="mChatSuggest('${s.replace(/'/g,"\\'")}')" style="background:var(--card);border:1px solid var(--line);color:var(--text)">${s}</button>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;position:sticky;bottom:8px">
       <input id="m-chat-input" placeholder="Type your question..." onkeydown="if(event.key==='Enter')mSubmitChat()" ${chatBusy?'disabled':''} style="flex:1;border:1.5px solid var(--line);border-radius:999px;padding:0 16px;font:400 14px/1 'Figtree',sans-serif;background:var(--card);color:var(--text);height:46px"/ aria-label="Type your question...">
-      <button class="m-btn-primary" onclick="mSubmitChat()" ${chatBusy?'disabled':''} style="padding:0 20px;height:46px;border-radius:999px">Send</button>
+      <button class="sk-chat-send" onclick="mSubmitChat()" ${chatBusy?'disabled':''} aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4z"></path></svg></button>
     </div>
   </div>`;
 }
 function mTabBar(){
   const count = cartCount();
-  const active = state.mScreen==='product' ? 'list' : (state.mScreen==='checkout'||state.mScreen==='confirm' ? 'cart' : (state.mScreen==='track' ? 'orders' : state.mScreen));
+  /* Souk Gold dock: five tabs. Shop-all is reached from "See all" / categories, and Orders
+     moved into the Account screen, so every other screen maps onto its nearest tab. */
+  const s = state.mScreen;
+  const f = state.listFilter;
+  const active = (s==='list' && f && f.type==='search') ? 'search'
+    : (s==='list' || s==='product') ? 'home'
+    : (s==='checkout'||s==='confirm'||s==='paymentInstructions') ? 'cart'
+    : (s==='orders'||s==='track'||s==='page') ? 'account'
+    : s;
   const tabs = [
     {k:'home', label:'Home', d:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z", go:'mGoHome()'},
-    {k:'list', label:'Shop', d:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", go:'mGoShopAll()'},
+    {k:'search', label:'Search', d:"M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14M20 20l-3.5-3.5", go:'mSearchTap()'},
     {k:'cart', label:'Basket', d:"M6 7h12l-1.2 12H7.2zM9 7a3 3 0 0 1 6 0", go:"mGo('cart')"},
-    {k:'orders', label:'Orders', d:"M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8", go:'goMyOrders()'},
     {k:'chat', label:'Chat', d:"M4 4h16v11H4zM8 19h4l3 3v-3", go:'mGoChat()'},
-    {k:'account', label:'You', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:'goAccount()'}
+    {k:'account', label:'Account', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:'goAccount()'}
   ];
   return `
   <div class="m-tabbar">
+    <nav class="sk-dock" aria-label="Main">
     ${tabs.map(t=>`
-    <button class="m-tab ${active===t.k?'active':''}" onclick="${t.go}">
-      <svg viewBox="0 0 24 24"><path d="${t.d}"></path></svg>
+    <button class="m-tab ${active===t.k?'active':''}" onclick="${t.go}" aria-label="${t.label}${t.k==='cart'&&count?`, ${count} items`:''}" ${active===t.k?'aria-current="page"':''}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${t.d}"></path></svg>
       <span class="m-tab-label">${t.label}</span>
       ${t.k==='cart'&&count?`<span class="m-tab-badge">${count}</span>`:''}
     </button>`).join('')}
+    </nav>
   </div>`;
 }
 function mSheet(){
