@@ -4918,6 +4918,7 @@ function adminAddImageUrl(id){
   syncProductPhotos(p);
   showToast(state.lang==='ar' ? 'تم إضافة الصورة' : 'Photo added');
   render();
+  lowResUrlWarning(url).then(msg=>{ if(msg) showToast(msg, 9000); });
 }
 function removeProductPhoto(id, idx){
   const p = findProduct(id);
@@ -4926,6 +4927,31 @@ function removeProductPhoto(id, idx){
   syncProductPhotos(p);
   render();
 }
+/* A phone shows the product photo roughly 750-1100 real pixels wide, so anything under 800px on
+   its shorter side gets stretched and looks soft — in practice that is almost always a screenshot
+   of the supplier page rather than the saved original. Warns, never blocks, like the size guard. */
+const MIN_PRODUCT_PHOTO_PX = 800;
+function lowResMessage(w, h){
+  return `This photo is only ${w}×${h} px, so it will look blurry on phones. Use at least ${MIN_PRODUCT_PHOTO_PX}px: save the original image from the supplier page (long-press or right-click → Save image) instead of taking a screenshot.`;
+}
+/* createImageBitmap reads the file's pixel size without a blob: URL, which the CSP's img-src
+   deliberately does not allow. Resolves '' when the photo is big enough or can't be measured. */
+async function lowResFileWarning(file){
+  try{
+    const bmp = await createImageBitmap(file);
+    const w = bmp.width, h = bmp.height;
+    if(bmp.close) bmp.close();
+    return Math.min(w, h) < MIN_PRODUCT_PHOTO_PX ? lowResMessage(w, h) : '';
+  } catch(e){ return ''; }
+}
+function lowResUrlWarning(url){
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = ()=>res(Math.min(img.naturalWidth, img.naturalHeight) < MIN_PRODUCT_PHOTO_PX ? lowResMessage(img.naturalWidth, img.naturalHeight) : '');
+    img.onerror = ()=>res('');
+    img.src = url;
+  });
+}
 async function handleProductPhotoUpload(event, id){
   const file = event.target.files[0];
   if(!file) return;
@@ -4933,7 +4959,8 @@ async function handleProductPhotoUpload(event, id){
     showToast(state.lang==='ar' ? 'يرجى اختيار ملف صورة' : 'Please choose an image file');
     return;
   }
-  const heavy = heavyUploadWarning(file);
+  const lowRes = await lowResFileWarning(file);
+  const heavy = [lowRes, heavyUploadWarning(file)].filter(Boolean).join(' ');
   showToast(state.lang==='ar' ? 'جارٍ رفع الصورة...' : 'Uploading image...');
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
