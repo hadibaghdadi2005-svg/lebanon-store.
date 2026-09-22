@@ -1345,27 +1345,40 @@ section{padding:64px 0}
 .sk-chat-send svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .sk-chat-send:disabled{opacity:.5;cursor:default}
 
-/* Luxury dock — a floating glass pill. The active tab fills with terracotta and reveals its
-   label. .m-tabbar stays the fixed full-width wrapper so syncMobileBuybarOffset() still measures
-   the right box; only the inner pill takes taps. */
+/* Minimal Luxury Dock (#10 in the user's nav-design reference video). A frosted rounded
+   rectangle where every tab always shows its icon over its label; the active tab sits on a raised
+   white "key" with a soft warm glow, and that key glides to the new tab on every switch.
+   .m-tabbar stays the fixed full-width wrapper so syncMobileBuybarOffset() still measures the
+   right box; only the inner .sk-dock takes taps. */
 .mstore .m-tabbar{background:none;border-top:0;box-shadow:none;pointer-events:none;justify-content:center;
-  padding:10px 20px calc(14px + env(safe-area-inset-bottom))}
-.sk-dock{pointer-events:auto;display:flex;align-items:center;gap:4px;padding:6px;border-radius:999px;
-  background:rgba(255,253,248,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
-  border:1px solid rgba(255,255,255,.55);box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.6)}
-.mstore[data-theme="dark"] .sk-dock{background:rgba(39,35,32,.78);border-color:rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.45)}
-.mstore .sk-dock .m-tab{flex:none;flex-direction:row;gap:6px;padding:10px 12px;border-radius:999px;color:var(--n500);
-  transition:background .4s cubic-bezier(.34,1.56,.64,1),padding .4s cubic-bezier(.34,1.56,.64,1),color .25s ease,transform .18s ease}
+  padding:10px 16px calc(14px + env(safe-area-inset-bottom))}
+.sk-dock{pointer-events:auto;position:relative;display:flex;align-items:stretch;width:100%;max-width:380px;padding:6px;border-radius:24px;
+  background:rgba(255,253,248,.78);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 10px 30px rgba(46,43,37,.14),0 2px 6px rgba(46,43,37,.06),inset 0 1px 0 rgba(255,255,255,.9)}
+.mstore[data-theme="dark"] .sk-dock{background:rgba(39,35,32,.82);border-color:rgba(255,255,255,.08);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
+/* The raised key. One element, positioned by --i (active index); --p is where it came from, so
+   the glide still plays even though render() rebuilds the whole dock. */
+.sk-dock-key{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px) / var(--n,5));border-radius:18px;pointer-events:none;
+  transform:translateX(calc(var(--i,0) * 100%));
+  background:radial-gradient(120% 90% at 50% 20%,rgba(255,196,150,.55),rgba(255,255,255,0) 70%),#fff;
+  box-shadow:0 6px 16px rgba(198,113,57,.18),0 2px 4px rgba(46,43,37,.08),inset 0 1px 0 #fff,inset 0 -2px 0 rgba(46,43,37,.04)}
+.mstore[data-theme="dark"] .sk-dock-key{background:radial-gradient(120% 90% at 50% 20%,rgba(246,160,107,.35),rgba(255,255,255,0) 70%),#3a332d;
+  box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.sk-dock-key.glide{animation:dockGlide .45s cubic-bezier(.34,1.3,.64,1)}
+@keyframes dockGlide{from{transform:translateX(calc(var(--p,0) * 100%)) scale(.94)}to{transform:translateX(calc(var(--i,0) * 100%)) scale(1)}}
+.mstore .sk-dock .m-tab{position:relative;z-index:1;flex:1 1 0;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:9px 2px 8px;border-radius:18px;background:none;color:#3a3530;transition:color .25s ease,transform .18s ease}
+.mstore[data-theme="dark"] .sk-dock .m-tab{color:var(--muted)}
 .mstore .sk-dock .m-tab::after{display:none}
-.mstore .sk-dock .m-tab svg{width:20px;height:20px;stroke-width:2.4;filter:none;transform:none}
-.mstore .sk-dock .m-tab-label{font:600 11px/1 'Figtree',sans-serif;max-width:0;overflow:hidden;opacity:0;white-space:nowrap;transform:none;
-  transition:max-width .4s cubic-bezier(.34,1.56,.64,1),opacity .3s ease}
-.mstore .sk-dock .m-tab.active{background:var(--acc);color:#fff;padding:10px 16px;box-shadow:0 4px 16px rgba(198,113,57,.35)}
-.mstore .sk-dock .m-tab.active svg{transform:scale(1.08);stroke-width:2.6;filter:none}
-.mstore .sk-dock .m-tab.active .m-tab-label{max-width:64px;opacity:1;font-weight:600}
-.mstore .sk-dock .m-tab-badge{top:2px;right:4px;min-width:16px;height:16px;padding:0 4px;background:var(--acc);font:700 9px/16px 'Figtree',sans-serif;box-shadow:0 0 0 2px rgba(255,253,248,.9)}
-.mstore .sk-dock .m-tab.active .m-tab-badge{background:#fff;color:var(--accInk)}
-@media (prefers-reduced-motion:reduce){ .mstore .sk-dock .m-tab,.mstore .sk-dock .m-tab-label{transition:none} }
+.mstore .sk-dock .m-tab:active{transform:scale(.94)}
+.mstore .sk-dock .m-tab svg{width:21px;height:21px;stroke-width:2.2;filter:none;transform:none;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.mstore .sk-dock .m-tab-label{font:600 10.5px/1 'Figtree',sans-serif;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;opacity:1;transform:none}
+.mstore .sk-dock .m-tab.active{color:var(--acc)}
+.mstore .sk-dock .m-tab.active svg{transform:translateY(-1px);stroke-width:2.4;filter:none}
+.mstore .sk-dock .m-tab.active .m-tab-label{font-weight:700}
+.mstore .sk-dock .m-tab-badge{top:3px;right:calc(50% - 20px);min-width:16px;height:16px;padding:0 4px;background:var(--acc);color:#fff;font:700 9px/16px 'Figtree',sans-serif;box-shadow:0 0 0 2px rgba(255,253,248,.95)}
+@media (prefers-reduced-motion:reduce){ .sk-dock-key.glide{animation:none} .mstore .sk-dock .m-tab,.mstore .sk-dock .m-tab svg{transition:none} }
 
 /* ---------- MOTION PASS (site-wide animation additions) ---------- */
 :root{ --ease-out: cubic-bezier(.16,1,.3,1); --err:#B0402A; }
@@ -7167,6 +7180,7 @@ function mChat(){
     </div>
   </div>`;
 }
+let _dockPrevIdx = null;
 function mTabBar(){
   const count = cartCount();
   /* Souk Gold dock: five tabs. Shop-all is reached from "See all" / categories, and Orders
@@ -7185,9 +7199,15 @@ function mTabBar(){
     {k:'chat', label:'Chat', d:"M4 4h16v11H4zM8 19h4l3 3v-3", go:'mGoChat()'},
     {k:'account', label:'Account', d:"M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M5 21c0-4 3.2-6 7-6s7 2 7 6", go:'goAccount()'}
   ];
+  const idx = Math.max(0, tabs.findIndex(t=>t.k===active));
+  /* render() rebuilds the dock on every state change, so the key's previous position is carried
+     in a module variable; the glide class is only added when the active tab actually changed. */
+  const prev = _dockPrevIdx==null ? idx : _dockPrevIdx;
+  _dockPrevIdx = idx;
   return `
   <div class="m-tabbar">
-    <nav class="sk-dock" aria-label="Main">
+    <nav class="sk-dock" aria-label="Main" style="--n:${tabs.length}">
+    <span class="sk-dock-key${prev!==idx?' glide':''}" style="--i:${idx};--p:${prev}" aria-hidden="true"></span>
     ${tabs.map(t=>`
     <button class="m-tab ${active===t.k?'active':''}" onclick="${t.go}" aria-label="${t.label}${t.k==='cart'&&count?`, ${count} items`:''}" ${active===t.k?'aria-current="page"':''}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${t.d}"></path></svg>
