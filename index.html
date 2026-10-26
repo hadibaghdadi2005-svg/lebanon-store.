@@ -1414,7 +1414,8 @@ function dbRowToOrder(row){
     status: row.status, deliveryMin: row.delivery_min, deliveryMax: row.delivery_max,
     customerId: row.customer_id, customerName: row.customer_name,
     paymentStatus: row.payment_status, paymentReference: row.payment_reference,
-    paymentProofPath: row.payment_proof_path, paymentSubmittedAt: row.payment_submitted_at
+    paymentProofPath: row.payment_proof_path, paymentSubmittedAt: row.payment_submitted_at,
+    paymentRejectReason: row.payment_reject_reason
   };
 }
 
@@ -3970,18 +3971,30 @@ async function verifyPayment(dbId){
 }
 async function rejectPayment(dbId){
   const isAr = state.lang==='ar';
-  if(!confirm(isAr?'هل تريد رفض هذا الدفع؟ سيتم إلغاء الطلب.':'Reject this payment? The order will be cancelled.')) return;
   const o = state.orders.find(o=>o._dbId===dbId);
   if(!o) return;
+  /* Ask why. Without a reason the customer just sees "Payment not confirmed" and has no
+     idea whether the reference was wrong, the amount was short, or what to do next. */
+  const reason = prompt(isAr
+    ? 'سبب الرفض (سيظهر للعميل):\nمثال: لم نستلم التحويل، أو المبلغ غير مطابق.'
+    : 'Why are you rejecting it? (the customer will see this)\ne.g. "We could not find this transfer" or "Amount received was less than the order total".');
+  if(reason === null) return;                     // cancelled the prompt
+  const note = reason.trim();
+  if(!note){ showToast(isAr?'يرجى كتابة سبب':'Please enter a reason'); return; }
+  if(!confirm(isAr?'هل تريد رفض هذا الدفع؟ سيتم إلغاء الطلب.':'Reject this payment? The order will be cancelled.')) return;
+  const prevStatus = o.paymentStatus, prevReason = o.paymentRejectReason;
   o.paymentStatus = 'rejected';
+  o.paymentRejectReason = note;
   render();
   try{
-    const { error } = await sb.from('orders').update({ payment_status:'rejected' }).eq('id', dbId);
+    const { error } = await sb.from('orders').update({ payment_status:'rejected', payment_reject_reason: note }).eq('id', dbId);
     if(error) throw error;
-    logAdminAction('reject_payment', { order_id: dbId, order_num: o.num });
+    logAdminAction('reject_payment', { order_id: dbId, order_num: o.num, reason: note });
     showToast(isAr?'تم رفض الدفع وإلغاء الطلب':'Payment rejected, order cancelled');
   } catch(e){
     console.error('Reject payment failed:', e);
+    o.paymentStatus = prevStatus; o.paymentRejectReason = prevReason;   // don't leave the UI claiming it saved
+    render();
     showToast(isAr?'تعذر رفض الدفع':'Could not reject the payment');
   }
 }
@@ -4299,7 +4312,10 @@ function renderOrderTrackCard(o){
   const paymentBanner = o.paymentStatus==='pending_verification'
     ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FCEFCB;color:#8c5a0a">${isAr?'بانتظار التحقق من الدفع':'Awaiting payment verification'}</span>${payAgain}</div>`
     : (o.paymentStatus==='rejected' || o.paymentStatus==='auto_cancelled')
-    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FBDACB;color:var(--brick)">${isAr?'لم يتم تأكيد الدفع — تم إلغاء الطلب':'Payment not confirmed — order cancelled'}</span></div>`
+    ? `<div style="border-top:1px solid var(--sand-dark);padding-top:12px;margin-top:12px"><span class="status-pill" style="background:#FBDACB;color:var(--brick)">${isAr?'لم يتم تأكيد الدفع — تم إلغاء الطلب':'Payment not confirmed — order cancelled'}</span>${
+        o.paymentRejectReason
+          ? `<div style="margin-top:8px;font-size:12.5px;color:var(--ink);line-height:1.6"><b>${isAr?'السبب:':'Reason:'}</b> ${esc(o.paymentRejectReason)}</div>`
+          : ''}</div>`
     : '';
   return `
   <div class="order-card-mini">
@@ -4548,6 +4564,80 @@ function adminStats(){
   const outOf = PRODUCTS.filter(p=>p.stock===0).length;
   const totalSales = last7DaysSales().reduce((s,d)=>s+d.v,0);
   return {totalStock, low, outOf, totalSales};
+}
+
+/* ---------- CSV export (admin only) ----------
+   Fields are quoted and internal quotes doubled per RFC 4180. A leading =,+,- or @
+   is prefixed with an apostrophe so Excel/Sheets treat it as text rather than a
+   formula — a customer could otherwise put =HYPERLINK(...) in their name and have
+   it execute when the admin opens the export. */
+function csvCell(v){
+  if(v===null || v===undefined) return '""';
+  let s = String(v);
+  if(/^[=+\-@]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+function downloadCsv(filename, headers, rows){
+  const body = [headers.map(csvCell).join(',')]
+    .concat(rows.map(r=>r.map(csvCell).join(',')))
+    .join('\r\n');
+  // BOM so Excel opens UTF-8 (Arabic names) correctly instead of as mojibake
+  const blob = new Blob(['﻿' + body], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function todayStamp(){ return new Date().toISOString().slice(0,10); }
+/* One row per order line, not per order — this is what you need for accounting and
+   for placing the supplier purchase, and it keeps cost/profit per item visible. */
+function exportOrdersCsv(){
+  const isAr = state.lang==='ar';
+  const rows = [];
+  [...state.orders].reverse().forEach(o=>{
+    (o.items||[]).forEach(it=>{
+      const cost = (it.cost!==undefined && it.cost!==null) ? Number(it.cost) : null;
+      const line = Number(it.price||0) * Number(it.qty||0);
+      rows.push([
+        o.num, o.date, o.status||'', o.paymentStatus||'',
+        o.customer||'', o.phone||'', o.gov||'',
+        (state.lang==='ar'?it.name_ar:it.name_en)||'', it.sku||'',
+        optionLabel(it), it.qty||0,
+        Number(it.price||0).toFixed(2), line.toFixed(2),
+        cost===null?'':cost.toFixed(2),
+        cost===null?'':(line - cost*Number(it.qty||0)).toFixed(2),
+        it.shippingCost!==undefined&&it.shippingCost!==null?Number(it.shippingCost).toFixed(2):'',
+        it.status||'', Number(o.total||0).toFixed(2)
+      ]);
+    });
+  });
+  if(!rows.length){ showToast(isAr?'لا توجد طلبات لتصديرها':'No orders to export'); return; }
+  downloadCsv(`habibi-orders-${todayStamp()}.csv`,
+    ['Order #','Date','Order status','Payment status','Customer','Phone','Governorate',
+     'Product','SKU / tracking','Options','Qty','Unit price','Line total','Unit cost',
+     'Line profit','China shipping','Item status','Order total'], rows);
+  logAdminAction('export_orders_csv', { rows: rows.length });
+}
+function exportCustomersCsv(){
+  const isAr = state.lang==='ar';
+  const customers = state.customers.filter(c=>!isAdminUser(c));
+  if(!customers.length){ showToast(isAr?'لا يوجد عملاء لتصديرهم':'No customers to export'); return; }
+  const rows = customers.map(c=>{
+    const orders = state.orders.filter(o=>o.customerId===c.id);
+    const spent = orders.reduce((s,o)=>s+Number(o.total||0),0);
+    return [
+      c.name||'', c.email||'', c.phone||'', c.gov||'', c.city||'', c.address||'',
+      c.createdAt||'', orders.length, spent.toFixed(2),
+      (c.cart||[]).reduce((s,l)=>s+l.qty,0),
+      (c.wishlist && c.wishlist.size)||0,
+      c.blocked?'suspended':'active'
+    ];
+  });
+  downloadCsv(`habibi-customers-${todayStamp()}.csv`,
+    ['Name','Email','Phone','Governorate','City','Address','Joined','Orders',
+     'Total spent','Items in cart','Wishlist items','Account status'], rows);
+  logAdminAction('export_customers_csv', { rows: rows.length });
 }
 /* Persists any product-field edit to the database so it survives refreshes and shows for everyone */
 function syncProductField(id, fields){
@@ -5475,6 +5565,21 @@ function renderAdminCustomers(){
         <div style="text-align:end;margin-top:10px;font-weight:700" class="font-mono">${isAr?'المجموع':'Total'}: ${fmt(cartTotal)}</div>`}
     </div>
 
+    ${(function(){
+      /* Wishlist arrives from the DB as a plain array and is turned into a Set on login,
+         so accept either shape here rather than assuming one. */
+      const w = c.wishlist instanceof Set ? Array.from(c.wishlist) : (Array.isArray(c.wishlist)? c.wishlist : []);
+      const wished = w.map(id=>findProduct(id)).filter(Boolean);
+      return `
+    <div class="panel" style="margin-bottom:18px">
+      <h3>${isAr?'قائمة أمنيات العميل':"Customer's wishlist"} (${wished.length})</h3>
+      ${wished.length===0
+        ? `<p style="color:var(--ink-soft);font-size:13.5px">${isAr?'لا توجد منتجات محفوظة':'Nothing saved yet'}</p>`
+        : `<table class="admin-table"><thead><tr><th>${isAr?'المنتج':'Product'}</th><th>${isAr?'السعر':'Price'}</th><th>${isAr?'المخزون':'Stock'}</th></tr></thead>
+        <tbody>${wished.map(p=>`<tr><td>${esc(pname(p))}</td><td class="font-mono">${fmt(p.price)}</td><td>${p.stock===0?`<span style="color:var(--brick);font-weight:700">${isAr?'نفذ':'Out of stock'}</span>`:p.stock}</td></tr>`).join('')}</tbody></table>`}
+    </div>`;
+    })()}
+
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
         <h3 style="margin:0">${isAr?'طلبات هذا العميل':"This customer's orders"} (${custOrders.length})</h3>
@@ -5500,7 +5605,10 @@ function renderAdminCustomers(){
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <h3 style="margin:0">${isAr?'العملاء':'Customers'} (${filteredCustomers.length}${filteredCustomers.length!==customers.length?` / ${customers.length}`:''})</h3>
-      <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+        ${customers.length>0?`<button class="btn btn-ghost btn-sm" onclick="exportCustomersCsv()">⬇️ ${isAr?'تصدير CSV':'Export CSV'}</button>`:''}
+      </div>
     </div>
     <input id="admin-customer-search-input" type="text" value="${state.adminCustomerSearch||''}" placeholder="${isAr?'ابحث بالاسم أو البريد أو الهاتف':'Search by name, email, or phone'}" oninput="adminSearchInput('adminCustomerSearch', this.value, 'admin-customer-search-input')" style="width:100%;max-width:320px;margin-bottom:14px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"/>
     ${filteredCustomers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px">${customers.length===0?(isAr?'لا يوجد عملاء مسجلون بعد.':'No customers have signed up yet.'):(isAr?'لا يوجد عملاء مطابقون':'No matching customers')}</p>` :
@@ -5678,10 +5786,38 @@ function renderAdmin(){
             ${salesData.map(d=>`<div class="bar" style="height:${(d.v/maxBar*100)}%"><span>${d.d}</span></div>`).join('')}
           </div>
         </div>
+        ${(function(){
+          const isAr = state.lang==='ar';
+          /* Which products need restocking — the stat cards above give a count, but the
+             count alone isn't actionable without knowing which items it refers to. */
+          const needs = PRODUCTS.filter(p=>p.stock<=5)
+            .sort((a,b)=>a.stock-b.stock);
+          const best = PRODUCTS.filter(p=>p.best);
+          if(needs.length){
+            return `
         <div class="panel">
-          <h3>${state.lang==='ar'?'الأكثر مبيعًا':'Best Sellers'}</h3>
-          ${PRODUCTS.filter(p=>p.best).map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)"><span>${esc(pname(p))}</span><span class="font-mono">${fmt(p.price)}</span></div>`).join('')}
-        </div>
+          <h3>${isAr?'يحتاج إعادة تخزين':'Needs restocking'} (${needs.length})</h3>
+          ${needs.map(p=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pname(p))}</span>
+              <span class="font-mono" style="flex-shrink:0;font-weight:700;color:${p.stock===0?'#999':'var(--brick)'}">${p.stock===0?(isAr?'نفذ':'Out'):p.stock+(isAr?' متبقّي':' left')}</span>
+            </div>`).join('')}
+          <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="setAdminView('products')">${isAr?'إدارة المنتجات ←':'Manage products →'}</button>
+        </div>`;
+          }
+          if(best.length){
+            return `
+        <div class="panel">
+          <h3>${isAr?'الأكثر مبيعًا':'Best Sellers'}</h3>
+          ${best.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--sand-dark)"><span>${esc(pname(p))}</span><span class="font-mono">${fmt(p.price)}</span></div>`).join('')}
+        </div>`;
+          }
+          return `
+        <div class="panel">
+          <h3>${isAr?'المخزون':'Stock'}</h3>
+          <p style="font-size:13px;color:var(--ink-soft);line-height:1.6">${isAr?'كل المنتجات مخزونها جيد.':'All products are well stocked.'}</p>
+        </div>`;
+        })()}
       </div>`:''}
 
       ${state.adminView==='products'?(function(){
@@ -5783,6 +5919,7 @@ function renderAdmin(){
           <h3 style="margin:0">${isAr?'الطلبات':'Orders'} (${filtered.length}${filtered.length!==state.orders.length?` / ${state.orders.length}`:''})</h3>
           <div style="display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="refreshAdminData()">🔄 ${isAr?'تحديث':'Refresh'}</button>
+            ${state.orders.length>0?`<button class="btn btn-ghost btn-sm" onclick="exportOrdersCsv()">⬇️ ${isAr?'تصدير CSV':'Export CSV'}</button>`:''}
             ${state.orders.length>0?`<button class="btn btn-ghost btn-sm" style="color:var(--brick)" onclick="clearAllOrders()">🗑️ ${isAr?'حذف كل الطلبات':'Clear All Orders'}</button>`:''}
           </div>
         </div>
@@ -5807,6 +5944,7 @@ function renderAdmin(){
                 <button class="btn btn-ghost btn-sm" style="color:var(--brick);margin-top:6px" onclick="deleteOrder('${o._dbId}')">🗑️ ${state.lang==='ar'?'حذف':'Delete'}</button>
               </div>
             </div>
+            ${o.paymentRejectReason?`<div style="font-size:12.5px;margin-bottom:10px;background:#FBDACB;color:var(--brick);border-radius:8px;padding:8px 10px"><b>${state.lang==='ar'?'سبب الرفض (ظاهر للعميل):':'Rejection reason (shown to the customer):'}</b> ${esc(o.paymentRejectReason)}</div>`:''}
             <table class="admin-table">
               <thead><tr>
                 <th>${state.lang==='ar'?'المنتج':'Product'}</th><th>${state.lang==='ar'?'الخيار':'Variant'}</th><th>${state.lang==='ar'?'الكمية':'Qty'}</th>
@@ -6841,6 +6979,8 @@ function mOrders(){
           <button class="m-btn-primary" style="width:100%;margin-top:12px;padding:12px;border-radius:999px"
             onclick="event.stopPropagation();goPayment('${o._dbId}')">Complete payment</button>
           <div style="font:400 11px/1.45 'Figtree',sans-serif;color:var(--muted);margin-top:7px;text-align:center">Submit your transfer proof within 24 hours or this order is released.</div>`:''}
+          ${o.paymentRejectReason && (o.paymentStatus==='rejected'||o.paymentStatus==='auto_cancelled')?`
+          <div style="margin-top:10px;font:500 12px/1.55 'Figtree',sans-serif;color:var(--text);background:var(--surf);border-radius:12px;padding:10px 12px"><b>Reason:</b> ${esc(o.paymentRejectReason)}</div>`:''}
         </div>`;
       }).join('') : `<div class="m-empty"><div style="font:600 14px/1.5 'Figtree',sans-serif;color:var(--muted)">No orders yet</div></div>`}
     </div>
@@ -6880,6 +7020,11 @@ function mTrack(){
       <div style="font:500 13px/1.5 'Figtree',sans-serif;color:var(--muted);margin-bottom:10px">Haven't sent the transfer yet? The Wish account details are still here.</div>
       <button class="m-btn-primary" style="width:100%;padding:13px;border-radius:999px" onclick="goPayment('${o._dbId}')">Complete payment</button>
       <div style="font:400 11px/1.45 'Figtree',sans-serif;color:var(--muted);margin-top:8px;text-align:center">Submit your proof within 24 hours or this order is released.</div>
+    </div>`:''}
+    ${o.paymentRejectReason && (o.paymentStatus==='rejected'||o.paymentStatus==='auto_cancelled')?`
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0">
+      <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Why it wasn't confirmed</div>
+      <div style="font:500 13px/1.55 'Figtree',sans-serif;color:var(--text)">${esc(o.paymentRejectReason)}</div>
     </div>`:''}
     ${o.items.some(it=>it.shippingCost!=null)?`<div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin:12px 0">
       <div style="font:600 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">China shipping cost</div>
